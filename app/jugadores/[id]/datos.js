@@ -1,38 +1,53 @@
+// app/jugadores/[id]/datos.js
 import React, { useContext } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { PlayerContext } from '../../../context/PlayerContext';
-
-import Icon from 'react-native-vector-icons/Foundation';
+import { LinearGradient } from 'expo-linear-gradient';
+import { 
+  CalendarIcon, 
+  FootIcon, 
+  PhoneIcon, 
+  EnvelopeIcon, 
+  UserFriendsIcon 
+} from '../../../components/Icons';
+import { COLORS } from '../../../constants/colors';
 
 export default function DatosPersonales() {
   const player = useContext(PlayerContext);
 
-  const renderDataCard = (icon, title, value, color) => (
-    <TouchableOpacity activeOpacity={0.9} style={styles.card}>
-      <View style={[styles.iconContainer, { backgroundColor: `${color}20` }]}>
-        <Icon name={icon} size={25} color={color} />
-      </View>
-      <View style={styles.dataContent}>
-        <Text style={styles.dataLabel}>{title}</Text>
-        <Text style={styles.dataValue}>{value || '-'}</Text>
-      </View>
-    </TouchableOpacity>
+  const renderDataCard = (Icon, title, value, color) => (
+    <View style={styles.card}>
+      <LinearGradient
+        colors={[COLORS.card, '#252525']}
+        style={styles.cardGradient}
+      >
+        <View style={styles.cardContent}>
+          <View style={[styles.iconContainer, { backgroundColor: `${color}20` }]}>
+            <Icon size={20} color={color} />
+          </View>
+          <View style={styles.dataContent}>
+            <Text style={styles.dataLabel}>{title}</Text>
+            <Text style={styles.dataValue}>{value || '-'}</Text>
+          </View>
+        </View>
+      </LinearGradient>
+    </View>
   );
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <View style={styles.headerContainer}>
-        <View style={styles.headerIndicator} />
+        <View style={[styles.headerIndicator, { backgroundColor: COLORS.primary }]} />
         <Text style={styles.title}>Datos personales</Text>
       </View>
 
       <View style={styles.cardsContainer}>
-        {renderDataCard('calendar', 'Fecha de nacimiento', player.date, '#FF5A5F')}
-        {renderDataCard('foot', 'Pie dominante', player.foot, '#FFB400')}
-        {renderDataCard('telephone', 'Móvil', player.phone, '#0084FF')}
-        {renderDataCard('mail', 'Correo', null, '#A463F2')}
-        {renderDataCard('torsos', 'Datos contacto', null, '#00C781')}
-        {renderDataCard('telephone', 'Móvil contacto', '72kg', '#0084FF')} 
+        {renderDataCard(CalendarIcon, 'Fecha de nacimiento', player.date, COLORS.danger)}
+        {renderDataCard(FootIcon, 'Pie dominante', player.foot, COLORS.warning)}
+        {renderDataCard(PhoneIcon, 'Móvil', player.phone, COLORS.info)}
+        {renderDataCard(EnvelopeIcon, 'Correo', player.email || null, COLORS.primary)}
+        {renderDataCard(UserFriendsIcon, 'Nombre contacto', player.contactName || null, COLORS.success)}
+        {renderDataCard(PhoneIcon, 'Móvil contacto', player.contactPhone || null, COLORS.info)} 
       </View>
     </ScrollView>
   );
@@ -41,7 +56,7 @@ export default function DatosPersonales() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#121212',
+    backgroundColor: COLORS.background,
   },
   headerContainer: {
     flexDirection: 'row',
@@ -54,11 +69,10 @@ const styles = StyleSheet.create({
     width: 4,
     height: 24,
     borderRadius: 4,
-    backgroundColor: '#A463F2',
     marginRight: 12,
   },
   title: {
-    color: '#FFFFFF',
+    color: COLORS.text,
     fontSize: 22,
     fontWeight: 'bold',
   },
@@ -67,19 +81,20 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   card: {
+    marginBottom: 12,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  cardGradient: {
+    borderRadius: 16,
+    padding: 1, // Borde gradiente
+  },
+  cardContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E1E1E',
-    borderRadius: 12,
-    marginBottom: 12,
+    backgroundColor: COLORS.card,
+    borderRadius: 15,
     padding: 16,
-    borderWidth: 1,
-    borderColor: '#2A2A2A',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
   },
   iconContainer: {
     width: 40,
@@ -93,12 +108,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   dataLabel: {
-    color: '#999999',
+    color: COLORS.textSecondary,
     fontSize: 14,
     marginBottom: 4,
   },
   dataValue: {
-    color: '#FFFFFF',
+    color: COLORS.text,
     fontSize: 16,
     fontWeight: '500',
   },

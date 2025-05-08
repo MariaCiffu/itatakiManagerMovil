@@ -1,38 +1,45 @@
 // app/jugadores/[id]/layout.js
 import { View, Text, Image, StyleSheet, TouchableOpacity, StatusBar } from 'react-native';
 import { Tabs, useLocalSearchParams, useRouter } from 'expo-router';
-import Ionicons from '@expo/vector-icons/Ionicons';
-import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { PlayerContext } from '../../../context/PlayerContext';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BarChartIcon, CoinsIcon, PersonIcon, EditIcon } from '../../../components/Icons';
+import { COLORS } from '../../../constants/colors';
 
 export default function PlayerLayout() {
   const { playerData } = useLocalSearchParams();
-  const player = JSON.parse(playerData || '{}'); // Parseamos los datos
+  const player = JSON.parse(playerData || '{}');
   const router = useRouter();
+
+  const handleEdit = () => {
+    // Navegar a la pantalla de edición con los datos del jugador
+    router.push({
+      pathname: '/jugadores/edit-player',
+      params: { playerData: JSON.stringify(player) }
+    });
+  };
 
   return (
     <PlayerContext.Provider value={player}>
-      <StatusBar barStyle="light-content" backgroundColor="#121212" />
-      <View style={{ flex: 1, backgroundColor: '#121212' }}>
+      <StatusBar barStyle="light-content" backgroundColor={COLORS.background} />
+      <View style={{ flex: 1, backgroundColor: COLORS.background }}>
         {/* Header con diseño moderno */}
         <View style={styles.headerContainer}>
           {/* Fondo con gradiente sutil */}
           <LinearGradient
-            colors={['#1a1a1a', '#121212']}
+            colors={['#1a1a1a', COLORS.background]}
             style={styles.headerGradient}
           />
           
           {/* Elementos decorativos */}
-          <View style={styles.decorativeCircle1} />
-          <View style={styles.decorativeCircle2} />
+          <View style={[styles.decorativeCircle1, { backgroundColor: `${COLORS.primary}20` }]} />
+          <View style={[styles.decorativeCircle2, { backgroundColor: `${COLORS.info}20` }]} />
           
           {/* Contenido del header */}
           <View style={styles.headerContent}>
             {/* Contenedor de la imagen con efecto de brillo */}
             <View style={styles.avatarContainer}>
-              <View style={styles.avatarGlow} />
+              <View style={[styles.avatarGlow, { backgroundColor: COLORS.primary }]} />
               <View style={styles.avatarWrapper}>
                 <Image 
                   source={{ uri: player.image}} 
@@ -40,7 +47,7 @@ export default function PlayerLayout() {
                 />
               </View>
               {/* Número del jugador */}
-              <View style={styles.playerNumber}>
+              <View style={[styles.playerNumber, { backgroundColor: COLORS.primary }]}>
                 <Text style={styles.playerNumberText}>{player.number}</Text>
               </View>
             </View>
@@ -50,13 +57,21 @@ export default function PlayerLayout() {
               <Text style={styles.playerName}>{player.name}</Text>
               <Text style={styles.playerPosition}>{player.position}</Text>
             </View>
+            
+            {/* Botón de editar */}
+            <TouchableOpacity 
+              style={[styles.editButton, { backgroundColor: COLORS.primary }]}
+              onPress={handleEdit}
+            >
+              <EditIcon size={16} color="#fff" />
+            </TouchableOpacity>
           </View>
         </View>
 
         {/* Tabs sin cabecera */}
         <Tabs
           screenOptions={{
-            tabBarActiveTintColor: '#A463F2',
+            tabBarActiveTintColor: COLORS.primary,
             tabBarInactiveTintColor: '#666',
             tabBarStyle: styles.tabBar,
             headerShown: false,
@@ -67,7 +82,7 @@ export default function PlayerLayout() {
             options={{
               title: 'Datos',
               tabBarIcon: ({ color }) => (
-                <Ionicons name="person" size={24} color={color} />
+                <PersonIcon color={color} />
               ),
             }}
           />
@@ -77,7 +92,7 @@ export default function PlayerLayout() {
             options={{
               title: 'Multas',
               tabBarIcon: ({ color }) => (
-                <FontAwesome6 name="coins" size={24} color={color} />
+                <CoinsIcon color={color} />
               ),
             }}
           />
@@ -86,7 +101,7 @@ export default function PlayerLayout() {
             options={{
               title: 'Estadísticas',
               tabBarIcon: ({ color }) => (
-                <MaterialCommunityIcons name="file-table-box-multiple-outline" size={24} color={color} />
+                <BarChartIcon color={color} />
               ),
             }}
           />
@@ -97,14 +112,13 @@ export default function PlayerLayout() {
 }
 
 const styles = StyleSheet.create({
-  // Estilos del contenedor principal del header
+  // Estilos sin cambios...
   headerContainer: {
     position: 'relative',
     paddingTop: 16,
     paddingBottom: 24,
     overflow: 'hidden',
   },
-  // Gradiente de fondo
   headerGradient: {
     position: 'absolute',
     left: 0,
@@ -112,13 +126,11 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
   },
-  // Elementos decorativos para dar profundidad
   decorativeCircle1: {
     position: 'absolute',
     width: 150,
     height: 150,
     borderRadius: 75,
-    backgroundColor: '#A463F220',
     top: -50,
     right: -30,
     opacity: 0.3,
@@ -128,18 +140,16 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: '#0084FF20',
     bottom: -20,
     left: -30,
     opacity: 0.3,
   },
-  // Contenido principal del header
   headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
+    paddingTop: 16,
   },
-  // Contenedor de la imagen con efecto de brillo
   avatarContainer: {
     position: 'relative',
     marginRight: 16,
@@ -149,7 +159,6 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#A463F2',
     opacity: 0.3,
     transform: [{ scale: 1.1 }],
   },
@@ -165,7 +174,6 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  // Número del jugador
   playerNumber: {
     position: 'absolute',
     bottom: -5,
@@ -173,11 +181,10 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#A463F2',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#121212',
+    borderColor: COLORS.background,
   },
   playerNumberText: {
     color: '#fff',
@@ -197,6 +204,15 @@ const styles = StyleSheet.create({
   playerPosition: {
     color: '#aaa',
     fontSize: 14,
+  },
+  // Botón de editar
+  editButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
   },
   // Barra de pestañas
   tabBar: {

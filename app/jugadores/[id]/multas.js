@@ -1,17 +1,18 @@
 // app/jugadores/[id]/multas.js
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { 
-  Calendar, 
-  Check, 
-  Clock,
-  Plus
-} from 'react-native-feather';
+import { Calendar, Check, Clock, Plus, Edit, Trash2, X } from 'react-native-feather';
+import { COLORS } from '../../../constants/colors';
+import { useRouter } from 'expo-router';
 
 export default function Multas() {
+  const router = useRouter();
+  const [selectedMulta, setSelectedMulta] = useState(null);
+  const [showActionModal, setShowActionModal] = useState(false);
+
   // Datos de ejemplo con estado de pago
-  const multas = [
+  const [multas, setMultas] = useState([
     { 
       id: 1, 
       fecha: '04/03/2024', 
@@ -40,12 +41,66 @@ export default function Multas() {
       importe: 5, 
       pagado: false 
     }
-  ];
+  ]);
+
+  const handleAddMulta = () => {
+    router.push('/jugadores/add-multa');
+  };
+
+  const handleMultaPress = (multa) => {
+    setSelectedMulta(multa);
+    setShowActionModal(true);
+  };
+
+  const handleEditMulta = () => {
+    setShowActionModal(false);
+    router.push({
+      pathname: '/jugadores/edit-multa',
+      params: { multaData: JSON.stringify(selectedMulta) }
+    });
+  };
+
+  const handleTogglePagado = () => {
+    setShowActionModal(false);
+    setMultas(multas.map(m => 
+      m.id === selectedMulta.id 
+        ? {...m, pagado: !m.pagado} 
+        : m
+    ));
+  };
+
+  const handleDeleteMulta = () => {
+    setShowActionModal(false);
+    Alert.alert(
+      "Eliminar multa",
+      "¿Estás seguro de que quieres eliminar esta multa?",
+      [
+        {
+          text: "Cancelar",
+          style: "cancel"
+        },
+        {
+          text: "Eliminar",
+          onPress: () => {
+            setMultas(multas.filter(m => m.id !== selectedMulta.id));
+          },
+          style: "destructive"
+        }
+      ]
+    );
+  };
+
+  // Cálculos para el resumen
+  const totalMultas = multas.length;
+  const importeTotal = multas.reduce((sum, multa) => sum + multa.importe, 0);
+  const importePendiente = multas
+    .filter(multa => !multa.pagado)
+    .reduce((sum, multa) => sum + multa.importe, 0);
 
   return (
     <View style={styles.container}>
       <View style={styles.headerContainer}>
-        <View style={styles.headerIndicator} />
+        <View style={[styles.headerIndicator, { backgroundColor: COLORS.primary }]} />
         <Text style={styles.title}>Multas</Text>
       </View>
 
@@ -55,14 +110,18 @@ export default function Multas() {
         contentContainerStyle={styles.multasListContent}
       >
         {multas.map((multa) => (
-          <MultaCard key={multa.id} multa={multa} />
+          <MultaCard 
+            key={multa.id} 
+            multa={multa} 
+            onPress={() => handleMultaPress(multa)}
+          />
         ))}
       </ScrollView>
 
       {/* Botón flotante para añadir nueva multa */}
-      <TouchableOpacity style={styles.addButton} activeOpacity={0.8}>
+      <TouchableOpacity style={styles.addButton} activeOpacity={0.8} onPress={handleAddMulta}>
         <LinearGradient
-          colors={['#A463F2', '#8B5CF6']}
+          colors={[COLORS.primary, COLORS.primaryDark]}
           style={styles.addButtonGradient}
         >
           <Plus width={24} height={24} color="#FFF" />
@@ -72,48 +131,101 @@ export default function Multas() {
       {/* Resumen de multas */}
       <View style={styles.summaryContainer}>
         <LinearGradient
-          colors={['#1E1E1E', '#252525']}
+          colors={[COLORS.card, '#252525']}
           style={styles.summaryGradient}
         >
           <View style={styles.summaryContent}>
             <View style={styles.summaryItem}>
               <Text style={styles.summaryLabel}>Total multas</Text>
-              <Text style={styles.summaryValue}>4</Text>
+              <Text style={styles.summaryValue}>{totalMultas}</Text>
             </View>
             <View style={styles.summaryDivider} />
             <View style={styles.summaryItem}>
               <Text style={styles.summaryLabel}>Importe total</Text>
-              <Text style={styles.summaryValue}>50€</Text>
+              <Text style={styles.summaryValue}>{importeTotal}€</Text>
             </View>
             <View style={styles.summaryDivider} />
             <View style={styles.summaryItem}>
               <Text style={styles.summaryLabel}>Pendiente</Text>
-              <Text style={[styles.summaryValue, { color: '#FF5A5F' }]}>25€</Text>
+              <Text style={[styles.summaryValue, { color: COLORS.danger }]}>{importePendiente}€</Text>
             </View>
           </View>
         </LinearGradient>
       </View>
+
+      {/* Modal de acciones para multa */}
+      <Modal
+        visible={showActionModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowActionModal(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowActionModal(false)}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Opciones</Text>
+                <TouchableOpacity onPress={() => setShowActionModal(false)}>
+                  <X size={20} color={COLORS.textSecondary} />
+                </TouchableOpacity>
+              </View>
+              
+              <TouchableOpacity style={styles.modalOption} onPress={handleEditMulta}>
+                <Edit size={20} color={COLORS.primary} />
+                <Text style={styles.modalOptionText}>Editar multa</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity style={styles.modalOption} onPress={handleTogglePagado}>
+                {selectedMulta?.pagado ? (
+                  <>
+                    <Clock size={20} color={COLORS.warning} />
+                    <Text style={styles.modalOptionText}>Marcar como pendiente</Text>
+                  </>
+                ) : (
+                  <>
+                    <Check size={20} color={COLORS.success} />
+                    <Text style={styles.modalOptionText}>Marcar como pagada</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+              
+              <TouchableOpacity style={styles.modalOption} onPress={handleDeleteMulta}>
+                <Trash2 size={20} color={COLORS.danger} />
+                <Text style={[styles.modalOptionText, { color: COLORS.danger }]}>Eliminar multa</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
 
-function MultaCard({ multa }) {
+function MultaCard({ multa, onPress }) {
   return (
-    <View style={styles.cardContainer}>
+    <TouchableOpacity 
+      style={styles.cardContainer}
+      activeOpacity={0.9}
+      onPress={onPress}
+    >
       <LinearGradient
-        colors={['#1E1E1E', '#252525']}
+        colors={[COLORS.card, '#252525']}
         style={styles.cardGradient}
       >
         <View style={styles.cardContent}>
           {/* Indicador de estado de pago */}
           <View style={[
             styles.statusIndicator, 
-            { backgroundColor: multa.pagado ? '#00C78120' : '#FF5A5F20' }
+            { backgroundColor: multa.pagado ? `${COLORS.success}20` : `${COLORS.danger}20` }
           ]}>
             {multa.pagado ? (
-              <Check width={16} height={16} color="#00C781" />
+              <Check width={16} height={16} color={COLORS.success} />
             ) : (
-              <Clock width={16} height={16} color="#FF5A5F" />
+              <Clock width={16} height={16} color={COLORS.danger} />
             )}
           </View>
 
@@ -135,7 +247,7 @@ function MultaCard({ multa }) {
               </View>
               <Text style={[
                 styles.estadoText, 
-                { color: multa.pagado ? '#00C781' : '#FF5A5F' }
+                { color: multa.pagado ? COLORS.success : COLORS.danger }
               ]}>
                 {multa.pagado ? 'Pagado' : 'Pendiente'}
               </Text>
@@ -143,14 +255,14 @@ function MultaCard({ multa }) {
           </View>
         </View>
       </LinearGradient>
-    </View>
+    </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#121212',
+    backgroundColor: COLORS.background,
     padding: 16,
   },
   headerContainer: {
@@ -162,12 +274,11 @@ const styles = StyleSheet.create({
     width: 4,
     height: 24,
     borderRadius: 4,
-    backgroundColor: '#A463F2',
     marginRight: 12,
   },
   title: {
     fontSize: 22,
-    color: 'white',
+    color: COLORS.text,
     fontWeight: 'bold',
   },
   
@@ -191,7 +302,7 @@ const styles = StyleSheet.create({
   },
   cardContent: {
     flexDirection: 'row',
-    backgroundColor: '#1A1A1A',
+    backgroundColor: COLORS.card,
     borderRadius: 15,
     padding: 16,
   },
@@ -219,11 +330,11 @@ const styles = StyleSheet.create({
     marginRight: 4,
   },
   fechaText: {
-    color: '#999',
+    color: COLORS.textSecondary,
     fontSize: 12,
   },
   motivoText: {
-    color: 'white',
+    color: COLORS.text,
     fontSize: 16,
     fontWeight: '500',
   },
@@ -237,10 +348,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   importeText: {
-    color: '#FFB400',
+    color: COLORS.warning,
     fontSize: 16,
     fontWeight: 'bold',
-    marginLeft: 4,
   },
   estadoText: {
     fontSize: 14,
@@ -282,7 +392,7 @@ const styles = StyleSheet.create({
   },
   summaryContent: {
     flexDirection: 'row',
-    backgroundColor: '#1A1A1A',
+    backgroundColor: COLORS.card,
     borderRadius: 15,
     padding: 16,
   },
@@ -292,17 +402,61 @@ const styles = StyleSheet.create({
   },
   summaryDivider: {
     width: 1,
-    backgroundColor: '#333',
+    backgroundColor: COLORS.divider,
     marginHorizontal: 8,
   },
   summaryLabel: {
-    color: '#999',
+    color: COLORS.textSecondary,
     fontSize: 12,
     marginBottom: 4,
   },
   summaryValue: {
-    color: 'white',
+    color: COLORS.text,
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  
+  // Modal de acciones
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    width: '80%',
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  modalContent: {
+    backgroundColor: COLORS.card,
+    borderRadius: 16,
+    padding: 16,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.divider,
+  },
+  modalTitle: {
+    color: COLORS.text,
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  modalOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.divider,
+  },
+  modalOptionText: {
+    color: COLORS.text,
+    fontSize: 16,
+    marginLeft: 12,
   },
 });
