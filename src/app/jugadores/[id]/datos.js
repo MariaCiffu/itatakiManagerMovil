@@ -1,5 +1,4 @@
 // app/jugadores/[id]/datos.js
-import React from "react";
 import {
   View,
   Text,
@@ -221,12 +220,5 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12, // Aumentar el espacio entre botones
-  },
-  actionButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: "center",
-    alignItems: "center",
   },
 });
