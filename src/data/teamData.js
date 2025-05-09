@@ -48,6 +48,34 @@ export const PLAYERS = [
     emergencyPhone: "123456789",
     multas: []
   },
+  {
+    id: '4',
+    name: 'Mandarino Arranz',
+    number: 15,
+    position: 'Delantero',
+    image: 'https://i.pravatar.cc/150?img=3',
+    phone: '600345678',
+    email: 'miguel@example.com',
+    birthdate: '10/12/1990',
+    foot: 'Derecho',
+    emergencyContact: "Madre/Padre",
+    emergencyPhone: "123456789",
+    multas: []
+  },
+  {
+    id: '5',
+    name: 'Fante Alicante',
+    number: 5,
+    position: 'Portero',
+    image: 'https://i.pravatar.cc/150?img=3',
+    phone: '600345678',
+    email: 'miguel@example.com',
+    birthdate: '10/12/1990',
+    foot: 'Derecho',
+    emergencyContact: "Madre/Padre",
+    emergencyPhone: "123456789",
+    multas: []
+  },
 ];
 
 
