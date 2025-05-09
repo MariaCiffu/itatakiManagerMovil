@@ -259,7 +259,7 @@ export default function StaffList() {
                         ]}
                         onPress={() => Linking.openURL(`tel:${item.phone}`)}
                       >
-                        <PhoneIcon size={16} color="#fff" />
+                        <PhoneIcon size={14} color="#fff" />
                       </TouchableOpacity>
 
                       {/* Botón de WhatsApp */}
@@ -596,9 +596,9 @@ const styles = StyleSheet.create({
     marginLeft: "auto",
   },
   actionButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     justifyContent: "center",
     alignItems: "center",
     marginLeft: 8,
