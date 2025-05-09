@@ -1,33 +1,48 @@
 // app/index.js
-import React from 'react';
-import { StyleSheet, View, TouchableOpacity, Text, Image, ScrollView } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
-import { COLORS } from '../constants/colors';
-import { PersonIcon, UserFriendsIcon, BarChartIcon, CalendarIcon, EnvelopeIcon } from '../components/Icons';
+import React from "react";
+import {
+  StyleSheet,
+  View,
+  TouchableOpacity,
+  Text,
+  Image,
+  ScrollView,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
+import { COLORS } from "../constants/colors";
+import {
+  PersonIcon,
+  UserFriendsIcon,
+  BarChartIcon,
+  CalendarIcon,
+  EnvelopeIcon,
+} from "../components/Icons";
 
 export default function Home() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
   return (
-    <View style={[
-      styles.container, 
-      { 
-        paddingTop: insets.top, 
-        paddingBottom: insets.bottom,
-        backgroundColor: COLORS.background
-      }
-    ]}>
+    <View
+      style={[
+        styles.container,
+        {
+          paddingTop: insets.top,
+          paddingBottom: insets.bottom,
+          backgroundColor: COLORS.background,
+        },
+      ]}
+    >
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.appName}>Mi Equipo</Text>
           <View style={styles.teamInfo}>
-            <Image 
-              source={{ uri: 'https://randomuser.me/api/portraits/men/32.jpg' }} 
-              style={styles.teamLogo} 
+            <Image
+              source={{ uri: "https://randomuser.me/api/portraits/men/32.jpg" }}
+              style={styles.teamLogo}
             />
             <View>
               <Text style={styles.teamName}>FC Barcelona</Text>
@@ -35,12 +50,12 @@ export default function Home() {
             </View>
           </View>
         </View>
-        
+
         {/* Secciones principales */}
         <View style={styles.mainSections}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.mainCard}
-            onPress={() => router.push('/jugadores')}
+            onPress={() => router.push("/jugadores")}
             activeOpacity={0.8}
           >
             <LinearGradient
@@ -58,18 +73,22 @@ export default function Home() {
               </View>
             </LinearGradient>
           </TouchableOpacity>
-          
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.mainCard}
-            onPress={() => router.push('/staff')}
+            onPress={() => router.push("/staff")}
             activeOpacity={0.8}
           >
             <LinearGradient
-              colors={[`${COLORS.secondary}`, '#E09600']}
+              colors={[`${COLORS.secondary}`, "#E09600"]}
               style={styles.mainCardGradient}
             >
               <View style={styles.mainCardContent}>
-                <View style={[styles.mainCardIcon, { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]}>
+                <View
+                  style={[
+                    styles.mainCardIcon,
+                    { backgroundColor: "rgba(255, 255, 255, 0.2)" },
+                  ]}
+                >
                   <UserFriendsIcon size={32} color="#fff" />
                 </View>
                 <Text style={styles.mainCardTitle}>Staff</Text>
@@ -79,105 +98,132 @@ export default function Home() {
               </View>
             </LinearGradient>
           </TouchableOpacity>
-
-//acceso rápido para convocatorias
-
-<TouchableOpacity 
-  style={styles.quickAccessCard}
-  onPress={() => router.push('/convocatorias')}
-  activeOpacity={0.7}
->
-  <LinearGradient
-    colors={[COLORS.card, '#252525']}
-    style={styles.quickAccessGradient}
-  >
-    <View style={[styles.quickAccessIcon, { backgroundColor: `${COLORS.primary}20` }]}>
-      <EnvelopeIcon size={24} color={COLORS.primary} />
-    </View>
-    <Text style={styles.quickAccessTitle}>Convocatorias</Text>
-  </LinearGradient>
-</TouchableOpacity>
-
-<TouchableOpacity 
-  style={styles.quickAccessCard}
-  onPress={() => router.push('/alineacion')}
-  activeOpacity={0.7}
->
-  <LinearGradient
-    colors={[COLORS.card, '#252525']}
-    style={styles.quickAccessGradient}
-  >
-    <View style={[styles.quickAccessIcon, { backgroundColor: `${COLORS.primary}20` }]}>
-      <EnvelopeIcon size={24} color={COLORS.primary} />
-    </View>
-    <Text style={styles.quickAccessTitle}>Partidos</Text>
-  </LinearGradient>
-</TouchableOpacity>
+          //acceso rápido para convocatorias
+          <TouchableOpacity
+            style={styles.quickAccessCard}
+            onPress={() => router.push("/convocatorias")}
+            activeOpacity={0.7}
+          >
+            <LinearGradient
+              colors={[COLORS.card, "#252525"]}
+              style={styles.quickAccessGradient}
+            >
+              <View
+                style={[
+                  styles.quickAccessIcon,
+                  { backgroundColor: `${COLORS.primary}20` },
+                ]}
+              >
+                <EnvelopeIcon size={24} color={COLORS.primary} />
+              </View>
+              <Text style={styles.quickAccessTitle}>Convocatorias</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.quickAccessCard}
+            onPress={() => router.push("/partidos")}
+            activeOpacity={0.7}
+          >
+            <LinearGradient
+              colors={[COLORS.card, "#252525"]}
+              style={styles.quickAccessGradient}
+            >
+              <View
+                style={[
+                  styles.quickAccessIcon,
+                  { backgroundColor: `${COLORS.primary}20` },
+                ]}
+              >
+                <EnvelopeIcon size={24} color={COLORS.primary} />
+              </View>
+              <Text style={styles.quickAccessTitle}>Partidos</Text>
+            </LinearGradient>
+          </TouchableOpacity>
         </View>
-        
+
         {/* Accesos rápidos */}
         <View style={styles.quickAccess}>
           <Text style={styles.sectionTitle}>Accesos rápidos</Text>
-          
+
           <View style={styles.quickAccessGrid}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.quickAccessCard}
-              onPress={() => console.log('Próximamente')}
+              onPress={() => console.log("Próximamente")}
               activeOpacity={0.7}
             >
               <LinearGradient
-                colors={[COLORS.card, '#252525']}
+                colors={[COLORS.card, "#252525"]}
                 style={styles.quickAccessGradient}
               >
-                <View style={[styles.quickAccessIcon, { backgroundColor: `${COLORS.info}20` }]}>
+                <View
+                  style={[
+                    styles.quickAccessIcon,
+                    { backgroundColor: `${COLORS.info}20` },
+                  ]}
+                >
                   <CalendarIcon size={24} color={COLORS.info} />
                 </View>
                 <Text style={styles.quickAccessTitle}>Calendario</Text>
               </LinearGradient>
             </TouchableOpacity>
-            
-            <TouchableOpacity 
+
+            <TouchableOpacity
               style={styles.quickAccessCard}
-              onPress={() => console.log('Próximamente')}
+              onPress={() => console.log("Próximamente")}
               activeOpacity={0.7}
             >
               <LinearGradient
-                colors={[COLORS.card, '#252525']}
+                colors={[COLORS.card, "#252525"]}
                 style={styles.quickAccessGradient}
               >
-                <View style={[styles.quickAccessIcon, { backgroundColor: `${COLORS.success}20` }]}>
+                <View
+                  style={[
+                    styles.quickAccessIcon,
+                    { backgroundColor: `${COLORS.success}20` },
+                  ]}
+                >
                   <BarChartIcon size={24} color={COLORS.success} />
                 </View>
                 <Text style={styles.quickAccessTitle}>Estadísticas</Text>
               </LinearGradient>
             </TouchableOpacity>
-            
-            <TouchableOpacity 
+
+            <TouchableOpacity
               style={styles.quickAccessCard}
-              onPress={() => console.log('Próximamente')}
+              onPress={() => console.log("Próximamente")}
               activeOpacity={0.7}
             >
               <LinearGradient
-                colors={[COLORS.card, '#252525']}
+                colors={[COLORS.card, "#252525"]}
                 style={styles.quickAccessGradient}
               >
-                <View style={[styles.quickAccessIcon, { backgroundColor: `${COLORS.warning}20` }]}>
+                <View
+                  style={[
+                    styles.quickAccessIcon,
+                    { backgroundColor: `${COLORS.warning}20` },
+                  ]}
+                >
                   <PersonIcon size={24} color={COLORS.warning} />
                 </View>
                 <Text style={styles.quickAccessTitle}>Asistencia</Text>
               </LinearGradient>
             </TouchableOpacity>
-            
-            <TouchableOpacity 
+
+            <TouchableOpacity
               style={styles.quickAccessCard}
-              onPress={() => console.log('Próximamente')}
+              onPress={() => console.log("Próximamente")}
               activeOpacity={0.7}
             >
               <LinearGradient
-                colors={[COLORS.card, '#252525']}
+                colors={[COLORS.card, "#252525"]}
                 style={styles.quickAccessGradient}
               >
-                <View style={[styles.quickAccessIcon, { backgroundColor: `${COLORS.danger}20` }]}>
+                <View
+                  style={[
+                    styles.quickAccessIcon,
+                    { backgroundColor: `${COLORS.danger}20` },
+                  ]}
+                >
                   <UserFriendsIcon size={24} color={COLORS.danger} />
                 </View>
                 <Text style={styles.quickAccessTitle}>Rivales</Text>
@@ -185,40 +231,50 @@ export default function Home() {
             </TouchableOpacity>
           </View>
         </View>
-        
+
         {/* Próximos eventos */}
         <View style={styles.upcomingEvents}>
           <Text style={styles.sectionTitle}>Próximos eventos</Text>
-          
+
           <View style={styles.eventCard}>
             <LinearGradient
-              colors={[COLORS.card, '#252525']}
+              colors={[COLORS.card, "#252525"]}
               style={styles.eventGradient}
             >
               <View style={styles.eventHeader}>
-                <View style={[styles.eventBadge, { backgroundColor: COLORS.primary }]}>
+                <View
+                  style={[
+                    styles.eventBadge,
+                    { backgroundColor: COLORS.primary },
+                  ]}
+                >
                   <Text style={styles.eventBadgeText}>PARTIDO</Text>
                 </View>
                 <Text style={styles.eventDate}>15/05/2024</Text>
               </View>
-              
+
               <Text style={styles.eventTitle}>vs. Real Madrid</Text>
               <Text style={styles.eventLocation}>Estadio Central, 17:00</Text>
             </LinearGradient>
           </View>
-          
+
           <View style={styles.eventCard}>
             <LinearGradient
-              colors={[COLORS.card, '#252525']}
+              colors={[COLORS.card, "#252525"]}
               style={styles.eventGradient}
             >
               <View style={styles.eventHeader}>
-                <View style={[styles.eventBadge, { backgroundColor: COLORS.secondary }]}>
+                <View
+                  style={[
+                    styles.eventBadge,
+                    { backgroundColor: COLORS.secondary },
+                  ]}
+                >
                   <Text style={styles.eventBadgeText}>ENTRENAMIENTO</Text>
                 </View>
                 <Text style={styles.eventDate}>12/05/2024</Text>
               </View>
-              
+
               <Text style={styles.eventTitle}>Entrenamiento táctico</Text>
               <Text style={styles.eventLocation}>Campo Municipal, 18:00</Text>
             </LinearGradient>
@@ -238,13 +294,13 @@ const styles = StyleSheet.create({
   },
   appName: {
     fontSize: 28,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: COLORS.text,
     marginBottom: 16,
   },
   teamInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   teamLogo: {
     width: 50,
@@ -256,7 +312,7 @@ const styles = StyleSheet.create({
   },
   teamName: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: COLORS.text,
   },
   teamCategory: {
@@ -269,7 +325,7 @@ const styles = StyleSheet.create({
   },
   mainCard: {
     borderRadius: 16,
-    overflow: 'hidden',
+    overflow: "hidden",
     marginBottom: 8,
   },
   mainCardGradient: {
@@ -282,39 +338,39 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: 12,
   },
   mainCardTitle: {
     fontSize: 22,
-    fontWeight: 'bold',
-    color: '#fff',
+    fontWeight: "bold",
+    color: "#fff",
     marginBottom: 8,
   },
   mainCardDescription: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: "rgba(255, 255, 255, 0.8)",
   },
   quickAccess: {
     padding: 16,
   },
   sectionTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: COLORS.text,
     marginBottom: 16,
   },
   quickAccessGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
   },
   quickAccessCard: {
-    width: '48%',
+    width: "48%",
     borderRadius: 12,
-    overflow: 'hidden',
+    overflow: "hidden",
     marginBottom: 16,
   },
   quickAccessGradient: {
@@ -325,13 +381,13 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: 12,
   },
   quickAccessTitle: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: COLORS.text,
     marginTop: 8,
   },
@@ -341,7 +397,7 @@ const styles = StyleSheet.create({
   },
   eventCard: {
     borderRadius: 12,
-    overflow: 'hidden',
+    overflow: "hidden",
     marginBottom: 12,
   },
   eventGradient: {
@@ -349,9 +405,9 @@ const styles = StyleSheet.create({
     padding: 1, // Borde gradiente
   },
   eventHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     backgroundColor: COLORS.card,
     borderTopLeftRadius: 11,
     borderTopRightRadius: 11,
@@ -365,9 +421,9 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   eventBadgeText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 10,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   eventDate: {
     color: COLORS.textSecondary,
@@ -376,7 +432,7 @@ const styles = StyleSheet.create({
   eventTitle: {
     color: COLORS.text,
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     backgroundColor: COLORS.card,
     paddingHorizontal: 12,
     paddingTop: 12,

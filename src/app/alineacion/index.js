@@ -1,6 +1,7 @@
+// src/app/alineacion.js
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from "react";
 import {
   View,
   Text,
@@ -36,7 +37,13 @@ const POSITION_MAPPING = {
   Delantero: "DEL",
 };
 
-export default function LineupScreen() {
+const LineupScreen = forwardRef(({ 
+  matchday = 35, 
+  isEmbedded = false, 
+  initialData = null,
+  onSaveLineup = null,
+  readOnly = false 
+}, ref) => {
   const router = useRouter();
 
   // Definir colores fijos en lugar de tema
@@ -63,7 +70,6 @@ export default function LineupScreen() {
   const [substitutes, setSubstitutes] = useState([]);
   const [playerSelectorVisible, setPlayerSelectorVisible] = useState(false);
   const [selectedPosition, setSelectedPosition] = useState(null);
-  const [matchday, setMatchday] = useState(35);
   const [availablePlayers, setAvailablePlayers] = useState(PLAYERS); // Usamos los jugadores del archivo de datos
 
   // Estados para los roles especiales
@@ -89,6 +95,34 @@ export default function LineupScreen() {
   const playerScaleAnim = useRef(new Animated.Value(1)).current;
   const savedIndicatorAnim = useRef(new Animated.Value(0)).current;
 
+  // Exponer métodos a través de la referencia
+  useImperativeHandle(ref, () => ({
+    getAlineacionData: () => {
+      // Devolver los datos de la alineación
+      return {
+        formation: selectedFormation,
+        lineup,
+        substitutes,
+        specialRoles
+      };
+    }
+  }));
+
+  // Inicializar con datos si se proporcionan
+  useEffect(() => {
+    if (initialData) {
+      setSelectedFormation(initialData.formation);
+      setLineup(initialData.lineup || {});
+      setSubstitutes(initialData.substitutes || []);
+      setSpecialRoles(initialData.specialRoles || {
+        captain: null,
+        freeKicks: null,
+        corners: null,
+        penalties: null
+      });
+    }
+  }, [initialData]);
+
   // Función para autoguardar
   const autoSave = () => {
     // Aquí implementarías la lógica para guardar en AsyncStorage, una base de datos, etc.
@@ -109,6 +143,16 @@ export default function LineupScreen() {
         setShowSavedIndicator(false);
       });
     }, 0);
+
+    // Si está embebido y hay una función de callback, notificar al padre
+    if (isEmbedded && onSaveLineup) {
+      onSaveLineup({
+        formation: selectedFormation,
+        lineup,
+        substitutes,
+        specialRoles
+      });
+    }
   };
 
   // Actualizar posiciones cuando cambia la formación
@@ -163,6 +207,8 @@ export default function LineupScreen() {
 
   // Función para seleccionar un jugador para una posición
   const selectPlayerForPosition = (position, event) => {
+    if (readOnly) return;
+
     const player = lineup[position];
 
     // Animar la selección
@@ -346,6 +392,8 @@ export default function LineupScreen() {
 
   // Función para manejar la pulsación larga en un jugador
   const handleLongPressPlayer = (position) => {
+    if (readOnly) return;
+    
     const player = lineup[position];
     if (player) {
       setSelectedPlayer(player);
@@ -411,7 +459,7 @@ export default function LineupScreen() {
           onPress={(event) => selectPlayerForPosition(position, event)}
           onLongPress={() => handleLongPressPlayer(position)}
           delayLongPress={500}
-          activeOpacity={0.7}
+          activeOpacity={readOnly ? 1 : 0.7}
           accessible={true}
           accessibilityLabel={
             player
@@ -423,6 +471,7 @@ export default function LineupScreen() {
               ? "Toca para ver opciones del jugador"
               : "Toca para asignar un jugador"
           }
+          disabled={readOnly}
         >
           {player ? (
             <Animated.View
@@ -470,39 +519,42 @@ export default function LineupScreen() {
     <SafeAreaView
       style={[styles.container, { backgroundColor: colors.background }]}
     >
-      <View style={[styles.header, { borderBottomColor: `${colors.text}20` }]}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={styles.backButton}
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>
-          Alineación jornada {matchday}
-        </Text>
-
-        {/* Indicador de autoguardado */}
-        {showSavedIndicator && (
-          <Animated.View
-            style={[styles.savedIndicator, { opacity: savedIndicatorAnim }]}
+      {!isEmbedded && (
+        <View style={[styles.header, { borderBottomColor: `${colors.text}20` }]}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButton}
           >
-            <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
-            <Text style={styles.savedIndicatorText}>Guardado</Text>
-          </Animated.View>
-        )}
-      </View>
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>
+            Alineación jornada {matchday}
+          </Text>
+
+          {/* Indicador de autoguardado */}
+          {showSavedIndicator && (
+            <Animated.View
+              style={[styles.savedIndicator, { opacity: savedIndicatorAnim }]}
+            >
+              <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
+              <Text style={styles.savedIndicatorText}>Guardado</Text>
+            </Animated.View>
+          )}
+        </View>
+      )}
 
       <View style={styles.formationSelector}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {FORMATIONS.map((formation) => (
             <TouchableOpacity
               key={formation.id}
-              onPress={() => setSelectedFormation(formation)}
+              onPress={() => !readOnly && setSelectedFormation(formation)}
               accessible={true}
               accessibilityLabel={`Formación ${formation.name}`}
               accessibilityState={{
                 selected: selectedFormation.id === formation.id,
               }}
+              disabled={readOnly}
             >
               <LinearGradient
                 colors={
@@ -548,67 +600,71 @@ export default function LineupScreen() {
         )}
       </FootballField>
 
-      <View
-        style={[
-          styles.substitutesContainer,
-          { backgroundColor: colors.card, borderTopColor: `${colors.text}20` },
-        ]}
-      >
-        <Text style={[styles.substitutesTitle, { color: colors.text }]}>
-          Suplentes:
-        </Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.substitutesList}
-          contentContainerStyle={styles.substitutesContent}
+      {!readOnly && (
+        <View
+          style={[
+            styles.substitutesContainer,
+            { backgroundColor: colors.card, borderTopColor: `${colors.text}20` },
+          ]}
         >
-          {substitutes.map((player) => (
-            <View key={player.id} style={styles.substituteItem}>
-              <View style={styles.substituteCircle}>
-                <Text style={[styles.substituteNumber, { color: colors.text }]}>
-                  {player.number}
-                </Text>
-              </View>
-              <Text
-                style={[styles.substituteName, { color: colors.textSecondary }]}
-                numberOfLines={1}
-              >
-                {player.name.split(" ")[0]}
-              </Text>
-              <TouchableOpacity
-                style={styles.removeSubstituteButton}
-                onPress={() => removeSubstitute(player.id)}
-                hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
-              >
-                <Ionicons name="close-circle" size={16} color="#ff4d4d" />
-              </TouchableOpacity>
-            </View>
-          ))}
-          <TouchableOpacity
-            style={styles.addSubstituteButton}
-            onPress={() => {
-              setSelectedPosition("substitute");
-              setPlayerSelectorVisible(true);
-            }}
+          <Text style={[styles.substitutesTitle, { color: colors.text }]}>
+            Suplentes:
+          </Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.substitutesList}
+            contentContainerStyle={styles.substitutesContent}
           >
-            <Ionicons name="add-circle" size={24} color={colors.accent} />
-            <Text style={[styles.addSubstituteText, { color: colors.accent }]}>
-              Añadir
-            </Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </View>
+            {substitutes.map((player) => (
+              <View key={player.id} style={styles.substituteItem}>
+                <View style={styles.substituteCircle}>
+                  <Text style={[styles.substituteNumber, { color: colors.text }]}>
+                    {player.number}
+                  </Text>
+                </View>
+                <Text
+                  style={[styles.substituteName, { color: colors.textSecondary }]}
+                  numberOfLines={1}
+                >
+                  {player.name.split(" ")[0]}
+                </Text>
+                <TouchableOpacity
+                  style={styles.removeSubstituteButton}
+                  onPress={() => removeSubstitute(player.id)}
+                  hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
+                >
+                  <Ionicons name="close-circle" size={16} color="#ff4d4d" />
+                </TouchableOpacity>
+              </View>
+            ))}
+            <TouchableOpacity
+              style={styles.addSubstituteButton}
+              onPress={() => {
+                setSelectedPosition("substitute");
+                setPlayerSelectorVisible(true);
+              }}
+            >
+              <Ionicons name="add-circle" size={24} color={colors.accent} />
+              <Text style={[styles.addSubstituteText, { color: colors.accent }]}>
+                Añadir
+              </Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+      )}
 
-      {/* Solo botón flotante para reiniciar */}
-      <View style={styles.fabContainer}>
-        <TouchableOpacity
-          style={[styles.fab, { backgroundColor: "#F44336" }]}
-          onPress={handleResetLineup}
-        >
-          <Ionicons name="refresh" size={24} color="#fff" />
-        </TouchableOpacity>
-      </View>
+      {/* Solo botón flotante para reiniciar si no es de solo lectura y no está embebido */}
+      {!readOnly && !isEmbedded && (
+        <View style={styles.fabContainer}>
+          <TouchableOpacity
+            style={[styles.fab, { backgroundColor: "#F44336" }]}
+            onPress={handleResetLineup}
+          >
+            <Ionicons name="refresh" size={24} color="#fff" />
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Modal para seleccionar jugador */}
       <Modal
@@ -753,7 +809,7 @@ export default function LineupScreen() {
       )}
     </SafeAreaView>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -1025,3 +1081,5 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
 });
+
+export default LineupScreen;
