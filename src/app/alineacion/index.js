@@ -1,4 +1,3 @@
-// src/app/alineacion.js
 "use client";
 
 import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from "react";
@@ -98,12 +97,15 @@ const LineupScreen = forwardRef(({
   // Exponer métodos a través de la referencia
   useImperativeHandle(ref, () => ({
     getAlineacionData: () => {
-      // Devolver los datos de la alineación
+      // Convertir el objeto lineup a un array de titulares
+      const titulares = Object.values(lineup).filter(player => player !== null);
+      
+      // Devolver los datos de la alineación con la estructura correcta
       return {
-        formation: selectedFormation,
-        lineup,
-        substitutes,
-        specialRoles
+        formacion: selectedFormation.name,  // Solo el nombre de la formación
+        titulares,                          // Array de jugadores titulares
+        suplentes: substitutes,             // Array de jugadores suplentes
+        specialRoles                        // Objeto con roles especiales
       };
     }
   }));
@@ -111,15 +113,42 @@ const LineupScreen = forwardRef(({
   // Inicializar con datos si se proporcionan
   useEffect(() => {
     if (initialData) {
-      setSelectedFormation(initialData.formation);
-      setLineup(initialData.lineup || {});
-      setSubstitutes(initialData.substitutes || []);
-      setSpecialRoles(initialData.specialRoles || {
-        captain: null,
-        freeKicks: null,
-        corners: null,
-        penalties: null
-      });
+      // Buscar la formación por nombre si viene como string
+      if (typeof initialData.formacion === 'string') {
+        const formation = FORMATIONS.find(f => f.name === initialData.formacion) || FORMATIONS[0];
+        setSelectedFormation(formation);
+      } else if (initialData.formation) {
+        setSelectedFormation(initialData.formation);
+      }
+
+      // Manejar titulares (pueden venir como array o como objeto)
+      if (initialData.titulares && Array.isArray(initialData.titulares)) {
+        // Convertir array de titulares a objeto lineup
+        const newLineup = {};
+        const positions = Object.keys(getPositionsForFormation(selectedFormation));
+        
+        initialData.titulares.forEach((player, index) => {
+          if (index < positions.length) {
+            newLineup[positions[index]] = player;
+          }
+        });
+        
+        setLineup(newLineup);
+      } else if (initialData.lineup) {
+        setLineup(initialData.lineup);
+      }
+
+      // Manejar suplentes
+      if (initialData.suplentes) {
+        setSubstitutes(initialData.suplentes);
+      } else if (initialData.substitutes) {
+        setSubstitutes(initialData.substitutes);
+      }
+
+      // Manejar roles especiales
+      if (initialData.specialRoles) {
+        setSpecialRoles(initialData.specialRoles);
+      }
     }
   }, [initialData]);
 
@@ -146,10 +175,13 @@ const LineupScreen = forwardRef(({
 
     // Si está embebido y hay una función de callback, notificar al padre
     if (isEmbedded && onSaveLineup) {
+      // Convertir el objeto lineup a un array de titulares
+      const titulares = Object.values(lineup).filter(player => player !== null);
+      
       onSaveLineup({
-        formation: selectedFormation,
-        lineup,
-        substitutes,
+        formacion: selectedFormation.name,
+        titulares,
+        suplentes: substitutes,
         specialRoles
       });
     }
