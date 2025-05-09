@@ -50,8 +50,26 @@ const PlayerRoleIndicators = ({ player, specialRoles }) => {
   return (
     <View style={styles.container}>
       {assignedRoles.map((role, index) => {
-        // Calcular ángulo basado en la posición y el número total de roles
-        const angle = (index * 2 * Math.PI) / assignedRoles.length
+        let angle;
+        
+        // Si solo hay un rol, colocarlo en la posición de las "2" del reloj
+        if (assignedRoles.length === 1) {
+          // Aproximadamente 60 grados o π/3 radianes desde la vertical
+          angle = Math.PI / 3;
+        } else {
+          // Distribuir los roles en un semicírculo en la parte superior
+          // Empezar desde la posición de las "10" del reloj y terminar en las "2"
+          const startAngle = (3 * Math.PI) / 6; // Posición de las "10" (150 grados)
+          const endAngle = Math.PI / 6;         // Posición de las "2" (30 grados)
+          
+          // Calcular el ángulo para cada rol
+          if (assignedRoles.length > 1) {
+            const angleRange = startAngle - endAngle;
+            angle = startAngle - (index * angleRange) / (assignedRoles.length - 1);
+          } else {
+            angle = Math.PI / 3; // Por si acaso, aunque este caso ya está cubierto
+          }
+        }
         
         // Radio del círculo donde se colocarán los indicadores
         const radius = 28
