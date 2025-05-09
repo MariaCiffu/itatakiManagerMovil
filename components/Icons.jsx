@@ -106,3 +106,7 @@ export const RunningIcon = (props) => (
 export const ChevronDownIcon = (props) => (
     <FontAwesome5 name="chevron-down" size={24} color="white" {...props} />
 )
+
+export const MapIcon = (props) => (
+    <FontAwesome5 name="map-marker-alt" size={24} color="white" {...props} />
+  )

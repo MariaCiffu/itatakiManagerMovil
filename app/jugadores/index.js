@@ -5,6 +5,7 @@ import { Link, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import { COLORS } from '../../constants/colors';
+import BackButton from '../../components/BackButton';
 
 const initialPlayers = [
   { id: '1', name: 'Lionel Messi', number: 10, position: 'Delantero', image: 'https://i.pravatar.cc/150?img=1', date: "18/05/2025", foot: "Derecho", phone: "123456789" },
@@ -59,7 +60,9 @@ export default function PlayersScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
+        <BackButton />
         <Text style={styles.title}>Jugadores</Text>
+        <View style={styles.placeholder} />
       </View>
       
       {/* Barra de búsqueda */}

@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS } from '../constants/colors';
-import { PersonIcon, UserFriendsIcon, BarChartIcon, CalendarIcon } from '../components/Icons';
+import { PersonIcon, UserFriendsIcon, BarChartIcon, CalendarIcon, EnvelopeIcon } from '../components/Icons';
 
 export default function Home() {
   const insets = useSafeAreaInsets();
@@ -79,6 +79,24 @@ export default function Home() {
               </View>
             </LinearGradient>
           </TouchableOpacity>
+
+//acceso rápido para convocatorias
+
+<TouchableOpacity 
+  style={styles.quickAccessCard}
+  onPress={() => router.push('/convocatorias')}
+  activeOpacity={0.7}
+>
+  <LinearGradient
+    colors={[COLORS.card, '#252525']}
+    style={styles.quickAccessGradient}
+  >
+    <View style={[styles.quickAccessIcon, { backgroundColor: `${COLORS.primary}20` }]}>
+      <EnvelopeIcon size={24} color={COLORS.primary} />
+    </View>
+    <Text style={styles.quickAccessTitle}>Convocatorias</Text>
+  </LinearGradient>
+</TouchableOpacity>
         </View>
         
         {/* Accesos rápidos */}

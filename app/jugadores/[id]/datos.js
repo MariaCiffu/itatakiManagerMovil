@@ -1,53 +1,146 @@
 // app/jugadores/[id]/datos.js
-import React, { useContext } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Linking, ScrollView } from 'react-native';
+import { useContext } from 'react';
 import { PlayerContext } from '../../../context/PlayerContext';
-import { LinearGradient } from 'expo-linear-gradient';
 import { 
   CalendarIcon, 
-  FootIcon, 
   PhoneIcon, 
   EnvelopeIcon, 
-  UserFriendsIcon 
+  UserFriendsIcon, 
+  FootIcon 
 } from '../../../components/Icons';
 import { COLORS } from '../../../constants/colors';
+import WhatsAppButton from '../../../components/WhatsAppButton';
 
 export default function DatosPersonales() {
   const player = useContext(PlayerContext);
 
-  const renderDataCard = (Icon, title, value, color) => (
-    <View style={styles.card}>
-      <LinearGradient
-        colors={[COLORS.card, '#252525']}
-        style={styles.cardGradient}
-      >
-        <View style={styles.cardContent}>
-          <View style={[styles.iconContainer, { backgroundColor: `${color}20` }]}>
-            <Icon size={20} color={color} />
-          </View>
-          <View style={styles.dataContent}>
-            <Text style={styles.dataLabel}>{title}</Text>
-            <Text style={styles.dataValue}>{value || '-'}</Text>
-          </View>
-        </View>
-      </LinearGradient>
-    </View>
-  );
+  const handleCall = () => {
+    if (player.phone) {
+      Linking.openURL(`tel:${player.phone}`);
+    }
+  };
+
+  const handleEmail = () => {
+    if (player.email) {
+      Linking.openURL(`mailto:${player.email}`);
+    }
+  };
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      <View style={styles.headerContainer}>
-        <View style={[styles.headerIndicator, { backgroundColor: COLORS.primary }]} />
-        <Text style={styles.title}>Datos personales</Text>
-      </View>
-
-      <View style={styles.cardsContainer}>
-        {renderDataCard(CalendarIcon, 'Fecha de nacimiento', player.date, COLORS.danger)}
-        {renderDataCard(FootIcon, 'Pie dominante', player.foot, COLORS.warning)}
-        {renderDataCard(PhoneIcon, 'Móvil', player.phone, COLORS.info)}
-        {renderDataCard(EnvelopeIcon, 'Correo', player.email || null, COLORS.primary)}
-        {renderDataCard(UserFriendsIcon, 'Nombre contacto', player.contactName || null, COLORS.success)}
-        {renderDataCard(PhoneIcon, 'Móvil contacto', player.contactPhone || null, COLORS.info)} 
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Datos personales</Text>
+        
+        {/* Fecha de nacimiento */}
+        <View style={styles.dataRow}>
+          <View style={[styles.iconContainer, { backgroundColor: '#FF5252' }]}>
+            <CalendarIcon size={24} color="#fff" />
+          </View>
+          <View style={styles.dataInfo}>
+            <Text style={styles.dataLabel}>Fecha de nacimiento</Text>
+            <Text style={styles.dataValue}>{player.birthdate || '-'}</Text>
+          </View>
+        </View>
+        
+        {/* Pie dominante */}
+        <View style={styles.dataRow}>
+          <View style={[styles.iconContainer, { backgroundColor: '#FF9800' }]}>
+            <FootIcon size={24} color="#fff" />
+          </View>
+          <View style={styles.dataInfo}>
+            <Text style={styles.dataLabel}>Pie dominante</Text>
+            <Text style={styles.dataValue}>{player.foot || '-'}</Text>
+          </View>
+        </View>
+        
+        {/* Teléfono con botón de llamada */}
+        <View style={styles.dataRow}>
+          <View style={[styles.iconContainer, { backgroundColor: '#2196F3' }]}>
+            <PhoneIcon size={24} color="#fff" />
+          </View>
+          <View style={styles.dataInfo}>
+            <Text style={styles.dataLabel}>Móvil</Text>
+            <Text style={styles.dataValue}>{player.phone || '-'}</Text>
+          </View>
+          {/* Contenedor para los botones de acción */}
+  <View style={styles.actionButtonsContainer}>
+    {player.phone && (
+      <TouchableOpacity 
+        style={[styles.actionButton, { backgroundColor: '#2196F3' }]}
+        onPress={handleCall}
+      >
+        <PhoneIcon size={16} color="#fff" />
+      </TouchableOpacity>
+    )}
+    
+    {/* Botón de WhatsApp */}
+    {player.phone && (
+      <WhatsAppButton 
+        phone={player.phone} 
+        message={`Hola ${player.name}, soy el entrenador.`}
+      />
+    )}
+  </View>
+        </View>
+        
+        {/* Correo con botón de email */}
+        <View style={styles.dataRow}>
+          <View style={[styles.iconContainer, { backgroundColor: '#4CAF50' }]}>
+            <EnvelopeIcon size={24} color="#fff" />
+          </View>
+          <View style={styles.dataInfo}>
+            <Text style={styles.dataLabel}>Correo</Text>
+            <Text style={styles.dataValue}>{player.email || '-'}</Text>
+          </View>
+          {player.email && (
+            <TouchableOpacity 
+              style={[styles.actionButton, { backgroundColor: '#4CAF50' }]}
+              onPress={handleEmail}
+            >
+              <EnvelopeIcon size={16} color="#fff" />
+            </TouchableOpacity>
+          )}
+        </View>
+        
+        {/* Contacto de emergencia */}
+        <View style={styles.dataRow}>
+          <View style={[styles.iconContainer, { backgroundColor: '#9C27B0' }]}>
+            <UserFriendsIcon size={24} color="#fff" />
+          </View>
+          <View style={styles.dataInfo}>
+            <Text style={styles.dataLabel}>Nombre contacto</Text>
+            <Text style={styles.dataValue}>{player.emergencyContact || '-'}</Text>
+          </View>
+        </View>
+        
+        {/* Teléfono de contacto */}
+        <View style={styles.dataRow}>
+          <View style={[styles.iconContainer, { backgroundColor: '#673AB7' }]}>
+            <PhoneIcon size={24} color="#fff" />
+          </View>
+          <View style={styles.dataInfo}>
+            <Text style={styles.dataLabel}>Móvil contacto</Text>
+            <Text style={styles.dataValue}>{player.emergencyPhone || '-'}</Text>
+          </View>
+          {player.emergencyPhone && (
+            <TouchableOpacity 
+              style={[styles.actionButton, { backgroundColor: '#673AB7' }]}
+              onPress={() => Linking.openURL(`tel:${player.emergencyPhone}`)}
+            >
+              <PhoneIcon size={16} color="#fff" />
+            </TouchableOpacity>
+          )}
+          
+          {/* Botón de WhatsApp para contacto de emergencia */}
+          {player.emergencyPhone && (
+            <WhatsAppButton 
+              phone={player.emergencyPhone} 
+              message={`Hola, soy el entrenador de ${player.name}.`}
+            />
+          )}
+        </View>
       </View>
     </ScrollView>
   );
@@ -57,54 +150,39 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+    padding: 16,
   },
-  headerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 20,
-    paddingBottom: 16,
+  section: {
+    marginBottom: 24,
   },
-  headerIndicator: {
-    width: 4,
-    height: 24,
-    borderRadius: 4,
-    marginRight: 12,
-  },
-  title: {
+  sectionTitle: {
+    fontSize: 18,
     color: COLORS.text,
-    fontSize: 22,
     fontWeight: 'bold',
+    marginBottom: 16,
+    borderLeftWidth: 3,
+    borderLeftColor: COLORS.primary,
+    paddingLeft: 8,
   },
-  cardsContainer: {
-    paddingHorizontal: 16,
-    paddingBottom: 20,
-  },
-  card: {
-    marginBottom: 12,
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  cardGradient: {
-    borderRadius: 16,
-    padding: 1, // Borde gradiente
-  },
-  cardContent: {
+  dataRow: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.card,
-    borderRadius: 15,
+    borderRadius: 12,
     padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
   },
   iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
   },
-  dataContent: {
+  dataInfo: {
     flex: 1,
   },
   dataLabel: {
@@ -116,5 +194,25 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     fontSize: 16,
     fontWeight: '500',
+  },
+  actionButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
+  },
+  actionButtonsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12, // Aumentar el espacio entre botones
+  },
+  actionButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

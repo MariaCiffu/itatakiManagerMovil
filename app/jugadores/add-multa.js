@@ -6,6 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { COLORS } from '../../constants/colors';
+import BackButton from '../../components/BackButton';
 
 export default function AddMulta() {
   const router = useRouter();
@@ -90,12 +91,7 @@ export default function AddMulta() {
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton} 
-          onPress={() => router.back()}
-        >
-          <FontAwesome5 name="arrow-left" size={20} color={COLORS.text} />
-        </TouchableOpacity>
+        <BackButton />
         <Text style={styles.title}>Nueva multa</Text>
         <View style={styles.placeholder} />
       </View>

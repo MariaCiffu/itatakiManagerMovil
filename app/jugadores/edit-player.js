@@ -67,7 +67,15 @@ export default function EditPlayer() {
   }, [playerData]);
 
   const handleChange = (field, value) => {
-    setPlayer({ ...player, [field]: value });
+    if (field === 'number') {
+      // Convertir a número entero si es posible
+      const numValue = parseInt(value, 10);
+      // Si es un número válido, úsalo; de lo contrario, usa un string vacío o 0
+      setPlayer({ ...player, [field]: isNaN(numValue) ? '' : numValue });
+    } else {
+      setPlayer({ ...player, [field]: value });
+    }
+    
     // Limpiar error cuando se modifica el campo
     if (formErrors[field]) {
       setFormErrors({...formErrors, [field]: null});
@@ -101,10 +109,8 @@ export default function EditPlayer() {
       errors.name = 'El nombre es obligatorio';
     }
     
-    if (!player.number.trim()) {
-      errors.number = 'El dorsal es obligatorio';
-    } else if (isNaN(Number(player.number))) {
-      errors.number = 'El dorsal debe ser un número';
+    if (player.number === undefined || player.number === '' || isNaN(player.number)) {
+      errors.number = 'El número es obligatorio y debe ser un valor numérico';
     }
     
     if (!player.position.trim()) {

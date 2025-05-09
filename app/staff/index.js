@@ -1,6 +1,6 @@
 // app/staff/index.js
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity, TextInput, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity, TextInput, Alert, Linking } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
@@ -15,46 +15,13 @@ import {
   CheckIcon
 } from '../../components/Icons';
 import { COLORS } from '../../constants/colors';
-
-// Datos de ejemplo para miembros del staff
-const STAFF_INICIAL = [
-  {
-    id: '1',
-    name: 'Carlos Ancelotti',
-    position: 'Entrenador principal',
-    phone: '666123456',
-    email: 'carlos@equipo.com',
-    image: 'https://randomuser.me/api/portraits/men/32.jpg',
-  },
-  {
-    id: '2',
-    name: 'Laura Martínez',
-    position: 'Fisioterapeuta',
-    phone: '666789012',
-    email: 'laura@equipo.com',
-    image: 'https://randomuser.me/api/portraits/women/44.jpg',
-  },
-  {
-    id: '3',
-    name: 'Miguel Sánchez',
-    position: 'Preparador físico',
-    phone: '666345678',
-    email: 'miguel@equipo.com',
-    image: 'https://randomuser.me/api/portraits/men/67.jpg',
-  },
-  {
-    id: '4',
-    name: 'Ana García',
-    position: 'Nutricionista',
-    phone: '666901234',
-    email: 'ana@equipo.com',
-    image: 'https://randomuser.me/api/portraits/women/28.jpg',
-  },
-];
+import WhatsAppButton from '../../components/WhatsAppButton';
+import BackButton from '../../components/BackButton';
+import { STAFF } from '../../data/staffData'; // Importar desde el nuevo archivo
 
 export default function StaffList() {
   const router = useRouter();
-  const [staff, setStaff] = useState(STAFF_INICIAL);
+  const [staff, setStaff] = useState(STAFF); // Usar los datos importados
   const [searchQuery, setSearchQuery] = useState('');
   const [editingMember, setEditingMember] = useState(null);
   const [editedData, setEditedData] = useState({});
@@ -248,35 +215,63 @@ export default function StaffList() {
           style={styles.cardGradient}
         >
           <View style={styles.memberContent}>
+            {/* Imagen del miembro */}
             <Image 
               source={{ uri: item.image }} 
               style={styles.memberImage} 
             />
             
+            {/* Información del miembro */}
             <View style={styles.memberInfo}>
               <Text style={styles.memberName}>{item.name}</Text>
               <Text style={styles.memberPosition}>{item.position}</Text>
               
+              {/* Contenedor de contacto */}
               <View style={styles.contactContainer}>
+                {/* Teléfono */}
                 <View style={styles.contactItem}>
-                  <PhoneIcon size={14} color={COLORS.primary} />
-                  <Text style={styles.contactText}>{item.phone}</Text>
+                  <PhoneIcon size={16} color={COLORS.primary} />
+                  <Text style={styles.contactText}>{item.phone || 'No disponible'}</Text>
                 </View>
                 
+                {/* Email */}
                 <View style={styles.contactItem}>
-                  <EnvelopeIcon size={14} color={COLORS.primary} />
-                  <Text style={styles.contactText}>{item.email}</Text>
+                  <EnvelopeIcon size={16} color={COLORS.primary} />
+                  <Text style={styles.contactText}>{item.email || 'No disponible'}</Text>
                 </View>
               </View>
             </View>
             
-            <TouchableOpacity 
-              style={[styles.editButton, { backgroundColor: COLORS.primary }]}
-              onPress={() => handleEditMember(item)}
-              activeOpacity={0.7}
-            >
-              <EditIcon size={16} color="#fff" />
-            </TouchableOpacity>
+            {/* Botones de acción en columna a la derecha */}
+            <View style={styles.actionsColumn}>
+              {/* Botón de editar arriba */}
+              <TouchableOpacity 
+                style={styles.editButton}
+                onPress={() => handleEditMember(item)}
+                activeOpacity={0.7}
+              >
+                <EditIcon size={16} color="#fff" />
+              </TouchableOpacity>
+              
+              {/* Espacio entre botones */}
+              <View style={{height: 8}} />
+              
+              {/* Botones de contacto abajo */}
+              {item.phone && (
+                <View style={styles.contactButtons}>
+                  <TouchableOpacity 
+                    onPress={() => Linking.openURL(`tel:${item.phone}`)}
+                    style={[styles.actionButton, styles.phoneButton]}
+                  >
+                    <PhoneIcon size={16} color="#fff" />
+                  </TouchableOpacity>
+                  
+                  <View style={{height: 8}} />
+                  
+                  <WhatsAppButton phone={item.phone} size={16} />
+                </View>
+              )}
+            </View>
           </View>
         </LinearGradient>
       </View>
@@ -286,13 +281,7 @@ export default function StaffList() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton} 
-          onPress={() => router.back()}
-          activeOpacity={0.7}
-        >
-          <ArrowLeftIcon size={24} color={COLORS.text} />
-        </TouchableOpacity>
+        <BackButton />
         <Text style={styles.title}>Staff técnico</Text>
         <View style={styles.placeholder} />
       </View>
@@ -385,6 +374,11 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
   listContainer: {
     paddingBottom: 16,
@@ -402,13 +396,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: COLORS.card,
     borderRadius: 11,
-    padding: 12,
+    padding: 16,
   },
   memberImage: {
     width: 70,
     height: 70,
     borderRadius: 35,
-    marginRight: 12,
+    marginRight: 16,
+    borderWidth: 2,
+    borderColor: COLORS.primary,
   },
   memberInfo: {
     flex: 1,
@@ -416,34 +412,65 @@ const styles = StyleSheet.create({
   },
   memberName: {
     color: COLORS.text,
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 4,
   },
   memberPosition: {
     color: COLORS.primary,
     fontSize: 14,
-    marginBottom: 8,
+    marginBottom: 12,
   },
   contactContainer: {
-    gap: 4,
+    gap: 8,
   },
   contactItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
+    marginBottom: 4,
   },
   contactText: {
     color: COLORS.textSecondary,
-    fontSize: 12,
+    fontSize: 14,
+  },
+  // Nuevo estilo para la columna de acciones
+  actionsColumn: {
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    marginLeft: 12,
   },
   editButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    alignSelf: 'center',
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  contactButtons: {
+    alignItems: 'center',
+    gap: 8,
+  },
+  actionButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  phoneButton: {
+    backgroundColor: '#2196F3',
   },
   // Estilos para el modo de edición
   editCard: {
@@ -529,6 +556,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   saveButton: {
+
     marginTop: 8,
   },
   saveButtonGradient: {

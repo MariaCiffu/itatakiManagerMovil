@@ -3,8 +3,9 @@ import { View, Text, Image, StyleSheet, TouchableOpacity, StatusBar } from 'reac
 import { Tabs, useLocalSearchParams, useRouter } from 'expo-router';
 import { PlayerContext } from '../../../context/PlayerContext';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BarChartIcon, CoinsIcon, PersonIcon, EditIcon } from '../../../components/Icons';
+import { BarChartIcon, CoinsIcon, PersonIcon, EditIcon, ArrowLeftIcon } from '../../../components/Icons';
 import { COLORS } from '../../../constants/colors';
+import BackButton from '../../../components/BackButton';
 
 export default function PlayerLayout() {
   const { playerData } = useLocalSearchParams();
@@ -23,8 +24,10 @@ export default function PlayerLayout() {
     <PlayerContext.Provider value={player}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.background} />
       <View style={{ flex: 1, backgroundColor: COLORS.background }}>
+        
         {/* Header con diseño moderno */}
         <View style={styles.headerContainer}>
+        
           {/* Fondo con gradiente sutil */}
           <LinearGradient
             colors={['#1a1a1a', COLORS.background]}
@@ -34,7 +37,17 @@ export default function PlayerLayout() {
           {/* Elementos decorativos */}
           <View style={[styles.decorativeCircle1, { backgroundColor: `${COLORS.primary}20` }]} />
           <View style={[styles.decorativeCircle2, { backgroundColor: `${COLORS.info}20` }]} />
-          
+
+
+{/* Botón de retroceso integrado */}
+<TouchableOpacity 
+            style={styles.backButton} 
+            onPress={() => router.back()}
+            activeOpacity={0.7}
+          >
+            <ArrowLeftIcon size={24} color="#fff" />
+          </TouchableOpacity>
+
           {/* Contenido del header */}
           <View style={styles.headerContent}>
             {/* Contenedor de la imagen con efecto de brillo */}
@@ -115,7 +128,7 @@ const styles = StyleSheet.create({
   // Estilos sin cambios...
   headerContainer: {
     position: 'relative',
-    paddingTop: 16,
+    paddingTop: 50,
     paddingBottom: 24,
     overflow: 'hidden',
   },
@@ -149,6 +162,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingTop: 16,
+    marginTop: 20,
   },
   avatarContainer: {
     position: 'relative',
@@ -215,11 +229,25 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   // Barra de pestañas
-  tabBar: {
-    backgroundColor: '#1a1a1a',
-    borderTopWidth: 1,
-    borderTopColor: '#333',
-    height: 60,
-    paddingBottom: 8,
+  topBar: {
+    height: 56,
+    backgroundColor: COLORS.background,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  backButton: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)', // Fondo sutil para integrarse mejor
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
   },
 });

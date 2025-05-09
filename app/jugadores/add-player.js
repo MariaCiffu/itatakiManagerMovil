@@ -20,6 +20,7 @@ import {
   ChevronDownIcon
 } from '../../components/Icons';
 import { COLORS } from '../../constants/colors';
+import BackButton from '../../components/BackButton';
 
 // Opciones de posición
 const POSICIONES = [
@@ -170,12 +171,7 @@ export default function AddPlayer() {
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton} 
-          onPress={() => router.back()}
-        >
-          <ArrowLeftIcon size={24} color={COLORS.text} />
-        </TouchableOpacity>
+        <BackButton />
         <Text style={styles.title}>Nuevo jugador</Text>
         <View style={styles.placeholder} />
       </View>
