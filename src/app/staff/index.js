@@ -462,7 +462,7 @@ const styles = StyleSheet.create({
   contactText: {
     color: COLORS.textSecondary,
     fontSize: 14,
-    flex: 1,
+
   },
   // Nuevo estilo para la columna de acciones
   actionsColumn: {
