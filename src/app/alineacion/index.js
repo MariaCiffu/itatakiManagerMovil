@@ -215,14 +215,7 @@ export default function LineupScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Alineación</Text>
-      </View>
-
-      <View style={styles.matchdayContainer}>
-        <Text style={styles.matchdayLabel}>Jornada</Text>
-        <View style={styles.matchdayNumberContainer}>
-          <Text style={styles.matchdayNumber}>{matchday}</Text>
-        </View>
+        <Text style={styles.headerTitle}>Alineación jornada {matchday}</Text>
       </View>
 
       <View style={styles.formationSelector}>
@@ -373,28 +366,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#fff",
     marginLeft: 16,
-  },
-  matchdayContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  matchdayLabel: {
-    fontSize: 16,
-    color: "#ccc",
-    marginRight: 8,
-  },
-  matchdayNumberContainer: {
-    backgroundColor: "#222",
-    borderRadius: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-  },
-  matchdayNumber: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#fff",
   },
   formationSelector: {
     paddingHorizontal: 16,
