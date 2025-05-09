@@ -6,19 +6,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import { COLORS } from '../../constants/colors';
 import BackButton from '../../components/BackButton';
-
-const initialPlayers = [
-  { id: '1', name: 'Lionel Messi', number: 10, position: 'Delantero', image: 'https://i.pravatar.cc/150?img=1', date: "18/05/2025", foot: "Derecho", phone: "123456789" },
-  { id: '2', name: 'Andrés Iniesta', number: 8, position: 'Mediocampista', image: 'https://i.pravatar.cc/150?img=2', date: "18/05/2025", foot: "Derecho", phone: "123456789" },
-  { id: '3', name: 'Sergio Ramos', number: 4, position: 'Defensa', image: 'https://i.pravatar.cc/150?img=3', date: "18/05/2025", foot: "Derecho", phone: "123456789" },
-  { id: '4', name: 'Manuel Neuer', number: 1, position: 'Portero', image: 'https://i.pravatar.cc/150?img=4', date: "18/05/2025", foot: "Derecho", phone: "123456789" },
-  { id: '5', name: 'Daniel San Juan', number: 9, position: 'Delantero', image: 'https://i.pravatar.cc/150?img=6', date: "18/05/2025", foot: "Derecho", phone: "123456789" },
-];
+import { PLAYERS } from '../../data/teamData'; 
 
 export default function PlayersScreen() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
-  const [players, setPlayers] = useState(initialPlayers);
+  const [players, setPlayers] = useState(PLAYERS);
   
   // Filtrar jugadores según la búsqueda
   const filteredPlayers = searchQuery 

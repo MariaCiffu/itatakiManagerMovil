@@ -97,6 +97,22 @@ export default function Home() {
     <Text style={styles.quickAccessTitle}>Convocatorias</Text>
   </LinearGradient>
 </TouchableOpacity>
+
+<TouchableOpacity 
+  style={styles.quickAccessCard}
+  onPress={() => router.push('/alineacion')}
+  activeOpacity={0.7}
+>
+  <LinearGradient
+    colors={[COLORS.card, '#252525']}
+    style={styles.quickAccessGradient}
+  >
+    <View style={[styles.quickAccessIcon, { backgroundColor: `${COLORS.primary}20` }]}>
+      <EnvelopeIcon size={24} color={COLORS.primary} />
+    </View>
+    <Text style={styles.quickAccessTitle}>Partidos</Text>
+  </LinearGradient>
+</TouchableOpacity>
         </View>
         
         {/* Accesos rápidos */}
