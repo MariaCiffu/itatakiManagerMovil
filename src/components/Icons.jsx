@@ -110,3 +110,7 @@ export const ChevronDownIcon = (props) => (
 export const MapIcon = (props) => (
     <FontAwesome5 name="map-marker-alt" size={24} color="white" {...props} />
   )
+
+  export const CornerIcon = (props) => (
+    <Ionicons name="flag-outline" size={10} color="#fff" />
+  )
