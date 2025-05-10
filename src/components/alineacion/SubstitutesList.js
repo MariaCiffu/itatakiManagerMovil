@@ -49,7 +49,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "#333",
     // Aseguramos que tenga una altura fija para evitar que se corte
-    height: 120,
+    height: 130,
   },
   substitutesTitle: {
     color: "#fff",

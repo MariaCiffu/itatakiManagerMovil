@@ -38,6 +38,7 @@ let partidosDB = [
 export const createPartidoWithDelay = (partidoData) => {
   return new Promise((resolve) => {
     setTimeout(() => {
+      console.log("Datos que recibe:", partidoData);
       // Generar un ID único
       const nuevoId = Date.now().toString();
       
@@ -48,7 +49,7 @@ export const createPartidoWithDelay = (partidoData) => {
       };
       
       // Asegurarse de que la alineación se guarda correctamente
-      console.log("Guardando partido con alineación:", nuevoPartido.alineacion);
+      console.log("Guardando partido con alineación:", nuevoPartido);
       
       // Añadir a la "base de datos"
       partidosDB.push(nuevoPartido);

@@ -160,6 +160,20 @@ export const PLAYERS = [
     emergencyPhone: "123456789",
     multas: []
   },
+   {
+    id: '12',
+    name: 'Fante Alicante',
+    number: 5,
+    position: 'Portero',
+    image: 'https://i.pravatar.cc/150?img=3',
+    phone: '600345678',
+    email: 'miguel@example.com',
+    birthdate: '10/12/1990',
+    foot: 'Derecho',
+    emergencyContact: "Madre/Padre",
+    emergencyPhone: "123456789",
+    multas: []
+  },
 ];
 
 

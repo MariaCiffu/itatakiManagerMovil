@@ -1,19 +1,20 @@
 // src/app/partidos/crear.js
-import React, { useState, useRef } from "react";
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TextInput, 
-  TouchableOpacity, 
-  ScrollView, 
-  SafeAreaView, 
-  ActivityIndicator, 
-  Platform 
+import React, { useState, useRef, useEffect } from "react";
+import { BackHandler } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  SafeAreaView,
+  ActivityIndicator,
+  Platform,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePicker from "@react-native-community/datetimepicker";
 import StepIndicator from "../../components/partido/StepIndicator";
 import { createPartidoWithDelay } from "../../services/partidosService";
 import LineupScreen from "../alineacion"; // Asegúrate de que la ruta sea correcta
@@ -27,27 +28,33 @@ export default function CrearPartidoScreen() {
     id: Date.now().toString(),
     jornada: "",
     rival: "",
-    notasRival: "", // Nuevo campo para notas del rival
-    estrategia: "", // Cambiado de "notas" a "estrategia"
+    notasRival: "",
+    estrategia: "",
     fecha: new Date(),
     lugar: "Casa",
-    lugarEspecifico: "", // Nuevo campo para el lugar específico
+    lugarEspecifico: "",
     alineacion: null,
   });
 
   // Referencias para guardar datos de cada paso
   const alineacionRef = useRef(null);
 
-  // Pasos del flujo - Cambiado el orden: alineación antes que estrategia
+  // Pasos del flujo
   const steps = [
     { id: "info", title: "Información" },
     { id: "rival", title: "Rival" },
-    { id: "alineacion", title: "Alineación" }, // Ahora es el tercer paso
-    { id: "estrategia", title: "Estrategia" }, // Ahora es el cuarto paso
+    { id: "alineacion", title: "Alineación" },
+    { id: "estrategia", title: "Estrategia" },
   ];
 
   // Función para avanzar al siguiente paso
   const nextStep = () => {
+    // Si estamos en el paso de alineación, guardar los datos antes de avanzar
+    if (currentStep === 2 && alineacionRef.current) {
+      const alineacionData = alineacionRef.current.getAlineacionData();
+      setPartidoData((prev) => ({ ...prev, alineacion: alineacionData }));
+    }
+
     if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
@@ -58,6 +65,12 @@ export default function CrearPartidoScreen() {
 
   // Función para retroceder al paso anterior
   const prevStep = () => {
+    // Si estamos en el paso de alineación, guardar los datos antes de retroceder
+    if (currentStep === 2 && alineacionRef.current) {
+      const alineacionData = alineacionRef.current.getAlineacionData();
+      setPartidoData((prev) => ({ ...prev, alineacion: alineacionData }));
+    }
+
     if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
     } else {
@@ -65,10 +78,46 @@ export default function CrearPartidoScreen() {
     }
   };
 
+  // Función para manejar la navegación directa entre pasos
+  const handleStepPress = (index) => {
+    // Si estamos en el paso de alineación, guardar los datos antes de cambiar
+    if (currentStep === 2 && alineacionRef.current) {
+      const alineacionData = alineacionRef.current.getAlineacionData();
+      setPartidoData((prev) => ({ ...prev, alineacion: alineacionData }));
+    }
+
+    // Solo permitir navegar a pasos anteriores o al siguiente paso
+    if (index <= currentStep + 1) {
+      setCurrentStep(index);
+    }
+  };
+
+  // Añadir este useEffect para manejar el botón de retroceso del dispositivo
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      () => {
+        // Si estamos en el paso de alineación, guardar los datos antes de retroceder
+        if (currentStep === 2 && alineacionRef.current) {
+          const alineacionData = alineacionRef.current.getAlineacionData();
+          setPartidoData((prev) => ({ ...prev, alineacion: alineacionData }));
+        }
+
+        if (currentStep > 0) {
+          setCurrentStep(currentStep - 1);
+          return true; // Prevenir el comportamiento por defecto
+        }
+        return false; // Permitir el comportamiento por defecto (salir de la pantalla)
+      }
+    );
+
+    return () => backHandler.remove(); // Limpiar el listener cuando el componente se desmonte
+  }, [currentStep]);
+
   // Función para manejar cambio de fecha
   const onDateChange = (event, selectedDate) => {
     const currentDate = selectedDate || partidoData.fecha;
-    setShowDatePicker(Platform.OS === 'ios');
+    setShowDatePicker(Platform.OS === "ios");
     setPartidoData({ ...partidoData, fecha: currentDate });
   };
 
@@ -76,18 +125,18 @@ export default function CrearPartidoScreen() {
   const guardarPartido = async () => {
     try {
       setLoading(true);
-      
+
       // Si la alineación se maneja por referencia
       if (alineacionRef.current) {
         const alineacionData = alineacionRef.current.getAlineacionData();
-        setPartidoData(prev => ({ ...prev, alineacion: alineacionData }));
+        setPartidoData((prev) => ({ ...prev, alineacion: alineacionData }));
       }
-      
+
       // Crear el partido
       const nuevoPartido = await createPartidoWithDelay(partidoData);
-      
+
       // Navegar a la vista de detalles del partido
-router.replace(`/partidos/${nuevoPartido.id}`);
+      router.replace(`/partidos/${nuevoPartido.id}`);
     } catch (error) {
       console.error("Error al guardar partido:", error);
       setLoading(false);
@@ -101,28 +150,32 @@ router.replace(`/partidos/${nuevoPartido.id}`);
         return (
           <View style={styles.stepContainer}>
             <Text style={styles.stepTitle}>Información del partido</Text>
-            
+
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Jornada</Text>
               <TextInput
                 style={styles.input}
                 value={partidoData.jornada}
-                onChangeText={(text) => setPartidoData({...partidoData, jornada: text})}
+                onChangeText={(text) =>
+                  setPartidoData({ ...partidoData, jornada: text })
+                }
                 keyboardType="numeric"
                 placeholder="Número de jornada"
                 placeholderTextColor="#999"
               />
             </View>
-            
+
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Fecha</Text>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.input}
                 onPress={() => setShowDatePicker(true)}
               >
-                <Text style={styles.dateText}>{partidoData.fecha.toLocaleDateString()}</Text>
+                <Text style={styles.dateText}>
+                  {partidoData.fecha.toLocaleDateString()}
+                </Text>
               </TouchableOpacity>
-              
+
               {showDatePicker && (
                 <DateTimePicker
                   value={partidoData.fecha}
@@ -132,31 +185,35 @@ router.replace(`/partidos/${nuevoPartido.id}`);
                 />
               )}
             </View>
-            
+
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Lugar</Text>
               <View style={styles.radioGroup}>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[
-                    styles.radioButton, 
-                    partidoData.lugar === "Casa" && styles.radioButtonSelected
+                    styles.radioButton,
+                    partidoData.lugar === "Casa" && styles.radioButtonSelected,
                   ]}
-                  onPress={() => setPartidoData({...partidoData, lugar: "Casa"})}
+                  onPress={() =>
+                    setPartidoData({ ...partidoData, lugar: "Casa" })
+                  }
                 >
                   <Text style={styles.radioText}>Local</Text>
                 </TouchableOpacity>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[
-                    styles.radioButton, 
-                    partidoData.lugar === "Fuera" && styles.radioButtonSelected
+                    styles.radioButton,
+                    partidoData.lugar === "Fuera" && styles.radioButtonSelected,
                   ]}
-                  onPress={() => setPartidoData({...partidoData, lugar: "Fuera"})}
+                  onPress={() =>
+                    setPartidoData({ ...partidoData, lugar: "Fuera" })
+                  }
                 >
                   <Text style={styles.radioText}>Visitante</Text>
                 </TouchableOpacity>
               </View>
             </View>
-            
+
             {/* Campo adicional para lugar específico cuando es visitante */}
             {partidoData.lugar === "Fuera" && (
               <View style={styles.inputGroup}>
@@ -164,18 +221,18 @@ router.replace(`/partidos/${nuevoPartido.id}`);
                 <TextInput
                   style={styles.input}
                   value={partidoData.lugarEspecifico}
-                  onChangeText={(text) => setPartidoData({...partidoData, lugarEspecifico: text})}
-                  placeholder="Ej: Estadio Santiago Bernabéu"
-                  placeholderTextColor="#999"
+                  onChangeText={(text) =>
+                    setPartidoData({ ...partidoData, lugarEspecifico: text })
+                  }
                 />
               </View>
             )}
-            
-            <TouchableOpacity 
+
+            <TouchableOpacity
               style={[
                 styles.nextButton,
-                !partidoData.jornada && styles.buttonDisabled
-              ]} 
+                !partidoData.jornada && styles.buttonDisabled,
+              ]}
               onPress={nextStep}
               disabled={!partidoData.jornada}
             >
@@ -183,30 +240,34 @@ router.replace(`/partidos/${nuevoPartido.id}`);
             </TouchableOpacity>
           </View>
         );
-        
+
       case "rival":
         return (
           <View style={styles.stepContainer}>
             <Text style={styles.stepTitle}>Información del rival</Text>
-            
+
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Nombre del equipo rival</Text>
               <TextInput
                 style={styles.input}
                 value={partidoData.rival}
-                onChangeText={(text) => setPartidoData({...partidoData, rival: text})}
+                onChangeText={(text) =>
+                  setPartidoData({ ...partidoData, rival: text })
+                }
                 placeholder="Introduce el nombre del equipo rival"
                 placeholderTextColor="#999"
               />
             </View>
-            
+
             {/* Nuevo campo para notas del rival */}
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Notas sobre el rival</Text>
               <TextInput
-                style={[styles.input, styles.textArea]}
+                style={[styles.input, styles.textAreaRival]}
                 value={partidoData.notasRival}
-                onChangeText={(text) => setPartidoData({...partidoData, notasRival: text})}
+                onChangeText={(text) =>
+                  setPartidoData({ ...partidoData, notasRival: text })
+                }
                 placeholder="Información sobre el rival, jugadores clave, etc."
                 placeholderTextColor="#999"
                 multiline={true}
@@ -214,12 +275,12 @@ router.replace(`/partidos/${nuevoPartido.id}`);
                 textAlignVertical="top"
               />
             </View>
-            
-            <TouchableOpacity 
+
+            <TouchableOpacity
               style={[
                 styles.nextButton,
-                !partidoData.rival && styles.buttonDisabled
-              ]} 
+                !partidoData.rival && styles.buttonDisabled,
+              ]}
               onPress={nextStep}
               disabled={!partidoData.rival}
             >
@@ -227,36 +288,39 @@ router.replace(`/partidos/${nuevoPartido.id}`);
             </TouchableOpacity>
           </View>
         );
-        
-      case "alineacion": // Ahora es el tercer paso
+
+      case "alineacion":
         return (
           <View style={styles.alineacionContainer}>
-            <LineupScreen 
+            <LineupScreen
               ref={alineacionRef}
-              matchday={parseInt(partidoData.jornada) || 0}
+              matchday={parseInt(partidoData.jornada)}
               isEmbedded={true}
+              initialData={partidoData.alineacion} // Pasar los datos guardados
               onSaveLineup={(lineupData) => {
-                setPartidoData({...partidoData, alineacion: lineupData});
+                setPartidoData({ ...partidoData, alineacion: lineupData });
               }}
             />
-            
+
             <TouchableOpacity style={styles.nextButton} onPress={nextStep}>
               <Text style={styles.nextButtonText}>Siguiente</Text>
             </TouchableOpacity>
           </View>
         );
-        
+
       case "estrategia": // Ahora es el cuarto paso (último)
         return (
           <View style={styles.stepContainer}>
             <Text style={styles.stepTitle}>Estrategia para el partido</Text>
-            
+
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Estrategia y observaciones</Text>
               <TextInput
-                style={[styles.input, styles.textArea]}
+                style={[styles.input, styles.textAreaEstrategia]}
                 value={partidoData.estrategia}
-                onChangeText={(text) => setPartidoData({...partidoData, estrategia: text})}
+                onChangeText={(text) =>
+                  setPartidoData({ ...partidoData, estrategia: text })
+                }
                 placeholder="Define la estrategia para este partido, instrucciones tácticas, etc."
                 placeholderTextColor="#999"
                 multiline={true}
@@ -264,9 +328,9 @@ router.replace(`/partidos/${nuevoPartido.id}`);
                 textAlignVertical="top"
               />
             </View>
-            
-            <TouchableOpacity 
-              style={[styles.saveButton, loading && styles.buttonDisabled]} 
+
+            <TouchableOpacity
+              style={[styles.saveButton, loading && styles.buttonDisabled]}
               onPress={guardarPartido}
               disabled={loading}
             >
@@ -278,7 +342,7 @@ router.replace(`/partidos/${nuevoPartido.id}`);
             </TouchableOpacity>
           </View>
         );
-        
+
       default:
         return null;
     }
@@ -292,21 +356,14 @@ router.replace(`/partidos/${nuevoPartido.id}`);
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Crear nuevo partido</Text>
       </View>
-      
-      <StepIndicator 
-        steps={steps} 
+
+      <StepIndicator
+        steps={steps}
         currentStep={currentStep}
-        onStepPress={(index) => {
-          // Opcional: permitir navegar directamente a un paso
-          if (index < currentStep) {
-            setCurrentStep(index);
-          }
-        }}
+        onStepPress={handleStepPress}
       />
-      
-      <ScrollView style={styles.content}>
-        {renderStep()}
-      </ScrollView>
+
+      <ScrollView style={styles.content}>{renderStep()}</ScrollView>
     </SafeAreaView>
   );
 }
@@ -369,9 +426,14 @@ const styles = StyleSheet.create({
   dateText: {
     color: "#fff",
   },
-  textArea: {
-    height: 120,
-    textAlignVertical: 'top',
+  textAreaEstrategia: {
+    height: 450,
+    textAlignVertical: "top",
+    paddingTop: 12,
+  },
+  textAreaRival: {
+    height: 350,
+    textAlignVertical: "top",
     paddingTop: 12,
   },
   radioGroup: {
