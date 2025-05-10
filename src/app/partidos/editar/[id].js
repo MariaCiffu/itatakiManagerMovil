@@ -1,4 +1,4 @@
-// src/app/partidos/editar/[id].js
+// src/app/partidos/[id]/editar.js
 import React, { useState, useRef, useEffect } from "react";
 import {
   View,
@@ -24,10 +24,8 @@ import LineupScreen from "../../alineacion"; // Asegúrate de que la ruta sea co
 
 export default function EditarPartidoScreen() {
   const router = useRouter();
-  const { id, step: initialStep } = useLocalSearchParams();
-  const [currentStep, setCurrentStep] = useState(
-    initialStep ? parseInt(initialStep) : 0
-  );
+  const { id } = useLocalSearchParams();
+  const [currentStep, setCurrentStep] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -84,6 +82,12 @@ export default function EditarPartidoScreen() {
 
   // Función para avanzar al siguiente paso
   const nextStep = () => {
+    // Si estamos en el paso de alineación, guardar los datos antes de avanzar
+    if (currentStep === 2 && alineacionRef.current) {
+      const alineacionData = alineacionRef.current.getAlineacionData();
+      setPartidoData((prev) => ({ ...prev, alineacion: alineacionData }));
+    }
+    
     if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
@@ -94,10 +98,30 @@ export default function EditarPartidoScreen() {
 
   // Función para retroceder al paso anterior
   const prevStep = () => {
+    // Si estamos en el paso de alineación, guardar los datos antes de retroceder
+    if (currentStep === 2 && alineacionRef.current) {
+      const alineacionData = alineacionRef.current.getAlineacionData();
+      setPartidoData((prev) => ({ ...prev, alineacion: alineacionData }));
+    }
+    
     if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
     } else {
       router.back();
+    }
+  };
+
+  // Función para manejar la navegación directa entre pasos
+  const handleStepPress = (index) => {
+    // Si estamos en el paso de alineación, guardar los datos antes de cambiar
+    if (currentStep === 2 && alineacionRef.current) {
+      const alineacionData = alineacionRef.current.getAlineacionData();
+      setPartidoData((prev) => ({ ...prev, alineacion: alineacionData }));
+    }
+
+    // Solo permitir navegar a pasos anteriores o al siguiente paso
+    if (index <= currentStep + 1) {
+      setCurrentStep(index);
     }
   };
 
@@ -121,9 +145,19 @@ export default function EditarPartidoScreen() {
 
       // Actualizar el partido
       const partidoActualizado = await updatePartidoWithDelay(id, partidoData);
+      console.log("Partido actualizado:", partidoActualizado);
 
-      // Navegar a la vista de detalles del partido
-      router.replace(`/partidos/${id}`);
+      // Mostrar mensaje de éxito
+      Alert.alert(
+        "Partido actualizado",
+        "Los cambios se han guardado correctamente",
+        [
+          {
+            text: "OK",
+            onPress: () => router.replace(`/partidos/${id}`),
+          },
+        ]
+      );
     } catch (error) {
       console.error("Error al actualizar partido:", error);
       Alert.alert("Error", "No se pudo actualizar el partido");
@@ -363,10 +397,7 @@ export default function EditarPartidoScreen() {
       <StepIndicator
         steps={steps}
         currentStep={currentStep}
-        onStepPress={(index) => {
-          // Permitir navegar directamente a cualquier paso
-          setCurrentStep(index);
-        }}
+        onStepPress={handleStepPress}
       />
 
       <ScrollView style={styles.content}>{renderStep()}</ScrollView>
