@@ -1,5 +1,5 @@
 // src/data/partidos.js
-export const PARTIDOS_INICIALES = [
+export const PARTIDOS = [
   {
     id: "1",
     jornada: "1",
@@ -51,7 +51,7 @@ export const PARTIDOS_INICIALES = [
         penalties: null,
       },
       suplentes: ["5"],
-      titulares: [],
+      titulares: [{ id: "1", fieldPosition: "GK" },],
     },
     estrategia: "",
     fecha: "2025-05-10T19:17:30.368Z",
