@@ -2,10 +2,10 @@
 export const STAFF = [
     {
       id: '1',
-      name: 'Carlos Ancelotti',
-      position: 'Entrenador principal',
-      phone: '666123456',
-      email: 'carlos@equipo.com',
+      name: 'Daniel San Juan',
+      position: 'Entrenador',
+      phone: '638379879',
+      email: 'daniel.123.dsj@gmail.com',
       image: 'https://randomuser.me/api/portraits/men/32.jpg',
     },
     {

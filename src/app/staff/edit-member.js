@@ -1,123 +1,87 @@
-// app/staff/edit-member.js
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Image, Alert } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+// app/staff/[id].js
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as ImagePicker from 'expo-image-picker';
 import { 
   ArrowLeftIcon, 
-  UserFriendsIcon, 
+  EditIcon, 
   PhoneIcon, 
   EnvelopeIcon, 
-  CameraIcon, 
-  CheckIcon 
+  UserFriendsIcon, 
+  CalendarIcon 
 } from '../../components/Icons';
 import { COLORS } from '../../constants/colors';
+import { getStaffById } from '../../services/staffService'; // Importar el servicio
 
-export default function EditMember() {
+export default function MemberDetail() {
   const router = useRouter();
-  const { memberData } = useLocalSearchParams();
-  const initialMember = memberData ? JSON.parse(memberData) : {};
+  const { id, memberData } = useLocalSearchParams();
+  const [member, setMember] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   
-  const [member, setMember] = useState({
-    name: initialMember.name || '',
-    position: initialMember.position || '',
-    phone: initialMember.phone || '',
-    email: initialMember.email || '',
-    image: initialMember.image || '',
-  });
-  
-  const [formErrors, setFormErrors] = useState({});
-  
-  const handleChange = (field, value) => {
-    setMember({ ...member, [field]: value });
-    // Limpiar error cuando se modifica el campo
-    if (formErrors[field]) {
-      setFormErrors({...formErrors, [field]: null});
-    }
-  };
-  
-  const validateForm = () => {
-    const errors = {};
-    
-    if (!member.name.trim()) {
-      errors.name = 'El nombre es obligatorio';
-    }
-    
-    if (!member.position.trim()) {
-      errors.position = 'El cargo es obligatorio';
-    }
-    
-    if (member.email && !member.email.includes('@')) {
-      errors.email = 'El correo electrónico no es válido';
-    }
-    
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-  
-  const handleSave = () => {
-    if (!validateForm()) {
-      // Mostrar alerta con el primer error
-      const firstError = Object.values(formErrors)[0];
-      Alert.alert('Campos incompletos', firstError || 'Por favor completa los campos obligatorios');
-      return;
-    }
-    
-    console.log('Miembro actualizado:', member);
-    
-    // Aquí iría la lógica para actualizar el miembro en la base de datos
-    
-    // Mostrar confirmación y volver a la lista
-    Alert.alert(
-      'Miembro actualizado',
-      'Los cambios han sido guardados correctamente',
-      [
-        {
-          text: 'OK',
-          onPress: () => router.back()
+  useEffect(() => {
+    const loadMember = async () => {
+      // Si tenemos los datos del miembro en los parámetros, los usamos
+      if (memberData) {
+        setMember(JSON.parse(memberData));
+        setLoading(false);
+        return;
+      }
+      
+      // Si no, cargamos los datos desde el servicio
+      if (id) {
+        try {
+          const data = await getStaffById(id);
+          if (data) {
+            setMember(data);
+          } else {
+            setError('Miembro no encontrado');
+          }
+        } catch (err) {
+          setError('Error al cargar los datos del miembro');
+          console.error(err);
+        } finally {
+          setLoading(false);
         }
-      ]
-    );
+      } else {
+        setError('ID de miembro no proporcionado');
+        setLoading(false);
+      }
+    };
+    
+    loadMember();
+  }, [id, memberData]);
+  
+  const handleEdit = () => {
+    router.push({
+      pathname: '/staff/edit-member',
+      params: { memberData: JSON.stringify(member) }
+    });
   };
   
-  const selectImage = async () => {
-    Alert.alert('Seleccionar imagen', '¿Cómo quieres subir la imagen?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Galería',
-        onPress: async () => {
-          const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: true,
-            aspect: [1, 1],
-            quality: 0.5,
-          });
-          if (!result.canceled) {
-            handleChange('image', result.assets[0].uri);
-          }
-        },
-      },
-      {
-        text: 'Cámara',
-        onPress: async () => {
-          const permission = await ImagePicker.requestCameraPermissionsAsync();
-          if (permission.granted === false) {
-            Alert.alert('Permiso denegado', 'No se puede acceder a la cámara');
-            return;
-          }
-          const result = await ImagePicker.launchCameraAsync({
-            allowsEditing: true,
-            aspect: [1, 1],
-            quality: 0.5,
-          });
-          if (!result.canceled) {
-            handleChange('image', result.assets[0].uri);
-          }
-        },
-      },
-    ]);
-  };
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
+    );
+  }
+  
+  if (error || !member) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <Text style={styles.errorText}>{error || 'No se encontró el miembro'}</Text>
+        <TouchableOpacity 
+          style={styles.backButtonLarge}
+          onPress={() => router.back()}
+        >
+          <Text style={styles.backButtonText}>Volver</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
   
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -128,90 +92,105 @@ export default function EditMember() {
         >
           <ArrowLeftIcon size={24} color={COLORS.text} />
         </TouchableOpacity>
-        <Text style={styles.title}>Editar miembro</Text>
-        <View style={styles.placeholder} />
+        <Text style={styles.title}>Detalles</Text>
+        <TouchableOpacity 
+          style={[styles.editButton, { backgroundColor: COLORS.primary }]}
+          onPress={handleEdit}
+        >
+          <EditIcon size={20} color="#fff" />
+        </TouchableOpacity>
       </View>
       
-      <View style={styles.avatarContainer}>
-        <TouchableOpacity onPress={selectImage}>
-          {member.image ? (
-            <Image source={{ uri: member.image }} style={styles.avatar} />
-          ) : (
-            <View style={[styles.avatarPlaceholder, { borderColor: COLORS.primary }]}>
-              <CameraIcon size={40} color={COLORS.primary} />
-            </View>
-          )}
-          <View style={[styles.editBadge, { backgroundColor: COLORS.primary }]}>
-            <CameraIcon size={16} color="#fff" />
+      <View style={styles.profileSection}>
+        <LinearGradient
+          colors={[`${COLORS.primary}20`, COLORS.background]}
+          style={styles.profileGradient}
+        >
+          <View style={styles.profileImageContainer}>
+            <View style={[styles.profileImageGlow, { backgroundColor: COLORS.primary }]} />
+            <Image 
+              source={{ uri: member.image }} 
+              style={styles.profileImage} 
+            />
           </View>
-        </TouchableOpacity>
+          
+          <Text style={styles.profileName}>{member.name}</Text>
+          <Text style={styles.profilePosition}>{member.position}</Text>
+        </LinearGradient>
       </View>
       
-      <View style={styles.form}>
-        <Text style={styles.sectionTitle}>Información básica</Text>
+      <View style={styles.infoSection}>
+        <Text style={styles.sectionTitle}>Información de contacto</Text>
         
-        {/* Nombre */}
-        <View style={[styles.inputContainer, formErrors.name ? styles.inputError : null]}>
-          <UserFriendsIcon size={20} color={formErrors.name ? COLORS.danger : COLORS.primary} />
-          <TextInput
-            placeholder="Nombre completo *"
-            placeholderTextColor={COLORS.textSecondary}
-            value={member.name}
-            onChangeText={(text) => handleChange('name', text)}
-            style={styles.input}
-          />
-        </View>
-        
-        {/* Cargo */}
-        <View style={[styles.inputContainer, formErrors.position ? styles.inputError : null]}>
-          <UserFriendsIcon size={20} color={formErrors.position ? COLORS.danger : COLORS.primary} />
-          <TextInput
-            placeholder="Cargo *"
-            placeholderTextColor={COLORS.textSecondary}
-            value={member.position}
-            onChangeText={(text) => handleChange('position', text)}
-            style={styles.input}
-          />
-        </View>
-        
-        <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Contacto</Text>
-        
-        {/* Teléfono */}
-        <View style={styles.inputContainer}>
-          <PhoneIcon size={20} color={COLORS.primary} />
-          <TextInput
-            placeholder="Teléfono"
-            placeholderTextColor={COLORS.textSecondary}
-            value={member.phone}
-            onChangeText={(text) => handleChange('phone', text)}
-            style={styles.input}
-            keyboardType="phone-pad"
-          />
-        </View>
-        
-        {/* Email */}
-        <View style={[styles.inputContainer, formErrors.email ? styles.inputError : null]}>
-          <EnvelopeIcon size={20} color={formErrors.email ? COLORS.danger : COLORS.primary} />
-          <TextInput
-            placeholder="Correo electrónico"
-            placeholderTextColor={COLORS.textSecondary}
-            value={member.email}
-            onChangeText={(text) => handleChange('email', text)}
-            style={styles.input}
-            keyboardType="email-address"
-          />
-        </View>
-        
-        {/* Botón guardar */}
-        <TouchableOpacity onPress={handleSave}>
+        <View style={styles.infoCard}>
           <LinearGradient
-            colors={[COLORS.primary, COLORS.primaryDark]}
-            style={styles.saveButton}
+            colors={[COLORS.card, '#252525']}
+            style={styles.cardGradient}
           >
-            <CheckIcon size={20} color="#fff" />
-            <Text style={styles.saveButtonText}>Guardar cambios</Text>
+            <View style={styles.infoItem}>
+              <View style={[styles.infoIconContainer, { backgroundColor: `${COLORS.info}20` }]}>
+                <PhoneIcon size={20} color={COLORS.info} />
+              </View>
+              <View>
+                <Text style={styles.infoLabel}>Teléfono</Text>
+                <Text style={styles.infoValue}>{member.phone || '-'}</Text>
+              </View>
+            </View>
           </LinearGradient>
-        </TouchableOpacity>
+        </View>
+        
+        <View style={styles.infoCard}>
+          <LinearGradient
+            colors={[COLORS.card, '#252525']}
+            style={styles.cardGradient}
+          >
+            <View style={styles.infoItem}>
+              <View style={[styles.infoIconContainer, { backgroundColor: `${COLORS.primary}20` }]}>
+                <EnvelopeIcon size={20} color={COLORS.primary} />
+              </View>
+              <View>
+                <Text style={styles.infoLabel}>Correo electrónico</Text>
+                <Text style={styles.infoValue}>{member.email || '-'}</Text>
+              </View>
+            </View>
+          </LinearGradient>
+        </View>
+        
+        <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Información adicional</Text>
+        
+        <View style={styles.infoCard}>
+          <LinearGradient
+            colors={[COLORS.card, '#252525']}
+            style={styles.cardGradient}
+          >
+            <View style={styles.infoItem}>
+              <View style={[styles.infoIconContainer, { backgroundColor: `${COLORS.success}20` }]}>
+                <UserFriendsIcon size={20} color={COLORS.success} />
+              </View>
+              <View>
+                <Text style={styles.infoLabel}>Experiencia</Text>
+                <Text style={styles.infoValue}>5 años</Text>
+              </View>
+            </View>
+          </LinearGradient>
+        </View>
+        
+        <View style={styles.infoCard}>
+          <LinearGradient
+            colors={[COLORS.card, '#252525']}
+            style={styles.cardGradient}
+          >
+            <View style={styles.infoItem}>
+              <View style={[styles.infoIconContainer, { backgroundColor: `${COLORS.warning}20` }]}>
+                <CalendarIcon size={20} color={COLORS.warning} />
+              </View>
+              <View>
+                <Text style={styles.infoLabel}>Fecha de incorporación</Text>
+                <Text style={styles.infoValue}>01/01/2023</Text>
+              </View>
+            </View>
+          </LinearGradient>
+        </View>
       </View>
     </ScrollView>
   );
@@ -221,13 +200,33 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
-    padding: 16,
+  },
+  centered: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    color: COLORS.danger,
+    fontSize: 16,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  backButtonLarge: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  backButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 24,
+    padding: 16,
   },
   backButton: {
     width: 40,
@@ -237,90 +236,97 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  placeholder: {
-    width: 40,
-  },
   title: {
-    fontSize: 24,
+    fontSize: 20,
     color: COLORS.text,
     fontWeight: 'bold',
-    textAlign: 'center',
   },
-  avatarContainer: {
+  editButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profileSection: {
     alignItems: 'center',
     marginBottom: 24,
+  },
+  profileGradient: {
+    width: '100%',
+    alignItems: 'center',
+    paddingVertical: 24,
+  },
+  profileImageContainer: {
     position: 'relative',
+    marginBottom: 16,
   },
-  avatar: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    borderWidth: 2,
-    borderColor: COLORS.primary,
-  },
-  avatarPlaceholder: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: COLORS.card,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-  },
-  editBadge: {
+  profileImageGlow: {
     position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: COLORS.background,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    opacity: 0.3,
+    transform: [{ scale: 1.1 }],
+  },
+  profileImage: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 3,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  profileName: {
+    color: COLORS.text,
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  profilePosition: {
+    color: COLORS.primary,
+    fontSize: 16,
+  },
+  infoSection: {
+    padding: 16,
   },
   sectionTitle: {
-    fontSize: 18,
     color: COLORS.text,
+    fontSize: 18,
     fontWeight: 'bold',
+    marginBottom: 16,
+  },
+  infoCard: {
     marginBottom: 12,
+    borderRadius: 12,
+    overflow: 'hidden',
   },
-  form: {
-    gap: 12,
-    paddingBottom: 24
+  cardGradient: {
+    borderRadius: 12,
+    padding: 1, // Borde gradiente
   },
-  inputContainer: {
+  infoItem: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.card,
-    padding: 14,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: COLORS.cardBorder,
-    marginBottom: 12,
-    gap: 12,
+    borderRadius: 11,
+    padding: 16,
   },
-  inputError: {
-    borderColor: COLORS.danger,
-    borderWidth: 1,
-  },
-  input: {
-    flex: 1,
-    color: COLORS.text,
-    fontSize: 16,
-  },
-  saveButton: {
-    borderRadius: 10,
-    paddingVertical: 14,
-    flexDirection: 'row',
+  infoIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 8,
-    marginTop: 24,
+    marginRight: 16,
   },
-  saveButtonText: {
-    color: '#fff',
+  infoLabel: {
+    color: COLORS.textSecondary,
+    fontSize: 14,
+    marginBottom: 4,
+  },
+  infoValue: {
+    color: COLORS.text,
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '500',
   },
 });

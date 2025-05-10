@@ -1,6 +1,6 @@
 // app/staff/add-member.js
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Image, Alert } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Image, Alert, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
@@ -13,6 +13,7 @@ import {
   CheckIcon 
 } from '../../components/Icons';
 import { COLORS } from '../../constants/colors';
+import { addStaffMember } from '../../services/staffService'; // Importar el servicio
 
 export default function AddMember() {
   const router = useRouter();
@@ -21,10 +22,11 @@ export default function AddMember() {
     position: '',
     phone: '',
     email: '',
-    image: '',
+    image: 'https://randomuser.me/api/portraits/lego/1.jpg', // Imagen por defecto
   });
   
   const [formErrors, setFormErrors] = useState({});
+  const [loading, setLoading] = useState(false);
   
   const handleChange = (field, value) => {
     setMember({ ...member, [field]: value });
@@ -53,7 +55,7 @@ export default function AddMember() {
     return Object.keys(errors).length === 0;
   };
   
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!validateForm()) {
       // Mostrar alerta con el primer error
       const firstError = Object.values(formErrors)[0];
@@ -61,21 +63,32 @@ export default function AddMember() {
       return;
     }
     
-    console.log('Miembro guardado:', member);
-    
-    // Aquí iría la lógica para guardar el miembro en la base de datos
-    
-    // Mostrar confirmación y volver a la lista
-    Alert.alert(
-      'Miembro guardado',
-      'El miembro ha sido añadido correctamente',
-      [
-        {
-          text: 'OK',
-          onPress: () => router.back()
-        }
-      ]
-    );
+    setLoading(true);
+    try {
+      // No necesitamos generar un ID aquí, el servicio lo hará
+      const result = await addStaffMember(member);
+      
+      if (result.success) {
+        // Mostrar confirmación y volver a la lista
+        Alert.alert(
+          'Miembro guardado',
+          'El miembro ha sido añadido correctamente',
+          [
+            {
+              text: 'OK',
+              onPress: () => router.back()
+            }
+          ]
+        );
+      } else {
+        Alert.alert('Error', result.message || 'No se pudo guardar el miembro');
+      }
+    } catch (err) {
+      Alert.alert('Error', 'Ocurrió un error al guardar el miembro');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
   
   const selectImage = async () => {
@@ -207,13 +220,20 @@ export default function AddMember() {
         <TouchableOpacity 
           onPress={handleSave}
           activeOpacity={0.8}
+          disabled={loading}
         >
           <LinearGradient
             colors={[COLORS.primary, COLORS.primaryDark]}
             style={styles.saveButton}
           >
-            <CheckIcon size={20} color="#fff" />
-            <Text style={styles.saveButtonText}>Guardar miembro</Text>
+            {loading ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <>
+                <CheckIcon size={20} color="#fff" />
+                <Text style={styles.saveButtonText}>Guardar miembro</Text>
+              </>
+            )}
           </LinearGradient>
         </TouchableOpacity>
       </View>

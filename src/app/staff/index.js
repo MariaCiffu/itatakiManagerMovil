@@ -1,5 +1,5 @@
 // app/staff/index.js
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   TextInput,
   Alert,
   Linking,
+  ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
@@ -27,20 +28,55 @@ import {
 import { COLORS } from "../../constants/colors";
 import WhatsAppButton from "../../components/WhatsAppButton";
 import BackButton from "../../components/BackButton";
-import { STAFF } from "../../data/staffData"; // Importar desde el nuevo archivo
+import { getAllStaff, searchStaff, updateStaffMember } from "../../services/staffService";
 
 export default function StaffList() {
   const router = useRouter();
-  const [staff, setStaff] = useState(STAFF); // Usar los datos importados
+  const [staff, setStaff] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [editingMember, setEditingMember] = useState(null);
   const [editedData, setEditedData] = useState({});
 
-  const filteredStaff = staff.filter(
-    (member) =>
-      member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      member.position.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Cargar datos al iniciar
+  useEffect(() => {
+    loadStaffData();
+  }, []);
+
+  // Función para cargar los datos del staff
+  const loadStaffData = async () => {
+    setLoading(true);
+    try {
+      const data = await getAllStaff();
+      setStaff(data);
+      setError(null);
+    } catch (err) {
+      setError("Error al cargar los datos del personal");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Función para buscar miembros del staff
+  const handleSearch = async (query) => {
+    setSearchQuery(query);
+    if (query.trim() === "") {
+      loadStaffData();
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const results = await searchStaff(query);
+      setStaff(results);
+    } catch (err) {
+      console.error("Error al buscar:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleAddMember = () => {
     router.push("/staff/add-member");
@@ -56,7 +92,7 @@ export default function StaffList() {
     setEditedData({});
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     // Validar campos obligatorios
     if (!editedData.name || !editedData.position) {
       Alert.alert(
@@ -66,20 +102,35 @@ export default function StaffList() {
       return;
     }
 
-    // Actualizar el miembro en la lista
-    const updatedStaff = staff.map((member) =>
-      member.id === editingMember ? { ...member, ...editedData } : member
-    );
-
-    setStaff(updatedStaff);
-    setEditingMember(null);
-    setEditedData({});
-
-    // Mostrar confirmación
-    Alert.alert(
-      "Miembro actualizado",
-      "Los datos han sido actualizados correctamente"
-    );
+    setLoading(true);
+    try {
+      // Llamar al servicio para actualizar
+      await updateStaffMember(editingMember, editedData);
+      
+      // Actualizar la lista local
+      const updatedStaff = staff.map((member) =>
+        member.id === editingMember ? { ...member, ...editedData } : member
+      );
+      setStaff(updatedStaff);
+      
+      // Limpiar el estado de edición
+      setEditingMember(null);
+      setEditedData({});
+      
+      // Mostrar confirmación
+      Alert.alert(
+        "Miembro actualizado",
+        "Los datos han sido actualizados correctamente"
+      );
+    } catch (err) {
+      Alert.alert(
+        "Error",
+        "No se pudo actualizar el miembro. Inténtalo de nuevo."
+      );
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleChange = (field, value) => {
@@ -307,6 +358,30 @@ export default function StaffList() {
     );
   };
 
+  // Mostrar indicador de carga
+  if (loading && staff.length === 0) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
+    );
+  }
+
+  // Mostrar mensaje de error
+  if (error && staff.length === 0) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity 
+          style={styles.retryButton} 
+          onPress={loadStaffData}
+        >
+          <Text style={styles.retryButtonText}>Reintentar</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -323,7 +398,7 @@ export default function StaffList() {
             placeholderTextColor={COLORS.textSecondary}
             style={styles.searchInput}
             value={searchQuery}
-            onChangeText={setSearchQuery}
+            onChangeText={handleSearch}
           />
         </View>
 
@@ -337,11 +412,16 @@ export default function StaffList() {
       </View>
 
       <FlatList
-        data={filteredStaff}
+        data={staff}
         renderItem={renderMember}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No se encontraron miembros</Text>
+          </View>
+        }
       />
     </View>
   );
@@ -352,6 +432,36 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
     padding: 16,
+  },
+  centered: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorText: {
+    color: COLORS.danger,
+    fontSize: 16,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  retryButton: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptyText: {
+    color: COLORS.textSecondary,
+    fontSize: 16,
   },
   header: {
     flexDirection: "row",

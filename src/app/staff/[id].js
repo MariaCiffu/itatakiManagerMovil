@@ -1,6 +1,6 @@
 // app/staff/[id].js
-import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { 
@@ -12,11 +12,47 @@ import {
   CalendarIcon 
 } from '../../components/Icons';
 import { COLORS } from '../../constants/colors';
+import { getStaffById } from '../../services/staffService'; // Importar el servicio
 
 export default function MemberDetail() {
   const router = useRouter();
-  const { memberData } = useLocalSearchParams();
-  const member = JSON.parse(memberData || '{}');
+  const { id, memberData } = useLocalSearchParams();
+  const [member, setMember] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  useEffect(() => {
+    const loadMember = async () => {
+      // Si tenemos los datos del miembro en los parámetros, los usamos
+      if (memberData) {
+        setMember(JSON.parse(memberData));
+        setLoading(false);
+        return;
+      }
+      
+      // Si no, cargamos los datos desde el servicio
+      if (id) {
+        try {
+          const data = await getStaffById(id);
+          if (data) {
+            setMember(data);
+          } else {
+            setError('Miembro no encontrado');
+          }
+        } catch (err) {
+          setError('Error al cargar los datos del miembro');
+          console.error(err);
+        } finally {
+          setLoading(false);
+        }
+      } else {
+        setError('ID de miembro no proporcionado');
+        setLoading(false);
+      }
+    };
+    
+    loadMember();
+  }, [id, memberData]);
   
   const handleEdit = () => {
     router.push({
@@ -24,6 +60,28 @@ export default function MemberDetail() {
       params: { memberData: JSON.stringify(member) }
     });
   };
+  
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
+    );
+  }
+  
+  if (error || !member) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <Text style={styles.errorText}>{error || 'No se encontró el miembro'}</Text>
+        <TouchableOpacity 
+          style={styles.backButtonLarge}
+          onPress={() => router.back()}
+        >
+          <Text style={styles.backButtonText}>Volver</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
   
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -142,6 +200,27 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  centered: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    color: COLORS.danger,
+    fontSize: 16,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  backButtonLarge: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  backButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
   },
   header: {
     flexDirection: 'row',
