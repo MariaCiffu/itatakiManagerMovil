@@ -74,8 +74,6 @@ export default function PartidoAlineacionScreen() {
       matchday={parseInt(partido.jornada)}
       initialData={partido.alineacion}
       readOnly={true}
-      hideFormationSelector={true} // Ocultar selector de formación en modo lectura
-      showSubstitutes={true} // Asegurar que se muestren los suplentes
     />
   );
 }
@@ -102,9 +100,8 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   errorText: {
-    color: "#ccc",
+    color: "#ff6b6b",
     fontSize: 16,
     textAlign: "center",
-    color: "#ff6b6b",
   },
 });
