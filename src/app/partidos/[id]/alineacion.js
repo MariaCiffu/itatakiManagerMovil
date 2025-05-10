@@ -11,16 +11,25 @@ export default function PartidoAlineacionScreen() {
   const { id } = useLocalSearchParams();
   const [partido, setPartido] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const loadPartido = async () => {
       try {
         setLoading(true);
+        setError(null);
         const data = await getPartidoByIdWithDelay(id);
-        console.log("Datos del partido cargados:", data);
+        console.log("Datos del partido cargados:", JSON.stringify(data, null, 2));
+        
+        // Verificar que la alineación tenga la estructura correcta
+        if (data.alineacion) {
+          console.log("Alineación cargada:", JSON.stringify(data.alineacion, null, 2));
+        }
+        
         setPartido(data);
       } catch (error) {
         console.error("Error al cargar partido:", error);
+        setError(error.error || "Error al cargar el partido");
       } finally {
         setLoading(false);
       }
@@ -35,6 +44,16 @@ export default function PartidoAlineacionScreen() {
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#4CAF50" />
           <Text style={styles.loadingText}>Cargando alineación...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
         </View>
       </SafeAreaView>
     );
@@ -55,6 +74,8 @@ export default function PartidoAlineacionScreen() {
       matchday={parseInt(partido.jornada)}
       initialData={partido.alineacion}
       readOnly={true}
+      hideFormationSelector={true} // Ocultar selector de formación en modo lectura
+      showSubstitutes={true} // Asegurar que se muestren los suplentes
     />
   );
 }
@@ -84,5 +105,6 @@ const styles = StyleSheet.create({
     color: "#ccc",
     fontSize: 16,
     textAlign: "center",
+    color: "#ff6b6b",
   },
 });
