@@ -232,6 +232,7 @@ export default function Jugadores() {
         </View>
 
         <View style={styles.searchContainer}>
+          <View style={styles.searchInputContainer}>
           <Search width={20} height={20} color={COLORS.textSecondary} />
           <TextInput
             style={styles.searchInput}
@@ -241,6 +242,15 @@ export default function Jugadores() {
             onChangeText={setSearchQuery}
             onFocus={closeOpenSwipeable}
           />
+          </View>
+
+          <TouchableOpacity
+          style={[styles.addButton, { backgroundColor: COLORS.primary }]}
+          onPress={handleAddPlayer}
+          activeOpacity={0.7}
+        >
+          <Plus size={20} color="#fff" />
+        </TouchableOpacity>
         </View>
 
         {isLoading ? (
@@ -266,19 +276,6 @@ export default function Jugadores() {
             }
           />
         )}
-
-        <TouchableOpacity
-          style={styles.addButton}
-          activeOpacity={0.8}
-          onPress={handleAddPlayer}
-        >
-          <LinearGradient
-            colors={[COLORS.primary, COLORS.primaryDark]}
-            style={styles.addButtonGradient}
-          >
-            <Plus width={24} height={24} color="#FFF" />
-          </LinearGradient>
-        </TouchableOpacity>
       </View>
     </GestureHandlerRootView>
   );
@@ -302,17 +299,24 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
   searchContainer: {
+     flexDirection: "row",
+    marginBottom: 16,
+    gap: 12,
+  },
+  searchInputContainer: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: COLORS.card,
     borderRadius: 10,
     paddingHorizontal: 12,
-    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
   },
   searchInput: {
     flex: 1,
-    height: 46,
     color: COLORS.text,
+    paddingVertical: 10,
     marginLeft: 8,
   },
   playersList: {
@@ -400,18 +404,16 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 12,
   },
   addButton: {
-    position: "absolute",
-    bottom: 20,
-    right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    elevation: 8,
-    shadowColor: "#000",
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
-    shadowRadius: 4,
-    zIndex: 100,
+    shadowRadius: 8,
+    elevation: 5,
   },
   addButtonGradient: {
     width: "100%",
