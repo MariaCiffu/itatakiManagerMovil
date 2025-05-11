@@ -1,87 +1,210 @@
-// app/jugadores/index.js
-import React, { useState, useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet, Image, TouchableOpacity, TextInput } from 'react-native';
-import { Link, useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
-import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
-import { COLORS } from '../../constants/colors';
-import BackButton from '../../components/BackButton';
-import { useFocusEffect } from '@react-navigation/native';
-import { getAllJugadores } from '../../services/jugadoresService';
+"use client";
 
-export default function PlayersScreen() {
+import { useState, useEffect, useRef, useCallback } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Image,
+  FlatList,
+  TextInput,
+  Alert,
+  ActivityIndicator,
+} from "react-native";
+import { useRouter } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
+import { Swipeable } from "react-native-gesture-handler";
+import { useFocusEffect } from "@react-navigation/native"; // Importar useFocusEffect
+import { COLORS } from "../../constants/colors";
+import {
+  getAllJugadores,
+  deleteJugador,
+} from "../../services/jugadoresService";
+import { Search, Plus, Trash2, ArrowLeft } from "react-native-feather";
+
+export default function Jugadores() {
   const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState('');
   const [players, setPlayers] = useState([]);
+  const [filteredPlayers, setFilteredPlayers] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Cargar jugadores cuando la pantalla obtiene el foco
+  // Usar un objeto para almacenar las referencias
+  const swipeableRefs = useRef({});
+
+  const loadPlayers = useCallback(async () => {
+    try {
+      const data = await getAllJugadores();
+      setPlayers(data);
+      setFilteredPlayers(data);
+      setIsLoading(false);
+    } catch (error) {
+      console.error("Error al cargar jugadores:", error);
+      setIsLoading(false);
+      Alert.alert("Error", "No se pudieron cargar los jugadores");
+    }
+  }, []);
+
+  // Usar useFocusEffect para recargar los datos cuando la pantalla vuelve a estar en foco
   useFocusEffect(
     useCallback(() => {
-      const loadPlayers = async () => {
-        try {
-          const data = await getAllJugadores();
-          setPlayers(data);
-        } catch (error) {
-          console.error('Error al cargar jugadores:', error);
-        }
-      };
-      
       loadPlayers();
-      
       return () => {
         // Limpieza si es necesaria
       };
-    }, [])
+    }, [loadPlayers])
   );
-  
-  // Filtrar jugadores según la búsqueda
-  const filteredPlayers = searchQuery 
-    ? players.filter(player => 
-        player.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        player.position.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        player.number.toString().includes(searchQuery)
-      )
-    : players;
-  
-  const renderItem = ({ item }) => (
-    <Link 
-      href={{
-        pathname: `/jugadores/${item.id}`,
-        params: { id: item.id }
-      }}
-      asChild
-    >
-      <TouchableOpacity style={styles.card}>
-        <LinearGradient
-          colors={[COLORS.card, '#252525']}
-          style={styles.cardGradient}
-        >
-          <View style={styles.cardContent}>
-            <Image source={{ uri: item.image }} style={styles.avatar} />
-            <View style={styles.info}>
-              <Text style={styles.name}>{item.name}</Text>
-              <Text style={styles.detail}>{item.position}</Text>
-            </View>
-            <View style={[styles.numberContainer, { backgroundColor: COLORS.primary }]}>
-              <Text style={styles.number}>{item.number}</Text>
-            </View>
-          </View>
-        </LinearGradient>
+
+  useEffect(() => {
+    if (searchQuery.trim() === "") {
+      setFilteredPlayers(players);
+    } else {
+      const filtered = players.filter(
+        (player) =>
+          player.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (player.number && player.number.toString().includes(searchQuery))
+      );
+      setFilteredPlayers(filtered);
+    }
+  }, [searchQuery, players]);
+
+  const handleAddPlayer = () => {
+    router.push("/jugadores/add-player");
+  };
+
+  const handlePlayerPress = (player) => {
+    router.push({
+      pathname: `/jugadores/${player.id}`,
+      params: { id: player.id },
+    });
+  };
+
+  const handleDeletePlayer = (playerId) => {
+    Alert.alert(
+      "Eliminar jugador",
+      "¿Estás seguro de que quieres eliminar este jugador?",
+      [
+        {
+          text: "Cancelar",
+          style: "cancel",
+          onPress: () => {
+            // Verificar si la referencia existe y tiene el método close
+            const swipeableRef = swipeableRefs.current[playerId];
+            if (swipeableRef && typeof swipeableRef.close === "function") {
+              swipeableRef.close();
+            }
+          },
+        },
+        {
+          text: "Eliminar",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const result = await deleteJugador(playerId);
+              if (result.success) {
+                // Actualizar la lista de jugadores
+                setPlayers((prevPlayers) =>
+                  prevPlayers.filter((player) => player.id !== playerId)
+                );
+                Alert.alert("Éxito", "Jugador eliminado correctamente");
+              } else {
+                Alert.alert(
+                  "Error",
+                  result.message || "No se pudo eliminar el jugador"
+                );
+              }
+            } catch (error) {
+              console.error("Error al eliminar jugador:", error);
+              Alert.alert("Error", "Ocurrió un error al eliminar el jugador");
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const renderRightActions = (playerId) => {
+    return (
+      <TouchableOpacity
+        style={styles.deleteAction}
+        onPress={() => handleDeletePlayer(playerId)}
+      >
+        <Trash2 width={24} height={24} color="#fff" />
       </TouchableOpacity>
-    </Link>
-  );
-  
+    );
+  };
+
+  const renderPlayer = ({ item }) => {
+    return (
+      <Swipeable
+        ref={(ref) => {
+          // Solo guardar la referencia si no es null
+          if (ref) {
+            swipeableRefs.current[item.id] = ref;
+          }
+        }}
+        renderRightActions={() => renderRightActions(item.id)}
+        overshootRight={false}
+        friction={2}
+        rightThreshold={40}
+      >
+        <TouchableOpacity
+          style={styles.playerCard}
+          activeOpacity={0.8}
+          onPress={() => handlePlayerPress(item)}
+        >
+          <LinearGradient
+            colors={[COLORS.card, "#252525"]}
+            style={styles.cardGradient}
+          >
+            <View style={styles.playerInfo}>
+              <Image
+                source={{
+                  uri:
+                    item.image ||
+                    "https://randomuser.me/api/portraits/lego/1.jpg",
+                }}
+                style={styles.playerImage}
+              />
+              <View style={styles.playerDetails}>
+                <Text style={styles.playerName}>{item.name}</Text>
+                <Text style={styles.playerPosition}>
+                  {item.position || "Sin posición"}
+                </Text>
+              </View>
+              {item.number && (
+                <View style={styles.numberContainer}>
+                  <Text style={styles.playerNumber}>{item.number}</Text>
+                </View>
+              )}
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
+      </Swipeable>
+    );
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <BackButton />
+        {/* Botón de volver atrás */}
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+          activeOpacity={0.7}
+        >
+          <ArrowLeft width={24} height={24} color={COLORS.text} />
+        </TouchableOpacity>
+
         <Text style={styles.title}>Jugadores</Text>
-        <View style={styles.placeholder} />
+
+        {/* Espacio vacío para mantener el título centrado */}
+        <View style={styles.backButton} />
       </View>
-      
-      {/* Barra de búsqueda */}
+
       <View style={styles.searchContainer}>
-        <FontAwesome5 name="search" size={16} color={COLORS.textSecondary} />
+        <Search width={20} height={20} color={COLORS.textSecondary} />
         <TextInput
           style={styles.searchInput}
           placeholder="Buscar jugador..."
@@ -89,37 +212,38 @@ export default function PlayersScreen() {
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
-        {searchQuery ? (
-          <TouchableOpacity onPress={() => setSearchQuery('')}>
-            <Text style={styles.clearButton}>×</Text>
-          </TouchableOpacity>
-        ) : null}
       </View>
-  
-      <FlatList
-        data={filteredPlayers}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No se encontraron jugadores</Text>
-          </View>
-        }
-      />
 
-      {/* Botón flotante para añadir nuevo jugador */}
-      <TouchableOpacity 
-        style={styles.addButton} 
-        activeOpacity={0.8} 
-        onPress={() => router.push('/jugadores/add-player')}
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+        </View>
+      ) : (
+        <FlatList
+          data={filteredPlayers}
+          keyExtractor={(item) => item.id}
+          renderItem={renderPlayer}
+          contentContainerStyle={styles.playersList}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No hay jugadores</Text>
+            </View>
+          }
+        />
+      )}
+
+      {/* Botón flotante para añadir jugador */}
+      <TouchableOpacity
+        style={styles.addButton}
+        activeOpacity={0.8}
+        onPress={handleAddPlayer}
       >
         <LinearGradient
           colors={[COLORS.primary, COLORS.primaryDark]}
           style={styles.addButtonGradient}
         >
-          <FontAwesome5 name="user-plus" size={20} color="#FFF" solid />
+          <Plus width={24} height={24} color="#FFF" />
         </LinearGradient>
       </TouchableOpacity>
     </View>
@@ -130,118 +254,136 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
-    padding: 16, 
+    padding: 16,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   title: {
+    fontSize: 28,
+    fontWeight: "bold",
     color: COLORS.text,
-    fontSize: 24,
-    fontWeight: 'bold',
   },
   searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: COLORS.card,
-    borderRadius: 12,
+    borderRadius: 10,
     paddingHorizontal: 12,
     marginBottom: 16,
   },
   searchInput: {
     flex: 1,
-    height: 48,
+    height: 46,
     color: COLORS.text,
     marginLeft: 8,
-    fontSize: 16,
   },
-  clearButton: {
-    color: COLORS.textSecondary,
-    fontSize: 24,
-    fontWeight: 'bold',
-    paddingHorizontal: 8,
+  playersList: {
+    paddingBottom: 20,
   },
-  listContent: {
-    paddingBottom: 80, // Espacio para el botón flotante
-  },
-  card: {
+  playerCard: {
     marginBottom: 12,
-    borderRadius: 16,
-    overflow: 'hidden',
+    borderRadius: 12,
+    overflow: "hidden",
+    backgroundColor: COLORS.background,
   },
   cardGradient: {
-    borderRadius: 16,
+    borderRadius: 12,
     padding: 1, // Borde gradiente
   },
-  cardContent: {
-    flexDirection: 'row',
+  playerInfo: {
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: COLORS.card,
-    borderRadius: 15,
+    borderRadius: 11,
     padding: 12,
-    alignItems: 'center',
   },
-  avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+  playerImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     marginRight: 12,
+    backgroundColor: COLORS.card, // Color de fondo para cuando no hay imagen
   },
-  info: {
+  playerDetails: {
     flex: 1,
+  },
+  playerName: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: COLORS.text,
+    marginBottom: 4,
+  },
+  playerPosition: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
   },
   numberContainer: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: COLORS.primary,
+    justifyContent: "center",
+    alignItems: "center",
   },
-  number: {
-    color: COLORS.text,
+  playerNumber: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
+    color: "#fff",
   },
-  name: {
-    color: COLORS.text,
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  detail: {
-    color: COLORS.textSecondary,
-    fontSize: 14,
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
   emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 32,
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingTop: 50,
   },
   emptyText: {
-    color: COLORS.textSecondary,
     fontSize: 16,
+    color: COLORS.textSecondary,
   },
+  deleteAction: {
+    backgroundColor: COLORS.danger,
+    justifyContent: "center",
+    alignItems: "center",
+    width: 80,
+    height: "100%",
+  },
+  // Estilos para el botón flotante
   addButton: {
-    position: 'absolute',
-    bottom: 30,
-    right: 16,
+    position: "absolute",
+    bottom: 20,
+    right: 20,
     width: 56,
     height: 56,
     borderRadius: 28,
     elevation: 8,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
     zIndex: 100,
   },
   addButtonGradient: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
     borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
 });

@@ -22,7 +22,7 @@ export default function AddMember() {
     position: '',
     phone: '',
     email: '',
-    image: 'https://randomuser.me/api/portraits/lego/1.jpg', // Imagen por defecto
+    image: '', // Imagen por defecto
   });
   
   const [formErrors, setFormErrors] = useState({});
