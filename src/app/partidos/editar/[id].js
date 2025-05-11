@@ -289,7 +289,7 @@ export default function EditarPartidoScreen() {
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Notas sobre el rival</Text>
               <TextInput
-                style={[styles.input, styles.textArea]}
+                style={[styles.input, styles.textAreaRival]}
                 value={partidoData.notasRival}
                 onChangeText={(text) =>
                   setPartidoData({ ...partidoData, notasRival: text })
@@ -342,7 +342,7 @@ export default function EditarPartidoScreen() {
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Estrategia y observaciones</Text>
               <TextInput
-                style={[styles.input, styles.textArea]}
+                style={[styles.input, styles.textAreaEstrategia]}
                 value={partidoData.estrategia}
                 onChangeText={(text) =>
                   setPartidoData({ ...partidoData, estrategia: text })
@@ -473,8 +473,13 @@ const styles = StyleSheet.create({
   dateText: {
     color: "#fff",
   },
-  textArea: {
-    height: 120,
+  textAreaEstrategia: {
+    height: 450,
+    textAlignVertical: "top",
+    paddingTop: 12,
+  },
+  textAreaRival: {
+    height: 350,
     textAlignVertical: "top",
     paddingTop: 12,
   },
