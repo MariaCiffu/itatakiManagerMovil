@@ -11,17 +11,19 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
+  Dimensions,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-import { Swipeable } from "react-native-gesture-handler";
-import { useFocusEffect } from "@react-navigation/native"; // Importar useFocusEffect
+import { Swipeable, GestureHandlerRootView } from "react-native-gesture-handler";
+import { useFocusEffect } from "@react-navigation/native";
 import { COLORS } from "../../constants/colors";
 import {
   getAllJugadores,
   deleteJugador,
 } from "../../services/jugadoresService";
-import { Search, Plus, Trash2, ArrowLeft } from "react-native-feather";
+import { Search, Plus, Trash2 } from "react-native-feather";
+import BackButton from "../../components/BackButton";
 
 export default function Jugadores() {
   const router = useRouter();
@@ -29,8 +31,11 @@ export default function Jugadores() {
   const [filteredPlayers, setFilteredPlayers] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-
-  // Usar un objeto para almacenar las referencias
+  
+  // Referencia para el swipeable actualmente abierto
+  const openSwipeableRef = useRef(null);
+  
+  // Mapa de referencias para todos los swipeables
   const swipeableRefs = useRef({});
 
   const loadPlayers = useCallback(async () => {
@@ -70,10 +75,18 @@ export default function Jugadores() {
   }, [searchQuery, players]);
 
   const handleAddPlayer = () => {
+    if (openSwipeableRef.current) {
+      openSwipeableRef.current.close();
+      openSwipeableRef.current = null;
+    }
     router.push("/jugadores/add-player");
   };
 
   const handlePlayerPress = (player) => {
+    if (openSwipeableRef.current) {
+      openSwipeableRef.current.close();
+      openSwipeableRef.current = null;
+    }
     router.push({
       pathname: `/jugadores/${player.id}`,
       params: { id: player.id },
@@ -89,10 +102,9 @@ export default function Jugadores() {
           text: "Cancelar",
           style: "cancel",
           onPress: () => {
-            // Verificar si la referencia existe y tiene el método close
-            const swipeableRef = swipeableRefs.current[playerId];
-            if (swipeableRef && typeof swipeableRef.close === "function") {
-              swipeableRef.close();
+            if (openSwipeableRef.current) {
+              openSwipeableRef.current.close();
+              openSwipeableRef.current = null;
             }
           },
         },
@@ -103,10 +115,10 @@ export default function Jugadores() {
             try {
               const result = await deleteJugador(playerId);
               if (result.success) {
-                // Actualizar la lista de jugadores
                 setPlayers((prevPlayers) =>
                   prevPlayers.filter((player) => player.id !== playerId)
                 );
+                openSwipeableRef.current = null;
                 Alert.alert("Éxito", "Jugador eliminado correctamente");
               } else {
                 Alert.alert(
@@ -124,129 +136,151 @@ export default function Jugadores() {
     );
   };
 
+  // Función para cerrar todos los swipeables excepto el actual
+  const closeOtherSwipeables = useCallback((currentRef) => {
+    if (openSwipeableRef.current && openSwipeableRef.current !== currentRef) {
+      openSwipeableRef.current.close();
+    }
+    openSwipeableRef.current = currentRef;
+  }, []);
+
   const renderRightActions = (playerId) => {
     return (
-      <TouchableOpacity
-        style={styles.deleteAction}
-        onPress={() => handleDeletePlayer(playerId)}
-      >
-        <Trash2 width={24} height={24} color="#fff" />
-      </TouchableOpacity>
+      <View style={styles.rightActionContainer}>
+        <TouchableOpacity
+          style={styles.deleteAction}
+          onPress={() => handleDeletePlayer(playerId)}
+        >
+          <Trash2 width={24} height={24} color="#fff" />
+        </TouchableOpacity>
+      </View>
     );
   };
 
   const renderPlayer = ({ item }) => {
     return (
-      <Swipeable
-        ref={(ref) => {
-          // Solo guardar la referencia si no es null
-          if (ref) {
-            swipeableRefs.current[item.id] = ref;
-          }
-        }}
-        renderRightActions={() => renderRightActions(item.id)}
-        overshootRight={false}
-        friction={2}
-        rightThreshold={40}
-      >
-        <TouchableOpacity
-          style={styles.playerCard}
-          activeOpacity={0.8}
-          onPress={() => handlePlayerPress(item)}
+      <View style={styles.playerCardContainer}>
+        <Swipeable
+          ref={(ref) => {
+            if (ref) {
+              swipeableRefs.current[item.id] = ref;
+            } else {
+              delete swipeableRefs.current[item.id];
+            }
+          }}
+          renderRightActions={() => renderRightActions(item.id)}
+          onSwipeableOpen={() => {
+            closeOtherSwipeables(swipeableRefs.current[item.id]);
+          }}
+          friction={0.8}
+          overshootFriction={8}
+          rightThreshold={40}
+          useNativeAnimations={true}
         >
-          <LinearGradient
-            colors={[COLORS.card, "#252525"]}
-            style={styles.cardGradient}
+          <TouchableOpacity
+            style={styles.playerCard}
+            activeOpacity={0.8}
+            onPress={() => handlePlayerPress(item)}
           >
-            <View style={styles.playerInfo}>
-              <Image
-                source={{
-                  uri:
-                    item.image ||
-                    "https://randomuser.me/api/portraits/lego/1.jpg",
-                }}
-                style={styles.playerImage}
-              />
-              <View style={styles.playerDetails}>
-                <Text style={styles.playerName}>{item.name}</Text>
-                <Text style={styles.playerPosition}>
-                  {item.position || "Sin posición"}
-                </Text>
-              </View>
-              {item.number && (
-                <View style={styles.numberContainer}>
-                  <Text style={styles.playerNumber}>{item.number}</Text>
+            <LinearGradient
+              colors={[COLORS.card, "#252525"]}
+              style={styles.cardGradient}
+            >
+              <View style={styles.playerInfo}>
+                <Image
+                  source={{
+                    uri:
+                      item.image ||
+                      "https://randomuser.me/api/portraits/lego/1.jpg",
+                  }}
+                  style={styles.playerImage}
+                />
+                <View style={styles.playerDetails}>
+                  <Text style={styles.playerName}>{item.name}</Text>
+                  <Text style={styles.playerPosition}>
+                    {item.position || "Sin posición"}
+                  </Text>
                 </View>
-              )}
-            </View>
-          </LinearGradient>
-        </TouchableOpacity>
-      </Swipeable>
+                {item.number && (
+                  <View style={styles.numberContainer}>
+                    <Text style={styles.playerNumber}>{item.number}</Text>
+                  </View>
+                )}
+              </View>
+            </LinearGradient>
+          </TouchableOpacity>
+        </Swipeable>
+      </View>
     );
   };
 
+  // Función para cerrar el swipeable abierto
+  const closeOpenSwipeable = useCallback(() => {
+    if (openSwipeableRef.current) {
+      openSwipeableRef.current.close();
+      openSwipeableRef.current = null;
+    }
+  }, []);
+
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        {/* Botón de volver atrás */}
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-          activeOpacity={0.7}
-        >
-          <ArrowLeft width={24} height={24} color={COLORS.text} />
-        </TouchableOpacity>
-
-        <Text style={styles.title}>Jugadores</Text>
-
-        {/* Espacio vacío para mantener el título centrado */}
-        <View style={styles.backButton} />
-      </View>
-
-      <View style={styles.searchContainer}>
-        <Search width={20} height={20} color={COLORS.textSecondary} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Buscar jugador..."
-          placeholderTextColor={COLORS.textSecondary}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
-      </View>
-
-      {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <BackButton />
+          <Text style={styles.title}>Jugadores</Text>
+          <View style={{ width: 40 }} />
         </View>
-      ) : (
-        <FlatList
-          data={filteredPlayers}
-          keyExtractor={(item) => item.id}
-          renderItem={renderPlayer}
-          contentContainerStyle={styles.playersList}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No hay jugadores</Text>
-            </View>
-          }
-        />
-      )}
 
-      {/* Botón flotante para añadir jugador */}
-      <TouchableOpacity
-        style={styles.addButton}
-        activeOpacity={0.8}
-        onPress={handleAddPlayer}
-      >
-        <LinearGradient
-          colors={[COLORS.primary, COLORS.primaryDark]}
-          style={styles.addButtonGradient}
+        <View style={styles.searchContainer}>
+          <Search width={20} height={20} color={COLORS.textSecondary} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Buscar jugador..."
+            placeholderTextColor={COLORS.textSecondary}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            onFocus={closeOpenSwipeable}
+          />
+        </View>
+
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+          </View>
+        ) : (
+          <FlatList
+            data={filteredPlayers}
+            keyExtractor={(item) => item.id}
+            renderItem={renderPlayer}
+            contentContainerStyle={styles.playersList}
+            showsVerticalScrollIndicator={false}
+            onScrollBeginDrag={closeOpenSwipeable}
+            onTouchStart={closeOpenSwipeable}
+            removeClippedSubviews={true}
+            maxToRenderPerBatch={10}
+            windowSize={10}
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>No hay jugadores</Text>
+              </View>
+            }
+          />
+        )}
+
+        <TouchableOpacity
+          style={styles.addButton}
+          activeOpacity={0.8}
+          onPress={handleAddPlayer}
         >
-          <Plus width={24} height={24} color="#FFF" />
-        </LinearGradient>
-      </TouchableOpacity>
-    </View>
+          <LinearGradient
+            colors={[COLORS.primary, COLORS.primaryDark]}
+            style={styles.addButtonGradient}
+          >
+            <Plus width={24} height={24} color="#FFF" />
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
+    </GestureHandlerRootView>
   );
 }
 
@@ -261,14 +295,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 20,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
-    justifyContent: "center",
-    alignItems: "center",
   },
   title: {
     fontSize: 28,
@@ -292,8 +318,12 @@ const styles = StyleSheet.create({
   playersList: {
     paddingBottom: 20,
   },
-  playerCard: {
+  playerCardContainer: {
     marginBottom: 12,
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  playerCard: {
     borderRadius: 12,
     overflow: "hidden",
     backgroundColor: COLORS.background,
@@ -314,7 +344,7 @@ const styles = StyleSheet.create({
     height: 50,
     borderRadius: 25,
     marginRight: 12,
-    backgroundColor: COLORS.card, // Color de fondo para cuando no hay imagen
+    backgroundColor: COLORS.card,
   },
   playerDetails: {
     flex: 1,
@@ -357,14 +387,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: COLORS.textSecondary,
   },
+  rightActionContainer: {
+    width: 80,
+    height: "100%",
+  },
   deleteAction: {
     backgroundColor: COLORS.danger,
     justifyContent: "center",
     alignItems: "center",
-    width: 80,
-    height: "100%",
+    flex: 1,
+    borderTopRightRadius: 12,
+    borderBottomRightRadius: 12,
   },
-  // Estilos para el botón flotante
   addButton: {
     position: "absolute",
     bottom: 20,
