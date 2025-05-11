@@ -1,5 +1,5 @@
 // app/staff/index.js
-import React, { useState, useEffect } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -28,6 +28,7 @@ import {
 import { COLORS } from "../../constants/colors";
 import WhatsAppButton from "../../components/WhatsAppButton";
 import BackButton from "../../components/BackButton";
+import { useFocusEffect } from '@react-navigation/native';
 import { getAllStaff, searchStaff, updateStaffMember } from "../../services/staffService";
 
 export default function StaffList() {
@@ -39,26 +40,26 @@ export default function StaffList() {
   const [editingMember, setEditingMember] = useState(null);
   const [editedData, setEditedData] = useState({});
 
-  // Cargar datos al iniciar
-  useEffect(() => {
-    loadStaffData();
-  }, []);
-
-  // Función para cargar los datos del staff
-  const loadStaffData = async () => {
-    setLoading(true);
-    try {
-      const data = await getAllStaff();
-      setStaff(data);
-      setError(null);
-    } catch (err) {
-      setError("Error al cargar los datos del personal");
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Cargar staff cuando la pantalla obtiene el foco
+  useFocusEffect(
+    useCallback(() => {
+      const loadStaff = async () => {
+        try {
+          const data = await getAllStaff();
+          setStaff(data);
+        } catch (error) {
+          console.error('Error al cargar staff:', error);
+        }
+      };
+      
+      loadStaff();
+      
+      return () => {
+        // Limpieza si es necesaria
+      };
+    }, [])
+  );
+  
   // Función para buscar miembros del staff
   const handleSearch = async (query) => {
     setSearchQuery(query);
@@ -297,7 +298,7 @@ export default function StaffList() {
                 <View style={styles.contactItem}>
                   <PhoneIcon size={16} color={COLORS.primary} />
                   <Text style={styles.contactText}>
-                    {item.phone || "No disponible"}
+                    {item.phone || ""}
                   </Text>
 
                   {/* Botones de acción (ahora en la misma línea) */}
@@ -322,7 +323,7 @@ export default function StaffList() {
                 {/* Email */}
                 <View style={styles.contactItem}>
                   <EnvelopeIcon size={16} color={COLORS.primary} />
-                  <Text style={styles.contactText}>{item.email || "-"}</Text>
+                  <Text style={styles.contactText}>{item.email || ""}</Text>
                   {item.email && (
                     <TouchableOpacity
                       style={[
