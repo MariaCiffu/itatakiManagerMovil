@@ -9,6 +9,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BarChartIcon, CoinsIcon, PersonIcon, EditIcon, ArrowLeftIcon } from '../../../components/Icons';
 import { COLORS } from '../../../constants/colors';
 import { getJugadorById } from '../../../services/jugadoresService';
+import BackButton from '../../../components/BackButton';
 
 export default function PlayerLayout() {
   const { id } = useLocalSearchParams();
@@ -69,13 +70,7 @@ export default function PlayerLayout() {
           <View style={[styles.decorativeCircle2, { backgroundColor: `${COLORS.info}20` }]} />
 
           {/* Botón de retroceso integrado */}
-          <TouchableOpacity 
-            style={styles.backButton} 
-            onPress={() => router.back()}
-            activeOpacity={0.7}
-          >
-            <ArrowLeftIcon size={24} color="#fff" />
-          </TouchableOpacity>
+          <BackButton style={styles.backButton} />
 
           {/* Contenido del header */}
           <View style={styles.headerContent}>
