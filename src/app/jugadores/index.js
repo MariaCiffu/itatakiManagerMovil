@@ -1,17 +1,38 @@
 // app/jugadores/index.js
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, FlatList, StyleSheet, Image, TouchableOpacity, TextInput } from 'react-native';
 import { Link, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import { COLORS } from '../../constants/colors';
 import BackButton from '../../components/BackButton';
-import { PLAYERS } from '../../data/teamData'; 
+import { useFocusEffect } from '@react-navigation/native';
+import { getAllJugadores } from '../../services/jugadoresService';
 
 export default function PlayersScreen() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
-  const [players, setPlayers] = useState(PLAYERS);
+  const [players, setPlayers] = useState([]);
+
+  // Cargar jugadores cuando la pantalla obtiene el foco
+  useFocusEffect(
+    useCallback(() => {
+      const loadPlayers = async () => {
+        try {
+          const data = await getAllJugadores();
+          setPlayers(data);
+        } catch (error) {
+          console.error('Error al cargar jugadores:', error);
+        }
+      };
+      
+      loadPlayers();
+      
+      return () => {
+        // Limpieza si es necesaria
+      };
+    }, [])
+  );
   
   // Filtrar jugadores según la búsqueda
   const filteredPlayers = searchQuery 
@@ -26,7 +47,7 @@ export default function PlayersScreen() {
     <Link 
       href={{
         pathname: `/jugadores/${item.id}`,
-        params: { playerData: JSON.stringify(item) }
+        params: { id: item.id }
       }}
       asChild
     >

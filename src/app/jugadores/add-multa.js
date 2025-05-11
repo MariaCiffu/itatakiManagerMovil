@@ -1,92 +1,110 @@
+"use client"
+
 // app/jugadores/add-multa.js
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert } from 'react-native';
-import { useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
-import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { COLORS } from '../../constants/colors';
-import BackButton from '../../components/BackButton';
+import { useState } from "react"
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from "react-native"
+import { useRouter, useLocalSearchParams } from "expo-router"
+import { LinearGradient } from "expo-linear-gradient"
+import DateTimePicker from "@react-native-community/datetimepicker"
+import FontAwesome5 from "react-native-vector-icons/FontAwesome5"
+import { COLORS } from "../../constants/colors"
+import { addMultaToJugador } from "../../services/jugadoresService"
+import BackButton from "../../components/BackButton"
 
 export default function AddMulta() {
-  const router = useRouter();
+  const router = useRouter()
+  const { jugadorId } = useLocalSearchParams()
   const [multa, setMulta] = useState({
-    motivo: '',
-    importe: '',
-    fecha: '',
-    pagado: false
-  });
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [formErrors, setFormErrors] = useState({});
+    reason: "",
+    amount: "",
+    date: "",
+    paid: false,
+  })
+  const [showDatePicker, setShowDatePicker] = useState(false)
+  const [formErrors, setFormErrors] = useState({})
+  const [isLoading, setIsLoading] = useState(false)
 
   const handleChange = (field, value) => {
-    setMulta({ ...multa, [field]: value });
+    setMulta({ ...multa, [field]: value })
     // Limpiar error cuando se modifica el campo
     if (formErrors[field]) {
-      setFormErrors({...formErrors, [field]: null});
+      setFormErrors({ ...formErrors, [field]: null })
     }
-  };
+  }
 
   const handleDateChange = (event, selectedDate) => {
-    setShowDatePicker(false);
+    setShowDatePicker(false)
     if (selectedDate) {
-      const day = String(selectedDate.getDate()).padStart(2, '0');
-      const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
-      const year = selectedDate.getFullYear();
-      const dateStr = `${day}/${month}/${year}`;
-      handleChange('fecha', dateStr);
+      const day = String(selectedDate.getDate()).padStart(2, "0")
+      const month = String(selectedDate.getMonth() + 1).padStart(2, "0")
+      const year = selectedDate.getFullYear()
+      const dateStr = `${day}/${month}/${year}`
+      handleChange("date", dateStr)
     }
-  };
+  }
 
   const togglePagado = () => {
-    setMulta({ ...multa, pagado: !multa.pagado });
-  };
+    setMulta({ ...multa, paid: !multa.paid })
+  }
 
   const validateForm = () => {
-    const errors = {};
-    
-    if (!multa.motivo.trim()) {
-      errors.motivo = 'El motivo es obligatorio';
-    }
-    
-    if (!multa.importe.trim()) {
-      errors.importe = 'El importe es obligatorio';
-    } else if (isNaN(Number(multa.importe))) {
-      errors.importe = 'El importe debe ser un número';
-    }
-    
-    if (!multa.fecha.trim()) {
-      errors.fecha = 'La fecha es obligatoria';
-    }
-    
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
+    const errors = {}
 
-  const handleSave = () => {
+    if (!multa.reason.trim()) {
+      errors.reason = "El motivo es obligatorio"
+    }
+
+    if (!multa.amount.trim()) {
+      errors.amount = "El importe es obligatorio"
+    } else if (isNaN(Number(multa.amount))) {
+      errors.amount = "El importe debe ser un número"
+    }
+
+    if (!multa.date.trim()) {
+      errors.date = "La fecha es obligatoria"
+    }
+
+    setFormErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+
+  const handleSave = async () => {
     if (!validateForm()) {
       // Mostrar alerta con el primer error
-      const firstError = Object.values(formErrors)[0];
-      Alert.alert('Campos incompletos', firstError || 'Por favor completa todos los campos obligatorios.');
-      return;
+      const firstError = Object.values(formErrors)[0]
+      Alert.alert("Campos incompletos", firstError || "Por favor completa todos los campos obligatorios.")
+      return
     }
-    
-    console.log('Multa guardada:', multa);
-    
-    // Aquí iría la lógica para guardar la multa en la base de datos
-    
-    // Mostrar confirmación y volver a la pantalla anterior
-    Alert.alert(
-      'Multa registrada',
-      'La multa ha sido registrada correctamente',
-      [
-        {
-          text: 'OK',
-          onPress: () => router.back()
-        }
-      ]
-    );
-  };
+
+    // Convertir importe a número
+    const multaToSave = {
+      ...multa,
+      amount: Number(multa.amount),
+    }
+
+    setIsLoading(true)
+
+    try {
+      const result = await addMultaToJugador(jugadorId, multaToSave)
+
+      setIsLoading(false)
+
+      if (result.success) {
+        Alert.alert("Multa registrada", "La multa ha sido registrada correctamente", [
+          {
+            text: "OK",
+            onPress: () => router.back(),
+          },
+        ])
+      } else {
+        Alert.alert("Error", result.message || "No se pudo registrar la multa")
+      }
+    } catch (error) {
+      setIsLoading(false)
+      console.error("Error al guardar multa:", error)
+      Alert.alert("Error", "Ocurrió un error al guardar la multa")
+    }
+  }
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -98,88 +116,91 @@ export default function AddMulta() {
 
       <View style={styles.form}>
         {/* Motivo */}
-        <View style={[styles.inputContainer, formErrors.motivo ? styles.inputError : null]}>
-          <FontAwesome5 name="file-alt" size={20} color={formErrors.motivo ? COLORS.danger : COLORS.primary} />
+        <View style={[styles.inputContainer, formErrors.reason ? styles.inputError : null]}>
+          <FontAwesome5 name="file-alt" size={20} color={formErrors.reason ? COLORS.danger : COLORS.primary} />
           <TextInput
             placeholder="Motivo de la multa *"
             placeholderTextColor={COLORS.textSecondary}
-            value={multa.motivo}
-            onChangeText={(text) => handleChange('motivo', text)}
+            value={multa.reason}
+            onChangeText={(text) => handleChange("reason", text)}
             style={styles.input}
             multiline={true}
             numberOfLines={2}
           />
         </View>
+        {formErrors.reason && <Text style={styles.errorText}>{formErrors.reason}</Text>}
 
         {/* Importe */}
-        <View style={[styles.inputContainer, formErrors.importe ? styles.inputError : null]}>
-          <FontAwesome5 name="euro-sign" size={20} color={formErrors.importe ? COLORS.danger : COLORS.primary} />
+        <View style={[styles.inputContainer, formErrors.amount ? styles.inputError : null]}>
+          <FontAwesome5 name="euro-sign" size={20} color={formErrors.amount ? COLORS.danger : COLORS.primary} />
           <TextInput
             placeholder="Importe (€) *"
             placeholderTextColor={COLORS.textSecondary}
-            value={multa.importe}
-            onChangeText={(text) => handleChange('importe', text)}
+            value={multa.amount}
+            onChangeText={(text) => handleChange("amount", text)}
             style={styles.input}
             keyboardType="numeric"
           />
         </View>
+        {formErrors.amount && <Text style={styles.errorText}>{formErrors.amount}</Text>}
 
         {/* Fecha */}
-        <TouchableOpacity 
-          style={[styles.inputContainer, formErrors.fecha ? styles.inputError : null]}
+        <TouchableOpacity
+          style={[styles.inputContainer, formErrors.date ? styles.inputError : null]}
           onPress={() => setShowDatePicker(true)}
         >
-          <FontAwesome5 name="calendar-alt" size={20} color={formErrors.fecha ? COLORS.danger : COLORS.primary} />
-          <Text style={multa.fecha ? styles.input : styles.inputPlaceholder}>
-            {multa.fecha || 'Fecha *'}
-          </Text>
+          <FontAwesome5 name="calendar-alt" size={20} color={formErrors.date ? COLORS.danger : COLORS.primary} />
+          <Text style={multa.date ? styles.input : styles.inputPlaceholder}>{multa.date || "Fecha *"}</Text>
         </TouchableOpacity>
+        {formErrors.date && <Text style={styles.errorText}>{formErrors.date}</Text>}
+
         {showDatePicker && (
-          <DateTimePicker
-            value={new Date()}
-            mode="date"
-            display="spinner"
-            onChange={handleDateChange}
-          />
+          <DateTimePicker value={new Date()} mode="date" display="spinner" onChange={handleDateChange} />
         )}
 
         {/* Estado de pago */}
-        <TouchableOpacity 
-          style={styles.switchContainer}
-          onPress={togglePagado}
-        >
-          <View style={[
-            styles.switchTrack, 
-            { backgroundColor: multa.pagado ? `${COLORS.success}40` : `${COLORS.textSecondary}40` }
-          ]}>
-            <View style={[
-              styles.switchThumb, 
-              { 
-                backgroundColor: multa.pagado ? COLORS.success : COLORS.textSecondary,
-                transform: [{ translateX: multa.pagado ? 24 : 0 }]
-              }
-            ]}>
-              {multa.pagado && <FontAwesome5 name="check" size={12} color="#fff" />}
+        <TouchableOpacity style={styles.switchContainer} onPress={togglePagado}>
+          <View
+            style={[
+              styles.switchTrack,
+              { backgroundColor: multa.paid ? `${COLORS.success}40` : `${COLORS.textSecondary}40` },
+            ]}
+          >
+            <View
+              style={[
+                styles.switchThumb,
+                {
+                  backgroundColor: multa.paid ? COLORS.success : COLORS.textSecondary,
+                  transform: [{ translateX: multa.paid ? 24 : 0 }],
+                },
+              ]}
+            >
+              {multa.paid && <FontAwesome5 name="check" size={12} color="#fff" />}
             </View>
           </View>
-          <Text style={styles.switchLabel}>
-            {multa.pagado ? 'Pagada' : 'Pendiente de pago'}
-          </Text>
+          <Text style={styles.switchLabel}>{multa.paid ? "Pagada" : "Pendiente de pago"}</Text>
         </TouchableOpacity>
 
         {/* Botón guardar */}
-        <TouchableOpacity onPress={handleSave}>
-          <LinearGradient
-            colors={[COLORS.primary, COLORS.primaryDark]}
-            style={styles.saveButton}
-          >
-            <FontAwesome5 name="check" size={20} color="#fff" />
-            <Text style={styles.saveButtonText}>Guardar multa</Text>
+        <TouchableOpacity
+          onPress={handleSave}
+          disabled={isLoading}
+          style={isLoading ? styles.saveButtonDisabled : null}
+        >
+          <LinearGradient colors={[COLORS.primary, COLORS.primaryDark]} style={styles.saveButton}>
+            {isLoading ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <>
+                <FontAwesome5 name="check" size={20} color="#fff" />
+                <Text style={styles.saveButtonText}>Guardar multa</Text>
+              </>
+            )}
           </LinearGradient>
         </TouchableOpacity>
       </View>
     </ScrollView>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
@@ -189,18 +210,18 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: 24,
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   placeholder: {
     width: 40,
@@ -208,16 +229,16 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     color: COLORS.text,
-    fontWeight: 'bold',
-    textAlign: 'center',
+    fontWeight: "bold",
+    textAlign: "center",
   },
   form: {
     gap: 16,
-    paddingBottom: 24
+    paddingBottom: 24,
   },
   inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: COLORS.card,
     padding: 14,
     borderRadius: 10,
@@ -228,6 +249,13 @@ const styles = StyleSheet.create({
   inputError: {
     borderColor: COLORS.danger,
     borderWidth: 1,
+  },
+  errorText: {
+    color: COLORS.danger,
+    marginTop: -12,
+    marginBottom: 8,
+    marginLeft: 8,
+    fontSize: 12,
   },
   input: {
     flex: 1,
@@ -240,8 +268,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   switchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
     marginVertical: 8,
   },
@@ -255,8 +283,8 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   switchLabel: {
     color: COLORS.text,
@@ -265,15 +293,18 @@ const styles = StyleSheet.create({
   saveButton: {
     borderRadius: 10,
     paddingVertical: 14,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
     gap: 8,
     marginTop: 24,
   },
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
+  saveButtonDisabled: {
+    opacity: 0.7,
   },
-});
+  saveButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+})
