@@ -1,5 +1,5 @@
 // app/staff/index.js
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import {
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import * as ImagePicker from "expo-image-picker";
+import { Swipeable, GestureHandlerRootView } from "react-native-gesture-handler";
 import {
   ArrowLeftIcon,
   SearchIcon,
@@ -29,7 +30,8 @@ import { COLORS } from "../../constants/colors";
 import WhatsAppButton from "../../components/WhatsAppButton";
 import BackButton from "../../components/BackButton";
 import { useFocusEffect } from '@react-navigation/native';
-import { getAllStaff, searchStaff, updateStaffMember } from "../../services/staffService";
+import { getAllStaff, searchStaff, updateStaffMember, deleteStaffMember } from "../../services/staffService";
+import { Trash2 } from "react-native-feather";
 
 export default function StaffList() {
   const router = useRouter();
@@ -39,16 +41,26 @@ export default function StaffList() {
   const [searchQuery, setSearchQuery] = useState("");
   const [editingMember, setEditingMember] = useState(null);
   const [editedData, setEditedData] = useState({});
+  
+  // Referencia para el swipeable actualmente abierto
+  const openSwipeableRef = useRef(null);
+  
+  // Mapa de referencias para todos los swipeables
+  const swipeableRefs = useRef({});
 
   // Cargar staff cuando la pantalla obtiene el foco
   useFocusEffect(
     useCallback(() => {
       const loadStaff = async () => {
         try {
+          setLoading(true);
           const data = await getAllStaff();
           setStaff(data);
+          setLoading(false);
         } catch (error) {
           console.error('Error al cargar staff:', error);
+          setLoading(false);
+          setError("No se pudo cargar el staff");
         }
       };
       
@@ -64,7 +76,8 @@ export default function StaffList() {
   const handleSearch = async (query) => {
     setSearchQuery(query);
     if (query.trim() === "") {
-      loadStaffData();
+      const data = await getAllStaff();
+      setStaff(data);
       return;
     }
     
@@ -80,10 +93,12 @@ export default function StaffList() {
   };
 
   const handleAddMember = () => {
+    closeOpenSwipeable();
     router.push("/staff/add-member");
   };
 
   const handleEditMember = (member) => {
+    closeOpenSwipeable();
     setEditingMember(member.id);
     setEditedData({ ...member });
   };
@@ -174,6 +189,76 @@ export default function StaffList() {
         },
       },
     ]);
+  };
+  
+  // Función para eliminar un miembro del staff
+  const handleDeleteMember = (memberId) => {
+    Alert.alert(
+      "Eliminar miembro",
+      "¿Estás seguro de que quieres eliminar este miembro del staff?",
+      [
+        {
+          text: "Cancelar",
+          style: "cancel",
+          onPress: () => {
+            if (openSwipeableRef.current) {
+              openSwipeableRef.current.close();
+              openSwipeableRef.current = null;
+            }
+          },
+        },
+        {
+          text: "Eliminar",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const result = await deleteStaffMember(memberId);
+              if (result.success) {
+                // Actualizar la lista local
+                setStaff((prevStaff) => prevStaff.filter((member) => member.id !== memberId));
+                openSwipeableRef.current = null;
+                Alert.alert("Éxito", "Miembro eliminado correctamente");
+              } else {
+                Alert.alert("Error", result.message || "No se pudo eliminar el miembro");
+              }
+            } catch (error) {
+              console.error("Error al eliminar miembro:", error);
+              Alert.alert("Error", "Ocurrió un error al eliminar el miembro");
+            }
+          },
+        },
+      ]
+    );
+  };
+  
+  // Función para cerrar todos los swipeables excepto el actual
+  const closeOtherSwipeables = useCallback((currentRef) => {
+    if (openSwipeableRef.current && openSwipeableRef.current !== currentRef) {
+      openSwipeableRef.current.close();
+    }
+    openSwipeableRef.current = currentRef;
+  }, []);
+  
+  // Función para cerrar el swipeable abierto
+  const closeOpenSwipeable = useCallback(() => {
+    if (openSwipeableRef.current) {
+      openSwipeableRef.current.close();
+      openSwipeableRef.current = null;
+    }
+  }, []);
+  
+  // Renderizar las acciones de deslizamiento (botón de eliminar)
+  const renderRightActions = (memberId) => {
+    return (
+      <View style={styles.rightActionContainer}>
+        <TouchableOpacity
+          style={styles.deleteAction}
+          onPress={() => handleDeleteMember(memberId)}
+        >
+          <Trash2 width={24} height={24} color="#fff" />
+        </TouchableOpacity>
+      </View>
+    );
   };
 
   const renderMember = ({ item }) => {
@@ -278,83 +363,103 @@ export default function StaffList() {
     }
 
     return (
-      <View style={styles.memberCard}>
-        <LinearGradient
-          colors={[COLORS.card, "#252525"]}
-          style={styles.cardGradient}
+      <View style={styles.memberCardContainer}>
+        <Swipeable
+          ref={(ref) => {
+            if (ref) {
+              swipeableRefs.current[item.id] = ref;
+            } else {
+              delete swipeableRefs.current[item.id];
+            }
+          }}
+          renderRightActions={() => renderRightActions(item.id)}
+          onSwipeableOpen={() => {
+            closeOtherSwipeables(swipeableRefs.current[item.id]);
+          }}
+          friction={0.8}
+          overshootFriction={8}
+          rightThreshold={40}
+          useNativeAnimations={true}
         >
-          <View style={styles.memberContent}>
-            {/* Imagen del miembro */}
-            <Image source={{ uri: item.image }} style={styles.memberImage} />
+          <View style={styles.memberCard}>
+            <LinearGradient
+              colors={[COLORS.card, "#252525"]}
+              style={styles.cardGradient}
+            >
+              <View style={styles.memberContent}>
+                {/* Imagen del miembro */}
+                <Image source={{ uri: item.image }} style={styles.memberImage} />
 
-            {/* Información del miembro */}
-            <View style={styles.memberInfo}>
-              <Text style={styles.memberName}>{item.name}</Text>
-              <Text style={styles.memberPosition}>{item.position}</Text>
+                {/* Información del miembro */}
+                <View style={styles.memberInfo}>
+                  <Text style={styles.memberName}>{item.name}</Text>
+                  <Text style={styles.memberPosition}>{item.position}</Text>
 
-              {/* Contenedor de contacto */}
-              <View style={styles.contactContainer}>
-                {/* Teléfono */}
-                <View style={styles.contactItem}>
-                  <PhoneIcon size={16} color={COLORS.primary} />
-                  <Text style={styles.contactText}>
-                    {item.phone || ""}
-                  </Text>
+                  {/* Contenedor de contacto */}
+                  <View style={styles.contactContainer}>
+                    {/* Teléfono */}
+                    <View style={styles.contactItem}>
+                      <PhoneIcon size={16} color={COLORS.primary} />
+                      <Text style={styles.contactText}>
+                        {item.phone || ""}
+                      </Text>
 
-                  {/* Botones de acción (ahora en la misma línea) */}
-                  {item.phone && (
-                    <View style={styles.actionButtonsContainer}>
-                      <TouchableOpacity
-                        style={[
-                          styles.actionButton,
-                          { backgroundColor: "#4CAF50" },
-                        ]}
-                        onPress={() => Linking.openURL(`tel:${item.phone}`)}
-                      >
-                        <PhoneIcon size={14} color="#fff" />
-                      </TouchableOpacity>
+                      {/* Botones de acción (ahora en la misma línea) */}
+                      {item.phone && (
+                        <View style={styles.actionButtonsContainer}>
+                          <TouchableOpacity
+                            style={[
+                              styles.actionButton,
+                              { backgroundColor: "#4CAF50" },
+                            ]}
+                            onPress={() => Linking.openURL(`tel:${item.phone}`)}
+                          >
+                            <PhoneIcon size={14} color="#fff" />
+                          </TouchableOpacity>
 
-                      {/* Botón de WhatsApp */}
-                      <WhatsAppButton phone={item.phone} />
+                          {/* Botón de WhatsApp */}
+                          <WhatsAppButton phone={item.phone} />
+                        </View>
+                      )}
                     </View>
-                  )}
+
+                    {/* Email */}
+                    <View style={styles.contactItem}>
+                      <EnvelopeIcon size={16} color={COLORS.primary} />
+                      <Text style={styles.contactText}>{item.email || ""}</Text>
+                      {item.email && (
+                        <TouchableOpacity
+                          style={[
+                            styles.actionButton,
+                            { backgroundColor: "#4CAF50" },
+                          ]}
+                          onPress={() => Linking.openURL(`mailto:${item.email}`)}
+                        >
+                          <EnvelopeIcon size={16} color="#fff" />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  </View>
                 </View>
 
-                {/* Email */}
-                <View style={styles.contactItem}>
-                  <EnvelopeIcon size={16} color={COLORS.primary} />
-                  <Text style={styles.contactText}>{item.email || ""}</Text>
-                  {item.email && (
-                    <TouchableOpacity
-                      style={[
-                        styles.actionButton,
-                        { backgroundColor: "#4CAF50" },
-                      ]}
-                      onPress={() => Linking.openURL(`mailto:${item.email}`)}
-                    >
-                      <EnvelopeIcon size={16} color="#fff" />
-                    </TouchableOpacity>
-                  )}
+                {/* Botones de acción en columna a la derecha */}
+                <View style={styles.actionsColumn}>
+                  {/* Botón de editar arriba */}
+                  <TouchableOpacity
+                    style={styles.editButton}
+                    onPress={() => handleEditMember(item)}
+                    activeOpacity={0.7}
+                  >
+                    <EditIcon size={16} color="#fff" />
+                  </TouchableOpacity>
+
+                  {/* Espacio entre botones */}
+                  <View style={{ height: 8 }} />
                 </View>
               </View>
-            </View>
-
-            {/* Botones de acción en columna a la derecha */}
-            <View style={styles.actionsColumn}>
-              {/* Botón de editar arriba */}
-              <TouchableOpacity
-                style={styles.editButton}
-                onPress={() => handleEditMember(item)}
-                activeOpacity={0.7}
-              >
-                <EditIcon size={16} color="#fff" />
-              </TouchableOpacity>
-
-              {/* Espacio entre botones */}
-              <View style={{ height: 8 }} />
-            </View>
+            </LinearGradient>
           </View>
-        </LinearGradient>
+        </Swipeable>
       </View>
     );
   };
@@ -375,7 +480,22 @@ export default function StaffList() {
         <Text style={styles.errorText}>{error}</Text>
         <TouchableOpacity 
           style={styles.retryButton} 
-          onPress={loadStaffData}
+          onPress={() => {
+            setError(null);
+            const loadStaff = async () => {
+              try {
+                setLoading(true);
+                const data = await getAllStaff();
+                setStaff(data);
+                setLoading(false);
+              } catch (error) {
+                console.error('Error al cargar staff:', error);
+                setLoading(false);
+                setError("No se pudo cargar el staff");
+              }
+            };
+            loadStaff();
+          }}
         >
           <Text style={styles.retryButtonText}>Reintentar</Text>
         </TouchableOpacity>
@@ -384,47 +504,54 @@ export default function StaffList() {
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <BackButton />
-        <Text style={styles.title}>Staff técnico</Text>
-        <View style={styles.placeholder} />
-      </View>
-
-      <View style={styles.searchContainer}>
-        <View style={styles.searchInputContainer}>
-          <SearchIcon size={20} color={COLORS.textSecondary} />
-          <TextInput
-            placeholder="Buscar miembro..."
-            placeholderTextColor={COLORS.textSecondary}
-            style={styles.searchInput}
-            value={searchQuery}
-            onChangeText={handleSearch}
-          />
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <View style={styles.container} onTouchStart={closeOpenSwipeable}>
+        <View style={styles.header}>
+          <BackButton />
+          <Text style={styles.title}>Staff técnico</Text>
+          <View style={styles.placeholder} />
         </View>
 
-        <TouchableOpacity
-          style={[styles.addButton, { backgroundColor: COLORS.primary }]}
-          onPress={handleAddMember}
-          activeOpacity={0.7}
-        >
-          <PlusUserIcon size={20} color="#fff" />
-        </TouchableOpacity>
-      </View>
-
-      <FlatList
-        data={staff}
-        renderItem={renderMember}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContainer}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No se encontraron miembros</Text>
+        <View style={styles.searchContainer}>
+          <View style={styles.searchInputContainer}>
+            <SearchIcon size={20} color={COLORS.textSecondary} />
+            <TextInput
+              placeholder="Buscar miembro..."
+              placeholderTextColor={COLORS.textSecondary}
+              style={styles.searchInput}
+              value={searchQuery}
+              onChangeText={handleSearch}
+              onFocus={closeOpenSwipeable}
+            />
           </View>
-        }
-      />
-    </View>
+
+          <TouchableOpacity
+            style={[styles.addButton, { backgroundColor: COLORS.primary }]}
+            onPress={handleAddMember}
+            activeOpacity={0.7}
+          >
+            <PlusUserIcon size={20} color="#fff" />
+          </TouchableOpacity>
+        </View>
+
+        <FlatList
+          data={staff}
+          renderItem={renderMember}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContainer}
+          showsVerticalScrollIndicator={false}
+          onScrollBeginDrag={closeOpenSwipeable}
+          removeClippedSubviews={true}
+          maxToRenderPerBatch={10}
+          windowSize={10}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No se encontraron miembros</Text>
+            </View>
+          }
+        />
+      </View>
+    </GestureHandlerRootView>
   );
 }
 
@@ -523,8 +650,13 @@ const styles = StyleSheet.create({
   listContainer: {
     paddingBottom: 16,
   },
-  memberCard: {
+  // Nuevo contenedor para la tarjeta con Swipeable
+  memberCardContainer: {
     marginBottom: 16,
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  memberCard: {
     borderRadius: 12,
     overflow: "hidden",
   },
@@ -573,9 +705,8 @@ const styles = StyleSheet.create({
   contactText: {
     color: COLORS.textSecondary,
     fontSize: 14,
-
   },
-  // Nuevo estilo para la columna de acciones
+  // Estilos para la columna de acciones
   actionsColumn: {
     justifyContent: "flex-start",
     alignItems: "center",
@@ -713,5 +844,18 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginLeft: 8,
+  },
+  // Estilos para el swipeable y el botón de eliminar
+  rightActionContainer: {
+    width: 80,
+    height: "100%",
+  },
+  deleteAction: {
+    backgroundColor: COLORS.danger,
+    justifyContent: "center",
+    alignItems: "center",
+    flex: 1,
+    borderTopRightRadius: 12,
+    borderBottomRightRadius: 12,
   },
 });
