@@ -6,6 +6,7 @@ import React, {
   useRef,
   forwardRef,
   useImperativeHandle,
+  useMemo
 } from "react";
 import {
   View,
@@ -45,7 +46,8 @@ const POSITION_MAPPING = {
 const LineupScreen = forwardRef(
   (
     {
-      matchday = 35,
+      matchday = "",
+      matchTitle = null,
       isEmbedded = false,
       initialData = null,
       onSaveLineup = null,
@@ -98,6 +100,16 @@ const LineupScreen = forwardRef(
 
     // Estado para mostrar el indicador de guardado
     const [showSavedIndicator, setShowSavedIndicator] = useState(false);
+
+    // Título de la pantalla
+     const screenTitle = useMemo(() => {
+      return (
+        matchTitle ||
+        (typeof matchday === "number"
+          ? `Jornada ${matchday}`
+          : matchday || "Alineación")
+      );
+    }, [matchTitle, matchday]);
 
     // Animaciones
     const formationChangeAnim = useRef(new Animated.Value(0)).current;
@@ -206,7 +218,10 @@ const LineupScreen = forwardRef(
           } else {
             // Si son objetos completos (para compatibilidad)
             setSubstitutes(initialData.suplentes);
-            console.log("Suplentes cargados (objetos completos):", initialData.suplentes.length);
+            console.log(
+              "Suplentes cargados (objetos completos):",
+              initialData.suplentes.length
+            );
           }
         }
 
@@ -721,7 +736,7 @@ const LineupScreen = forwardRef(
               <Ionicons name="arrow-back" size={24} color={colors.text} />
             </TouchableOpacity>
             <Text style={[styles.headerTitle, { color: colors.text }]}>
-              Alineación jornada {matchday}
+              {screenTitle}
             </Text>
 
             {/* Indicador de guardado */}
@@ -855,7 +870,12 @@ const LineupScreen = forwardRef(
               </TouchableOpacity>
             )}
             {substitutes.length === 0 && (
-              <Text style={[styles.emptyListText, { color: colors.textSecondary, marginLeft: 10 }]}>
+              <Text
+                style={[
+                  styles.emptyListText,
+                  { color: colors.textSecondary, marginLeft: 10 },
+                ]}
+              >
                 No hay suplentes
               </Text>
             )}

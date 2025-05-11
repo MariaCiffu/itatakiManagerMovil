@@ -2,6 +2,7 @@
 export const PARTIDOS = [
   {
     id: "1",
+    tipoPartido: "liga",
     jornada: "1",
     rival: "FC Barcelona",
     fecha: "2023-09-10T18:00:00.000Z",
@@ -34,6 +35,7 @@ export const PARTIDOS = [
   },
   {
     id: "2",
+    tipoPartido: "liga",
     jornada: "2",
     rival: "Real Madrid",
     fecha: "2023-09-17T20:00:00.000Z",
@@ -56,7 +58,8 @@ export const PARTIDOS = [
     estrategia: "",
     fecha: "2025-05-10T19:17:30.368Z",
     id: "3",
-    jornada: "5",
+    tipoPartido: "amistoso",
+    jornada: "",
     lugar: "Casa",
     lugarEspecifico: "",
     notasRival: "",

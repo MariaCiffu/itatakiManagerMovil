@@ -1,18 +1,21 @@
 // src/app/partidos/[id].js
 import React, { useState, useEffect } from "react";
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  ScrollView, 
-  SafeAreaView, 
-  ActivityIndicator, 
-  Alert 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  SafeAreaView,
+  ActivityIndicator,
+  Alert,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { getPartidoByIdWithDelay, deletePartidoWithDelay } from "../../services/partidosService";
+import {
+  getPartidoByIdWithDelay,
+  deletePartidoWithDelay,
+} from "../../services/partidosService";
 import { getAllJugadores } from "../../services/jugadoresService";
 
 export default function DetallePartidoScreen() {
@@ -25,21 +28,21 @@ export default function DetallePartidoScreen() {
 
   // Definición de los roles disponibles (igual que en PlayerRoleSelector)
   const availableRoles = [
-    { 
-      id: "captain", 
-      name: "Capitán", 
+    {
+      id: "captain",
+      name: "Capitán",
       type: "letter",
       letter: "C",
       letterColor: "#000000",
-      backgroundColor: "#FFC107"  // Amarillo/Dorado
+      backgroundColor: "#FFC107", // Amarillo/Dorado
     },
-    { 
-      id: "freeKicks", 
-      name: "Faltas lejanas", 
+    {
+      id: "freeKicks",
+      name: "Faltas lejanas",
       type: "letter",
       letter: "F",
       letterColor: "#FFFFFF",
-      backgroundColor: "#FF5722"  // Naranja/Rojo
+      backgroundColor: "#FF5722", // Naranja/Rojo
     },
     {
       id: "freeKicksNear",
@@ -47,23 +50,23 @@ export default function DetallePartidoScreen() {
       type: "letter",
       letter: "f",
       letterColor: "#000000",
-      backgroundColor: "#FF9800"  // Naranja
+      backgroundColor: "#FF9800", // Naranja
     },
-    { 
-      id: "corners", 
-      name: "Córners", 
-      type: "icon", 
+    {
+      id: "corners",
+      name: "Córners",
+      type: "icon",
       icon: "flag-outline",
       iconColor: "#FFFFFF",
-      backgroundColor: "#2196F3"  // Azul
+      backgroundColor: "#2196F3", // Azul
     },
-    { 
-      id: "penalties", 
-      name: "Penaltis", 
+    {
+      id: "penalties",
+      name: "Penaltis",
       type: "letter",
       letter: "P",
       letterColor: "#FFFFFF",
-      backgroundColor: "#E91E63"  // Rosa/Fucsia
+      backgroundColor: "#E91E63", // Rosa/Fucsia
     },
   ];
 
@@ -77,9 +80,9 @@ export default function DetallePartidoScreen() {
       // Cargar partido y jugadores en paralelo
       const [partidoData, jugadoresData] = await Promise.all([
         getPartidoByIdWithDelay(id),
-        getAllJugadores()
+        getAllJugadores(),
       ]);
-      
+
       if (partidoData) {
         // Asegurarse de que la fecha es un objeto Date
         partidoData.fecha = new Date(partidoData.fecha);
@@ -90,7 +93,7 @@ export default function DetallePartidoScreen() {
         router.replace("/partidos");
         return;
       }
-      
+
       setJugadores(jugadoresData);
     } catch (error) {
       console.error("Error al cargar datos:", error);
@@ -111,8 +114,8 @@ export default function DetallePartidoScreen() {
       "¿Estás seguro de que quieres eliminar este partido?",
       [
         { text: "Cancelar", style: "cancel" },
-        { 
-          text: "Eliminar", 
+        {
+          text: "Eliminar",
           style: "destructive",
           onPress: async () => {
             try {
@@ -124,8 +127,8 @@ export default function DetallePartidoScreen() {
               Alert.alert("Error", "No se pudo eliminar el partido");
               setDeleting(false);
             }
-          }
-        }
+          },
+        },
       ]
     );
   };
@@ -137,8 +140,8 @@ export default function DetallePartidoScreen() {
   // Función para obtener el nombre del jugador por ID usando el estado local
   const getPlayerNameById = (playerId) => {
     if (!playerId) return "No asignado";
-    
-    const jugador = jugadores.find(player => player.id === playerId);
+
+    const jugador = jugadores.find((player) => player.id === playerId);
     return jugador ? jugador.name : "No asignado";
   };
 
@@ -146,13 +149,21 @@ export default function DetallePartidoScreen() {
   const renderRoleIndicator = (role) => {
     if (role.type === "icon") {
       return (
-        <View style={[styles.rolBadge, { backgroundColor: role.backgroundColor }]}>
-          <Ionicons name={role.icon.replace("-outline", "")} size={12} color={role.iconColor || "#FFFFFF"} />
+        <View
+          style={[styles.rolBadge, { backgroundColor: role.backgroundColor }]}
+        >
+          <Ionicons
+            name={role.icon.replace("-outline", "")}
+            size={12}
+            color={role.iconColor || "#FFFFFF"}
+          />
         </View>
       );
     } else if (role.type === "letter") {
       return (
-        <View style={[styles.rolBadge, { backgroundColor: role.backgroundColor }]}>
+        <View
+          style={[styles.rolBadge, { backgroundColor: role.backgroundColor }]}
+        >
           <Text style={[styles.rolBadgeText, { color: role.letterColor }]}>
             {role.letter}
           </Text>
@@ -175,20 +186,29 @@ export default function DetallePartidoScreen() {
 
   // Determinar si hay notas para mostrar (estrategia o notas del rival)
   const hayNotas = partido.estrategia || partido.notasRival;
-  
+
   // Determinar si hay roles especiales asignados
-  const hayRolesEspeciales = partido.alineacion && 
-    partido.alineacion.specialRoles && 
-    Object.values(partido.alineacion.specialRoles).some(role => role !== null);
+  const hayRolesEspeciales =
+    partido.alineacion &&
+    partido.alineacion.specialRoles &&
+    Object.values(partido.alineacion.specialRoles).some(
+      (role) => role !== null
+    );
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.backButton}
+        >
           <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Detalles del partido</Text>
-        <TouchableOpacity onPress={handleEditarPartido} style={styles.editButton}>
+        <TouchableOpacity
+          onPress={handleEditarPartido}
+          style={styles.editButton}
+        >
           <Ionicons name="create-outline" size={24} color="#fff" />
         </TouchableOpacity>
       </View>
@@ -197,25 +217,44 @@ export default function DetallePartidoScreen() {
         {/* Sección de información general */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Información general</Text>
-          
+
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Jornada:</Text>
-            <Text style={styles.infoValue}>{partido.jornada}</Text>
+            <Text style={styles.infoLabel}>Tipo:</Text>
+            <Text style={styles.infoValue}>
+              {partido.tipoPartido === "liga"
+                ? "Liga"
+                : partido.tipoPartido === "torneo"
+                  ? "Torneo"
+                  : "Amistoso"}
+            </Text>
           </View>
-          
+
+          {partido.tipoPartido !== "amistoso" && (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>
+                {partido.tipoPartido === "liga" ? "Jornada:" : "Torneo:"}
+              </Text>
+              <Text style={styles.infoValue}>{partido.jornada}</Text>
+            </View>
+          )}
+
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Fecha:</Text>
-            <Text style={styles.infoValue}>{partido.fecha.toLocaleDateString()}</Text>
+            <Text style={styles.infoValue}>
+              {partido.fecha.toLocaleDateString()}
+            </Text>
           </View>
-          
+
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Lugar:</Text>
             <Text style={styles.infoValue}>
               {partido.lugar === "Casa" ? "Local" : "Visitante"}
-              {partido.lugar === "Fuera" && partido.lugarEspecifico ? ` (${partido.lugarEspecifico})` : ""}
+              {partido.lugar === "Fuera" && partido.lugarEspecifico
+                ? ` (${partido.lugarEspecifico})`
+                : ""}
             </Text>
           </View>
-          
+
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Rival:</Text>
             <Text style={styles.infoValue}>{partido.rival}</Text>
@@ -225,33 +264,45 @@ export default function DetallePartidoScreen() {
         {/* Sección de alineación (primero) */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Alineación</Text>
-          
+
           {partido.alineacion ? (
             <>
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Formación:</Text>
-                <Text style={styles.infoValue}>{partido.alineacion.formacion || "4-3-3"}</Text>
+                <Text style={styles.infoValue}>
+                  {partido.alineacion.formacion || "4-3-3"}
+                </Text>
               </View>
-              
+
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Titulares:</Text>
-                <Text style={styles.infoValue}>{partido.alineacion.titulares ? partido.alineacion.titulares.length : 11} jugadores</Text>
+                <Text style={styles.infoValue}>
+                  {partido.alineacion.titulares
+                    ? partido.alineacion.titulares.length
+                    : 11}{" "}
+                  jugadores
+                </Text>
               </View>
-              
+
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Suplentes:</Text>
-                <Text style={styles.infoValue}>{partido.alineacion.suplentes ? partido.alineacion.suplentes.length : 5} jugadores</Text>
+                <Text style={styles.infoValue}>
+                  {partido.alineacion.suplentes
+                    ? partido.alineacion.suplentes.length
+                    : 5}{" "}
+                  jugadores
+                </Text>
               </View>
-              
+
               {/* Roles especiales */}
               {hayRolesEspeciales && (
                 <View style={styles.rolesContainer}>
                   <Text style={styles.rolesTitle}>Roles especiales:</Text>
-                  
-                  {availableRoles.map(role => {
+
+                  {availableRoles.map((role) => {
                     const playerId = partido.alineacion.specialRoles?.[role.id];
                     if (!playerId) return null;
-                    
+
                     return (
                       <View style={styles.rolRow} key={role.id}>
                         {renderRoleIndicator(role)}
@@ -263,13 +314,20 @@ export default function DetallePartidoScreen() {
                   })}
                 </View>
               )}
-              
-              <TouchableOpacity style={styles.verAlineacionButton} onPress={handleVerAlineacion}>
-                <Text style={styles.verAlineacionButtonText}>Ver alineación completa</Text>
+
+              <TouchableOpacity
+                style={styles.verAlineacionButton}
+                onPress={handleVerAlineacion}
+              >
+                <Text style={styles.verAlineacionButtonText}>
+                  Ver alineación completa
+                </Text>
               </TouchableOpacity>
             </>
           ) : (
-            <Text style={styles.noAlineacionText}>No hay alineación configurada</Text>
+            <Text style={styles.noAlineacionText}>
+              No hay alineación configurada
+            </Text>
           )}
         </View>
 
@@ -277,26 +335,31 @@ export default function DetallePartidoScreen() {
         {hayNotas && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Notas</Text>
-            
+
             {partido.estrategia && (
               <View style={styles.notasContainer}>
                 <Text style={styles.notasSubtitle}>Estrategia:</Text>
                 <Text style={styles.notasText}>{partido.estrategia}</Text>
               </View>
             )}
-            
+
             {partido.notasRival && (
-              <View style={[styles.notasContainer, partido.estrategia && styles.notasSeparator]}>
+              <View
+                style={[
+                  styles.notasContainer,
+                  partido.estrategia && styles.notasSeparator,
+                ]}
+              >
                 <Text style={styles.notasSubtitle}>Sobre el rival:</Text>
                 <Text style={styles.notasText}>{partido.notasRival}</Text>
               </View>
             )}
           </View>
         )}
-        
+
         {/* Botón de eliminar */}
-        <TouchableOpacity 
-          style={[styles.eliminarButton, deleting && styles.buttonDisabled]} 
+        <TouchableOpacity
+          style={[styles.eliminarButton, deleting && styles.buttonDisabled]}
           onPress={handleEliminarPartido}
           disabled={deleting}
         >
@@ -304,7 +367,12 @@ export default function DetallePartidoScreen() {
             <ActivityIndicator size="small" color="#fff" />
           ) : (
             <>
-              <Ionicons name="trash-outline" size={20} color="#fff" style={styles.buttonIcon} />
+              <Ionicons
+                name="trash-outline"
+                size={20}
+                color="#fff"
+                style={styles.buttonIcon}
+              />
               <Text style={styles.eliminarButtonText}>Eliminar partido</Text>
             </>
           )}

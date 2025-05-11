@@ -26,6 +26,7 @@ export default function CrearPartidoScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [partidoData, setPartidoData] = useState({
     id: Date.now().toString(),
+    tipoPartido: "liga",
     jornada: "",
     rival: "",
     notasRival: "",
@@ -152,18 +153,72 @@ export default function CrearPartidoScreen() {
             <Text style={styles.stepTitle}>Información del partido</Text>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Jornada</Text>
-              <TextInput
-                style={styles.input}
-                value={partidoData.jornada}
-                onChangeText={(text) =>
-                  setPartidoData({ ...partidoData, jornada: text })
-                }
-                keyboardType="numeric"
-                placeholder="Número de jornada"
-                placeholderTextColor="#999"
-              />
+              <Text style={styles.inputLabel}>Tipo de partido</Text>
+              <View style={styles.radioGroup}>
+                <TouchableOpacity
+                  style={[
+                    styles.radioButton,
+                    partidoData.tipoPartido === "liga" &&
+                      styles.radioButtonSelected,
+                  ]}
+                  onPress={() =>
+                    setPartidoData({ ...partidoData, tipoPartido: "liga" })
+                  }
+                >
+                  <Text style={styles.radioText}>Liga</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.radioButton,
+                    partidoData.tipoPartido === "torneo" &&
+                      styles.radioButtonSelected,
+                  ]}
+                  onPress={() =>
+                    setPartidoData({ ...partidoData, tipoPartido: "torneo" })
+                  }
+                >
+                  <Text style={styles.radioText}>Torneo</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.radioButton,
+                    partidoData.tipoPartido === "amistoso" &&
+                      styles.radioButtonSelected,
+                  ]}
+                  onPress={() =>
+                    setPartidoData({ ...partidoData, tipoPartido: "amistoso" })
+                  }
+                >
+                  <Text style={styles.radioText}>Amistoso</Text>
+                </TouchableOpacity>
+              </View>
             </View>
+
+            {partidoData.tipoPartido !== "amistoso" && (
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>
+                  {partidoData.tipoPartido === "liga"
+                    ? "Jornada"
+                    : "Nombre del torneo"}
+                </Text>
+                <TextInput
+                  style={styles.input}
+                  value={partidoData.jornada}
+                  onChangeText={(text) =>
+                    setPartidoData({ ...partidoData, jornada: text })
+                  }
+                  keyboardType={
+                    partidoData.tipoPartido === "liga" ? "numeric" : "default"
+                  }
+                  placeholder={
+                    partidoData.tipoPartido === "liga"
+                      ? "Número de jornada"
+                      : "Nombre del torneo"
+                  }
+                  placeholderTextColor="#999"
+                />
+              </View>
+            )}
 
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Fecha</Text>
@@ -231,10 +286,14 @@ export default function CrearPartidoScreen() {
             <TouchableOpacity
               style={[
                 styles.nextButton,
-                !partidoData.jornada && styles.buttonDisabled,
+                partidoData.tipoPartido !== "amistoso" &&
+                  !partidoData.jornada &&
+                  styles.buttonDisabled,
               ]}
               onPress={nextStep}
-              disabled={!partidoData.jornada}
+              disabled={
+                partidoData.tipoPartido !== "amistoso" && !partidoData.jornada
+              }
             >
               <Text style={styles.nextButtonText}>Siguiente</Text>
             </TouchableOpacity>
@@ -294,7 +353,11 @@ export default function CrearPartidoScreen() {
           <View style={styles.alineacionContainer}>
             <LineupScreen
               ref={alineacionRef}
-              matchday={parseInt(partidoData.jornada)}
+              matchday={
+                partidoData.tipoPartido === "liga"
+                  ? parseInt(partidoData.jornada) || 0
+                  : partidoData.jornada || ""
+              }
               isEmbedded={true}
               initialData={partidoData.alineacion} // Pasar los datos guardados
               onSaveLineup={(lineupData) => {

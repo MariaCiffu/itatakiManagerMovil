@@ -1,6 +1,14 @@
 // src/app/partidos/index.js
 import { useState, useEffect } from "react";
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, SafeAreaView, ActivityIndicator } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  SafeAreaView,
+  ActivityIndicator,
+} from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { getPartidosWithDelay } from "../../services/partidosService";
@@ -45,7 +53,7 @@ export default function PartidosScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Partidos</Text>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.addButton}
           onPress={navigateToCrearPartido}
         >
@@ -63,15 +71,21 @@ export default function PartidosScreen() {
           data={partidos}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.partidoCard}
               onPress={() => navigateToPartidoDetail(item.id)}
             >
               <View style={styles.jornadaHeader}>
-                <Text style={styles.jornada}>Jornada {item.jornada}</Text>
+                <Text style={styles.jornada}>
+                  {item.tipoPartido === "amistoso"
+                    ? "Amistoso"
+                    : item.tipoPartido === "torneo"
+                      ? `Torneo: ${item.jornada}`
+                      : `Jornada ${item.jornada}`}
+                </Text>
                 <Text style={styles.fecha}>{formatDate(item.fecha)}</Text>
               </View>
-              
+
               <View style={styles.partidoContent}>
                 <View style={styles.equipoContainer}>
                   <Text style={styles.equipoNombre}>
@@ -83,7 +97,7 @@ export default function PartidosScreen() {
                   </Text>
                 </View>
               </View>
-              
+
               <View style={styles.partidoFooter}>
                 <Text style={styles.partidoStatus}>
                   {item.lugar === "Casa" ? "Local" : "Visitante"}
@@ -95,11 +109,13 @@ export default function PartidosScreen() {
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyText}>No hay partidos creados</Text>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.createButton}
                 onPress={navigateToCrearPartido}
               >
-                <Text style={styles.createButtonText}>Crear primer partido</Text>
+                <Text style={styles.createButtonText}>
+                  Crear primer partido
+                </Text>
               </TouchableOpacity>
             </View>
           }

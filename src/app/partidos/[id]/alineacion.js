@@ -1,6 +1,12 @@
 // src/app/partidos/[id]/alineacion.js
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, ActivityIndicator, SafeAreaView } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ActivityIndicator,
+  SafeAreaView,
+} from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { getPartidoByIdWithDelay } from "../../../services/partidosService";
 import { PLAYERS } from "../../../data/teamData"; // Importar jugadores
@@ -19,13 +25,19 @@ export default function PartidoAlineacionScreen() {
         setLoading(true);
         setError(null);
         const data = await getPartidoByIdWithDelay(id);
-        console.log("Datos del partido cargados:", JSON.stringify(data, null, 2));
-        
+        console.log(
+          "Datos del partido cargados:",
+          JSON.stringify(data, null, 2)
+        );
+
         // Verificar que la alineación tenga la estructura correcta
         if (data.alineacion) {
-          console.log("Alineación cargada:", JSON.stringify(data.alineacion, null, 2));
+          console.log(
+            "Alineación cargada:",
+            JSON.stringify(data.alineacion, null, 2)
+          );
         }
-        
+
         setPartido(data);
       } catch (error) {
         console.error("Error al cargar partido:", error);
@@ -63,15 +75,23 @@ export default function PartidoAlineacionScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>No hay alineación configurada para este partido</Text>
+          <Text style={styles.errorText}>
+            No hay alineación configurada para este partido
+          </Text>
         </View>
       </SafeAreaView>
     );
   }
 
+  // Usar valores directos en lugar de funciones para evitar actualizaciones de estado durante el renderizado
   return (
     <LineupScreen
-      matchday={parseInt(partido.jornada)}
+      matchday={partido.tipoPartido === "amistoso" ? "Amistoso" : 
+               partido.tipoPartido === "torneo" ? partido.jornada : 
+               parseInt(partido.jornada) || 0}
+      matchTitle={partido.tipoPartido === "amistoso" ? "Amistoso" : 
+                 partido.tipoPartido === "torneo" ? partido.jornada : 
+                 `Jornada ${partido.jornada || ""}`}
       initialData={partido.alineacion}
       readOnly={true}
     />
