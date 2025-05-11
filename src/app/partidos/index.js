@@ -11,7 +11,10 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { getPartidosWithDelay } from "../../services/partidosService";
+import BackButton from "../../components/BackButton";
+import { COLORS } from "../../constants/colors";
 
 export default function PartidosScreen() {
   const router = useRouter();
@@ -52,13 +55,9 @@ export default function PartidosScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
+        <BackButton />
         <Text style={styles.headerTitle}>Partidos</Text>
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={navigateToCrearPartido}
-        >
-          <Ionicons name="add" size={24} color="#fff" />
-        </TouchableOpacity>
+        <View style={styles.placeholder} />
       </View>
 
       {loading ? (
@@ -121,6 +120,20 @@ export default function PartidosScreen() {
           }
         />
       )}
+
+      {/* Botón flotante para añadir partido */}
+      <TouchableOpacity 
+        style={styles.addFloatingButton} 
+        activeOpacity={0.8} 
+        onPress={navigateToCrearPartido}
+      >
+        <LinearGradient 
+          colors={[COLORS ? COLORS.primary : "#4CAF50", COLORS ? COLORS.primaryDark : "#388E3C"]} 
+          style={styles.addButtonGradient}
+        >
+          <Ionicons name="add" size={24} color="#FFF" />
+        </LinearGradient>
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }
@@ -135,21 +148,16 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#333",
+
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: "bold",
     color: "#fff",
   },
-  addButton: {
-    width: 40,
+  placeholder: {
+    width: 40, // Mismo ancho que el BackButton para mantener el título centrado
     height: 40,
-    borderRadius: 20,
-    backgroundColor: "#4CAF50",
-    justifyContent: "center",
-    alignItems: "center",
   },
   loadingContainer: {
     flex: 1,
@@ -235,5 +243,27 @@ const styles = StyleSheet.create({
   createButtonText: {
     color: "#fff",
     fontWeight: "bold",
+  },
+  // Estilos para el botón flotante
+  addFloatingButton: {
+    position: "absolute",
+    bottom: 20,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    zIndex: 100,
+  },
+  addButtonGradient: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 28,
+    justifyContent: "center",
+    alignItems: "center",
   },
 });

@@ -6,7 +6,7 @@ import React, {
   useRef,
   forwardRef,
   useImperativeHandle,
-  useMemo
+  useMemo,
 } from "react";
 import {
   View,
@@ -102,7 +102,7 @@ const LineupScreen = forwardRef(
     const [showSavedIndicator, setShowSavedIndicator] = useState(false);
 
     // Título de la pantalla
-     const screenTitle = useMemo(() => {
+    const screenTitle = useMemo(() => {
       return (
         matchTitle ||
         (typeof matchday === "number"
@@ -869,7 +869,7 @@ const LineupScreen = forwardRef(
                 </Text>
               </TouchableOpacity>
             )}
-            {substitutes.length === 0 && (
+            {substitutes.length === 0 && readOnly && (
               <Text
                 style={[
                   styles.emptyListText,
