@@ -1,16 +1,46 @@
 // app/jugadores/[id]/layout.js
+import { useState } from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity, StatusBar } from 'react-native';
 import { Tabs, useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback } from 'react';
 import { PlayerContext } from '../../../context/PlayerContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BarChartIcon, CoinsIcon, PersonIcon, EditIcon, ArrowLeftIcon } from '../../../components/Icons';
 import { COLORS } from '../../../constants/colors';
-import BackButton from '../../../components/BackButton';
+import { getJugadorById } from '../../../services/jugadoresService';
 
 export default function PlayerLayout() {
-  const { playerData } = useLocalSearchParams();
-  const player = JSON.parse(playerData || '{}');
+  const { id } = useLocalSearchParams();
+  const [player, setPlayer] = useState({});
   const router = useRouter();
+
+  // Cargar los datos del jugador cuando la pantalla obtiene el foco
+  useFocusEffect(
+    useCallback(() => {
+      const loadPlayer = async () => {
+        try {
+          const data = await getJugadorById(id);
+          if (data) {
+            setPlayer(data);
+            console.log("Datos del jugador cargados:", data);
+          } else {
+            console.log("No se encontró el jugador con ID:", id);
+          }
+        } catch (error) {
+          console.error('Error al cargar jugador:', error);
+        }
+      };
+
+      if (id) {
+        loadPlayer();
+      }
+      
+      return () => {
+        // Limpieza si es necesaria
+      };
+    }, [id])
+  );
 
   const handleEdit = () => {
     // Navegar a la pantalla de edición con los datos del jugador
@@ -38,9 +68,8 @@ export default function PlayerLayout() {
           <View style={[styles.decorativeCircle1, { backgroundColor: `${COLORS.primary}20` }]} />
           <View style={[styles.decorativeCircle2, { backgroundColor: `${COLORS.info}20` }]} />
 
-
-{/* Botón de retroceso integrado */}
-<TouchableOpacity 
+          {/* Botón de retroceso integrado */}
+          <TouchableOpacity 
             style={styles.backButton} 
             onPress={() => router.back()}
             activeOpacity={0.7}
