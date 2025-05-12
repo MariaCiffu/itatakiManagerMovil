@@ -1,15 +1,28 @@
 // app/jugadores/[id]/layout.js
-import { useState } from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, StatusBar } from 'react-native';
-import { Tabs, useLocalSearchParams, useRouter } from 'expo-router';
-import { useFocusEffect } from '@react-navigation/native';
-import { useCallback } from 'react';
-import { PlayerContext } from '../../../context/PlayerContext';
-import { LinearGradient } from 'expo-linear-gradient';
-import { BarChartIcon, CoinsIcon, PersonIcon, EditIcon, ArrowLeftIcon } from '../../../components/Icons';
-import { COLORS } from '../../../constants/colors';
-import { getJugadorById } from '../../../services/jugadoresService';
-import BackButton from '../../../components/BackButton';
+import { useState } from "react";
+import {
+  View,
+  Text,
+  Image,
+  StyleSheet,
+  TouchableOpacity,
+  StatusBar,
+} from "react-native";
+import { Tabs, useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
+import { useCallback } from "react";
+import { PlayerContext } from "../../../context/PlayerContext";
+import { LinearGradient } from "expo-linear-gradient";
+import {
+  BarChartIcon,
+  CoinsIcon,
+  PersonIcon,
+  EditIcon,
+  ArrowLeftIcon,
+} from "../../../components/Icons";
+import { COLORS } from "../../../constants/colors";
+import { getJugadorById } from "../../../services/jugadoresService";
+import BackButton from "../../../components/BackButton";
 
 export default function PlayerLayout() {
   const { id } = useLocalSearchParams();
@@ -21,33 +34,32 @@ export default function PlayerLayout() {
     useCallback(() => {
       const loadPlayer = async () => {
         try {
+          // Importante: Obtener datos frescos cada vez
           const data = await getJugadorById(id);
+
           if (data) {
+            // Usar una función de actualización para garantizar un nuevo objeto
             setPlayer(data);
-            console.log("Datos del jugador cargados:", data);
+            console.log("Datos del jugador actualizados:", data);
           } else {
             console.log("No se encontró el jugador con ID:", id);
           }
         } catch (error) {
-          console.error('Error al cargar jugador:', error);
+          console.error("Error al cargar jugador:", error);
         }
       };
 
       if (id) {
         loadPlayer();
       }
-      
-      return () => {
-        // Limpieza si es necesaria
-      };
-    }, [id])
+    }, [id]) // Solo depende del ID
   );
 
   const handleEdit = () => {
     // Navegar a la pantalla de edición con los datos del jugador
     router.push({
-      pathname: '/jugadores/edit-player',
-      params: { playerData: JSON.stringify(player) }
+      pathname: "/jugadores/edit-player",
+      params: { playerData: JSON.stringify(player) },
     });
   };
 
@@ -55,19 +67,27 @@ export default function PlayerLayout() {
     <PlayerContext.Provider value={player}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.background} />
       <View style={{ flex: 1, backgroundColor: COLORS.background }}>
-        
         {/* Header con diseño moderno */}
         <View style={styles.headerContainer}>
-        
           {/* Fondo con gradiente sutil */}
           <LinearGradient
-            colors={['#1a1a1a', COLORS.background]}
+            colors={["#1a1a1a", COLORS.background]}
             style={styles.headerGradient}
           />
-          
+
           {/* Elementos decorativos */}
-          <View style={[styles.decorativeCircle1, { backgroundColor: `${COLORS.primary}20` }]} />
-          <View style={[styles.decorativeCircle2, { backgroundColor: `${COLORS.info}20` }]} />
+          <View
+            style={[
+              styles.decorativeCircle1,
+              { backgroundColor: `${COLORS.primary}20` },
+            ]}
+          />
+          <View
+            style={[
+              styles.decorativeCircle2,
+              { backgroundColor: `${COLORS.info}20` },
+            ]}
+          />
 
           {/* Botón de retroceso integrado */}
           <BackButton style={styles.backButton} />
@@ -76,27 +96,31 @@ export default function PlayerLayout() {
           <View style={styles.headerContent}>
             {/* Contenedor de la imagen con efecto de brillo */}
             <View style={styles.avatarContainer}>
-              <View style={[styles.avatarGlow, { backgroundColor: COLORS.primary }]} />
+              <View
+                style={[styles.avatarGlow, { backgroundColor: COLORS.primary }]}
+              />
               <View style={styles.avatarWrapper}>
-                <Image 
-                  source={{ uri: player.image}} 
-                  style={styles.avatar} 
-                />
+                <Image source={{ uri: player.image }} style={styles.avatar} />
               </View>
               {/* Número del jugador */}
-              <View style={[styles.playerNumber, { backgroundColor: COLORS.primary }]}>
+              <View
+                style={[
+                  styles.playerNumber,
+                  { backgroundColor: COLORS.primary },
+                ]}
+              >
                 <Text style={styles.playerNumberText}>{player.number}</Text>
               </View>
             </View>
-            
+
             {/* Información del jugador */}
             <View style={styles.playerInfo}>
               <Text style={styles.playerName}>{player.name}</Text>
               <Text style={styles.playerPosition}>{player.position}</Text>
             </View>
-            
+
             {/* Botón de editar */}
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.editButton, { backgroundColor: COLORS.primary }]}
               onPress={handleEdit}
             >
@@ -109,7 +133,7 @@ export default function PlayerLayout() {
         <Tabs
           screenOptions={{
             tabBarActiveTintColor: COLORS.primary,
-            tabBarInactiveTintColor: '#666',
+            tabBarInactiveTintColor: "#666",
             tabBarStyle: styles.tabBar,
             headerShown: false,
           }}
@@ -117,29 +141,23 @@ export default function PlayerLayout() {
           <Tabs.Screen
             name="datos"
             options={{
-              title: 'Datos',
-              tabBarIcon: ({ color }) => (
-                <PersonIcon color={color} />
-              ),
+              title: "Datos",
+              tabBarIcon: ({ color }) => <PersonIcon color={color} />,
             }}
           />
-          
+
           <Tabs.Screen
             name="multas"
             options={{
-              title: 'Multas',
-              tabBarIcon: ({ color }) => (
-                <CoinsIcon color={color} />
-              ),
+              title: "Multas",
+              tabBarIcon: ({ color }) => <CoinsIcon color={color} />,
             }}
           />
           <Tabs.Screen
             name="estadisticas"
             options={{
-              title: 'Estadísticas',
-              tabBarIcon: ({ color }) => (
-                <BarChartIcon color={color} />
-              ),
+              title: "Estadísticas",
+              tabBarIcon: ({ color }) => <BarChartIcon color={color} />,
             }}
           />
         </Tabs>
@@ -151,20 +169,20 @@ export default function PlayerLayout() {
 const styles = StyleSheet.create({
   // Estilos sin cambios...
   headerContainer: {
-    position: 'relative',
+    position: "relative",
     paddingTop: 50,
     paddingBottom: 24,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   headerGradient: {
-    position: 'absolute',
+    position: "absolute",
     left: 0,
     right: 0,
     top: 0,
     bottom: 0,
   },
   decorativeCircle1: {
-    position: 'absolute',
+    position: "absolute",
     width: 150,
     height: 150,
     borderRadius: 75,
@@ -173,7 +191,7 @@ const styles = StyleSheet.create({
     opacity: 0.3,
   },
   decorativeCircle2: {
-    position: 'absolute',
+    position: "absolute",
     width: 100,
     height: 100,
     borderRadius: 50,
@@ -182,18 +200,18 @@ const styles = StyleSheet.create({
     opacity: 0.3,
   },
   headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 16,
     paddingTop: 16,
     marginTop: 20,
   },
   avatarContainer: {
-    position: 'relative',
+    position: "relative",
     marginRight: 16,
   },
   avatarGlow: {
-    position: 'absolute',
+    position: "absolute",
     width: 80,
     height: 80,
     borderRadius: 40,
@@ -205,42 +223,42 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 40,
     borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-    overflow: 'hidden',
+    borderColor: "rgba(255, 255, 255, 0.3)",
+    overflow: "hidden",
   },
   avatar: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
   playerNumber: {
-    position: 'absolute',
+    position: "absolute",
     bottom: -5,
     right: -5,
     width: 28,
     height: 28,
     borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     borderWidth: 2,
     borderColor: COLORS.background,
   },
   playerNumberText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 12,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   // Información del jugador
   playerInfo: {
     flex: 1,
   },
   playerName: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 22,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 4,
   },
   playerPosition: {
-    color: '#aaa',
+    color: "#aaa",
     fontSize: 14,
   },
   // Botón de editar
@@ -248,30 +266,30 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginLeft: 8,
   },
   // Barra de pestañas
   topBar: {
     height: 56,
     backgroundColor: COLORS.background,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    borderBottomColor: "rgba(255, 255, 255, 0.1)",
   },
   backButton: {
-    position: 'absolute',
+    position: "absolute",
     top: 16,
     left: 16,
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)', // Fondo sutil para integrarse mejor
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0, 0, 0, 0.3)", // Fondo sutil para integrarse mejor
+    justifyContent: "center",
+    alignItems: "center",
     zIndex: 10,
   },
 });

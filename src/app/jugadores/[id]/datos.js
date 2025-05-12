@@ -22,11 +22,11 @@ import WhatsAppButton from "../../../components/WhatsAppButton";
 export default function DatosPersonales() {
   const player = useContext(PlayerContext);
 
-  const handleCall = () => {
-    if (player.phone) {
-      Linking.openURL(`tel:${player.phone}`);
+  const handleCall = (phoneNumber) => {
+    if (phoneNumber) {
+      Linking.openURL(`tel:${phoneNumber}`)
     }
-  };
+  }
 
   const handleEmail = () => {
     if (player.email) {
@@ -76,7 +76,7 @@ export default function DatosPersonales() {
             {player.phone && (
               <TouchableOpacity
                 style={[styles.actionButton, { backgroundColor: "#2196F3" }]}
-                onPress={handleCall}
+                onPress={() => handleCall(player.phone)}
               >
                 <PhoneIcon size={16} color="#fff" />
               </TouchableOpacity>
@@ -139,7 +139,7 @@ export default function DatosPersonales() {
             {player.emergencyPhone && (
               <TouchableOpacity
                 style={[styles.actionButton, { backgroundColor: "#673AB7" }]}
-                onPress={handleCall}
+                onPress={() => handleCall(player.emergencyPhone)}
               >
                 <PhoneIcon size={16} color="#fff" />
               </TouchableOpacity>

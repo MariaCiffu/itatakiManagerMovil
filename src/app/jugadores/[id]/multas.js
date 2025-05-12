@@ -13,7 +13,6 @@ import { updateMultaStatus, deleteMulta } from "../../../services/jugadoresServi
 
 export default function Multas() {
   const router = useRouter()
-  const { id } = useLocalSearchParams()
   const [selectedMulta, setSelectedMulta] = useState(null)
   const [showActionModal, setShowActionModal] = useState(false)
   const player = useContext(PlayerContext)
