@@ -54,13 +54,13 @@ export default function AddPlayer() {
     name: "",
     number: "",
     position: "",
-    date: "",
+    birthdate: "",
     foot: "Derecho",
     phone: "",
     image: "",
     email: "",
-    contactName: "",
-    contactPhone: "",
+    emergencyContact: "",
+    emergencyPhone: "",
   });
 
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -82,7 +82,7 @@ export default function AddPlayer() {
       const month = String(selectedDate.getMonth() + 1).padStart(2, "0");
       const year = selectedDate.getFullYear();
       const dateStr = `${day}-${month}-${year}`;
-      handleChange("date", dateStr);
+      handleChange("birthdate", dateStr);
     }
   };
 
@@ -302,11 +302,11 @@ export default function AddPlayer() {
           <CalendarIcon size={20} color={COLORS.primary} />
           <Text
             style={[
-              player.date ? styles.input : styles.inputPlaceholder,
+              player.birthdate ? styles.input : styles.inputPlaceholder,
               styles.fullWidthInput,
             ]}
           >
-            {player.date || "Fecha de nacimiento"}
+            {player.birthdate || "Fecha de nacimiento"}
           </Text>
         </TouchableOpacity>
         {showDatePicker && (
@@ -365,8 +365,8 @@ export default function AddPlayer() {
           <TextInput
             placeholder="Nombre de contacto"
             placeholderTextColor={COLORS.textSecondary}
-            value={player.contactName}
-            onChangeText={(text) => handleChange("contactName", text)}
+            value={player.emergencyContact}
+            onChangeText={(text) => handleChange("emergencyContact", text)}
             style={styles.input}
           />
         </View>
@@ -377,8 +377,8 @@ export default function AddPlayer() {
           <TextInput
             placeholder="Teléfono de contacto"
             placeholderTextColor={COLORS.textSecondary}
-            value={player.contactPhone}
-            onChangeText={(text) => handleChange("contactPhone", text)}
+            value={player.emergencyPhone}
+            onChangeText={(text) => handleChange("emergencyPhone", text)}
             style={styles.input}
             keyboardType="phone-pad"
           />
