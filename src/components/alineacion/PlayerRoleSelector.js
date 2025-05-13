@@ -1,6 +1,6 @@
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-
+import { availableRoles } from "../../data/roles"
 const PlayerRoleSelector = ({
   player,
   specialRoles,
@@ -8,50 +8,6 @@ const PlayerRoleSelector = ({
   onClose,
   theme,
 }) => {
-  // Definición de los roles disponibles
-  const availableRoles = [
-  { 
-    id: "captain", 
-    name: "Capitán", 
-    type: "letter",
-    letter: "C",
-    letterColor: "#000000",
-    backgroundColor: "#FFC107"  // Amarillo/Dorado
-  },
-  { 
-    id: "freeKicks", 
-    name: "Faltas lejanas", 
-    type: "letter",
-    letter: "F",
-    letterColor: "#FFFFFF",
-    backgroundColor: "#FF5722"  // Naranja/Rojo
-  },
-  {
-    id: "freeKicksNear",
-    name: "Faltas cercanas",
-    type: "letter",
-    letter: "f",
-    letterColor: "#000000",
-    backgroundColor: "#FF9800"  // Naranja
-  },
-  { 
-    id: "corners", 
-    name: "Córners", 
-    type: "icon", 
-    icon: "flag-outline",
-    iconColor: "#FFFFFF",
-    backgroundColor: "#2196F3"  // Azul
-  },
-  { 
-    id: "penalties", 
-    name: "Penaltis", 
-    type: "letter",
-    letter: "P",
-    letterColor: "#FFFFFF",
-    backgroundColor: "#E91E63"  // Rosa/Fucsia
-  },
-];
-
   // Función para alternar un rol
   const toggleRole = (roleId) => {
     const newRoles = { ...specialRoles };
@@ -76,50 +32,50 @@ const PlayerRoleSelector = ({
   };
 
   // Función para renderizar el indicador (icono o letra)
-const renderIndicator = (role, isAssigned) => {
-  if (role.type === "icon") {
-    return (
-      <View 
-        style={[
-          styles.iconBadge, 
-          { 
-            backgroundColor: isAssigned ? role.backgroundColor : "#555",
-          }
-        ]}
-      >
-        <Ionicons
-          name={isAssigned ? role.icon.replace("-outline", "") : role.icon}
-          size={20}
-          color={isAssigned ? (role.iconColor || "#FFFFFF") : "#ccc"}
-        />
-      </View>
-    );
-  } else if (role.type === "letter") {
-    return (
-      <View 
-        style={[
-          styles.letterBadge, 
-          { 
-            backgroundColor: isAssigned ? role.backgroundColor : "#555",
-          }
-        ]}
-      >
-        <Text 
+  const renderIndicator = (role, isAssigned) => {
+    if (role.type === "icon") {
+      return (
+        <View 
           style={[
-            styles.letterText, 
+            styles.iconBadge, 
             { 
-              color: isAssigned ? role.letterColor : "#ccc",
-              fontWeight: isAssigned ? "bold" : "normal"
+              backgroundColor: isAssigned ? role.backgroundColor : "#555",
             }
           ]}
         >
-          {role.letter}
-        </Text>
-      </View>
-    );
-  }
-  return null;
-};
+          <Ionicons
+            name={isAssigned ? role.icon.replace("-outline", "") : role.icon}
+            size={20}
+            color={isAssigned ? (role.iconColor || "#FFFFFF") : "#ccc"}
+          />
+        </View>
+      );
+    } else if (role.type === "letter") {
+      return (
+        <View 
+          style={[
+            styles.letterBadge, 
+            { 
+              backgroundColor: isAssigned ? role.backgroundColor : "#555",
+            }
+          ]}
+        >
+          <Text 
+            style={[
+              styles.letterText, 
+              { 
+                color: isAssigned ? role.letterColor : "#ccc",
+                fontWeight: isAssigned ? "bold" : "normal"
+              }
+            ]}
+          >
+            {role.letter}
+          </Text>
+        </View>
+      );
+    }
+    return null;
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.modalContent }]}>
@@ -215,12 +171,12 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   iconBadge: {
-  width: 24,
-  height: 24,
-  borderRadius: 12,
-  alignItems: "center",
-  justifyContent: "center",
-},
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
 });
 
 export default PlayerRoleSelector;

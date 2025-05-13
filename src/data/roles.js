@@ -20,6 +20,7 @@ export const availableRoles = [
     id: "freeKicksNear",
     name: "Faltas cercanas",
     type: "letter",
+    letter: "f", // Añadida esta propiedad
     letterColor: "#000000",
     backgroundColor: "#FF9800", // Naranja
   },
@@ -35,6 +36,7 @@ export const availableRoles = [
     id: "penalties",
     name: "Penaltis",
     type: "letter",
+    letter: "P", // Añadida esta propiedad
     letterColor: "#FFFFFF",
     backgroundColor: "#E91E63", // Rosa/Fucsia
   },
