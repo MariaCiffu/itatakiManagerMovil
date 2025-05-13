@@ -20,6 +20,11 @@ const BackButton = ({ style, color = COLORS.text }) => {
       // Navegar a la página principal
       router.push('/');
     } 
+    // Si estamos en los detalles de un partido(partidos/[id])
+    else if (pathname.match(/^\/partidos\/[^\/]+$/)) {
+      // Navegar a la página principal
+      router.push('/');
+    } 
     // Para cualquier otra ruta
     else {
       router.back();
