@@ -314,7 +314,9 @@ export default function EditarPartidoScreen() {
                 !partidoData.jornada && styles.buttonDisabled,
               ]}
               onPress={nextStep}
-              disabled={!partidoData.jornada}
+              disabled={
+                partidoData.tipoPartido !== "amistoso" && !partidoData.jornada
+              }
             >
               <Text style={styles.nextButtonText}>Siguiente</Text>
             </TouchableOpacity>
