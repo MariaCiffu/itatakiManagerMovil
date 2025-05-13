@@ -1,5 +1,5 @@
 // src/app/partidos/index.js
-import { useState, useEffect } from "react";
+import { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -15,28 +15,36 @@ import { LinearGradient } from "expo-linear-gradient";
 import { getPartidosWithDelay } from "../../services/partidosService";
 import BackButton from "../../components/BackButton";
 import { COLORS } from "../../constants/colors";
+import { useFocusEffect } from '@react-navigation/native';
 
 export default function PartidosScreen() {
   const router = useRouter();
   const [partidos, setPartidos] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Cargar partidos al iniciar
-  useEffect(() => {
-    loadPartidos();
-  }, []);
-
-  const loadPartidos = async () => {
-    try {
-      setLoading(true);
-      const data = await getPartidosWithDelay();
-      setPartidos(data);
-    } catch (error) {
-      console.error("Error al cargar partidos:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Cargar partidos cuando la pantalla obtiene el foco
+    useFocusEffect(
+      useCallback(() => {
+        const loadPartidos = async () => {
+          try {
+            setLoading(true);
+            const data = await getPartidosWithDelay();
+            setPartidos(data);
+            setLoading(false);
+          } catch (error) {
+            console.error('Error al cargar los partidos:', error);
+            setLoading(false);
+            setError("No se pudo cargar los partidos");
+          }
+        };
+        
+        loadPartidos();
+        
+        return () => {
+          // Limpieza si es necesaria
+        };
+      }, [])
+    );
 
   const navigateToPartidoDetail = (partidoId) => {
     router.push(`/partidos/${partidoId}`);
