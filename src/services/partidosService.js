@@ -4,6 +4,23 @@ import { PARTIDOS } from "../data/partidosData";
 // Usar los datos importados como base de datos inicial
 let partidosDB = [...PARTIDOS]; // Crear una copia para no modificar el original
 
+// Función auxiliar para convertir fechas de string a Date
+const convertirFechas = (partido) => {
+  if (!partido) return partido;
+  
+  const partidoConvertido = {...partido};
+  
+  // Convertir la fecha principal si es un string
+  if (typeof partidoConvertido.fecha === 'string') {
+    partidoConvertido.fecha = new Date(partidoConvertido.fecha);
+  }
+  
+  // Si hay otras fechas en el objeto, también se pueden convertir aquí
+  // Por ejemplo, si en el futuro añades fechas de creación, modificación, etc.
+  
+  return partidoConvertido;
+};
+
 // Simula una llamada a una API para crear un partido con un retraso
 export const createPartidoWithDelay = (partidoData) => {
   return new Promise((resolve) => {
@@ -24,8 +41,8 @@ export const createPartidoWithDelay = (partidoData) => {
       // Añadir a la "base de datos"
       partidosDB.push(nuevoPartido);
       
-      // Devolver el partido creado
-      resolve(nuevoPartido);
+      // Devolver el partido creado (con fecha convertida por si acaso)
+      resolve(convertirFechas(nuevoPartido));
     }, 500); // Retraso de 0.5 segundos
   });
 };
@@ -42,9 +59,10 @@ export const getPartidoByIdWithDelay = (id) => {
         console.error(`Error: Partido con ID ${id} no encontrado`);
         reject({ error: `Partido con ID ${id} no encontrado`, status: 404 });
       } else {
-        // Devolver el partido encontrado sin modificar su alineación
-        console.log("Devolviendo partido con alineación:", partido.alineacion);
-        resolve({...partido}); // Crear una copia para evitar referencias
+        // Convertir fechas y devolver el partido
+        const partidoConFechas = convertirFechas({...partido});
+        console.log("Devolviendo partido con fecha convertida:", partidoConFechas.fecha);
+        resolve(partidoConFechas);
       }
     }, 500); // Retraso de 0.5 segundos
   });
@@ -64,8 +82,8 @@ export const updatePartidoWithDelay = (id, partidoData) => {
           id: id // Asegurar que el ID no cambie
         };
         
-        // Devolver el partido actualizado
-        resolve(partidosDB[index]);
+        // Devolver el partido actualizado con fechas convertidas
+        resolve(convertirFechas(partidosDB[index]));
       } else {
         // Si no se encuentra, rechazar con error
         reject({ error: `Partido con ID ${id} no encontrado para actualizar`, status: 404 });
@@ -99,8 +117,10 @@ export const deletePartidoWithDelay = (id) => {
 export const getAllPartidosWithDelay = () => {
   return new Promise((resolve) => {
     setTimeout(() => {
-      // Devolver todos los partidos
-      resolve(partidosDB);
+      // Convertir fechas en todos los partidos
+      const partidosConFechas = partidosDB.map(partido => convertirFechas(partido));
+      // Devolver todos los partidos con fechas convertidas
+      resolve(partidosConFechas);
     }, 500); // Retraso de 0.5 segundos
   });
 };

@@ -29,6 +29,10 @@ export default function EditarPartidoScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+
+  // Estados separados para los pickers de fecha y hora
+  const [dateTimeMode, setDateTimeMode] = useState("date");
+
   const [partidoData, setPartidoData] = useState(null);
 
   // Referencias para guardar datos de cada paso
@@ -125,11 +129,48 @@ export default function EditarPartidoScreen() {
     }
   };
 
-  // Función para manejar cambio de fecha
+  // Función para manejar cambio de fecha y hora
   const onDateChange = (event, selectedDate) => {
+    if (event.type === "dismissed") {
+      // Si el usuario cancela, cerrar el picker
+      setShowDatePicker(false);
+      setDateTimeMode("date"); // Resetear el modo para la próxima vez
+      return;
+    }
+
     const currentDate = selectedDate || partidoData.fecha;
-    setShowDatePicker(Platform.OS === "ios");
-    setPartidoData({ ...partidoData, fecha: currentDate });
+
+    if (dateTimeMode === "date") {
+      // Si estamos seleccionando la fecha, guardarla y cambiar al modo hora
+      setPartidoData((prev) => ({ ...prev, fecha: currentDate }));
+
+      // En Android, cerrar el picker de fecha y abrir el de hora
+      if (Platform.OS === "android") {
+        setShowDatePicker(false);
+        setTimeout(() => {
+          setDateTimeMode("time");
+          setShowDatePicker(true);
+        }, 100);
+      } else {
+        // En iOS, simplemente cambiar el modo
+        setDateTimeMode("time");
+      }
+    } else {
+      // Si estamos seleccionando la hora, guardarla y cerrar el picker
+      setPartidoData((prev) => ({ ...prev, fecha: currentDate }));
+      setShowDatePicker(false);
+      setDateTimeMode("date"); // Resetear el modo para la próxima vez
+    }
+  };
+
+  // Función para formatear la fecha y hora
+  const formatDateTime = (date) => {
+    const dateStr = date.toLocaleDateString();
+    const timeStr = date.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    return `${dateStr} ${timeStr}`;
   };
 
   // Función para actualizar los datos del partido
@@ -244,22 +285,30 @@ export default function EditarPartidoScreen() {
             )}
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Fecha</Text>
+              <Text style={styles.inputLabel}>Fecha y Hora</Text>
               <TouchableOpacity
                 style={styles.input}
-                onPress={() => setShowDatePicker(true)}
+                onPress={() => {
+                  setDateTimeMode("date");
+                  setShowDatePicker(true);
+                }}
               >
                 <Text style={styles.dateText}>
-                  {partidoData.fecha.toLocaleDateString()}
+                  {partidoData.fecha.toLocaleDateString()}{" "}
+                  {partidoData.fecha.toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
                 </Text>
               </TouchableOpacity>
 
               {showDatePicker && (
                 <DateTimePicker
                   value={partidoData.fecha}
-                  mode="date"
+                  mode={dateTimeMode}
                   display="default"
                   onChange={onDateChange}
+                  is24Hour={true}
                 />
               )}
             </View>
@@ -376,7 +425,11 @@ export default function EditarPartidoScreen() {
           <View style={styles.alineacionContainer}>
             <LineupScreen
               ref={alineacionRef}
-              matchday={partidoData.tipoPartido === "liga" ? (parseInt(partidoData.jornada) || 0) : partidoData.jornada || ""}
+              matchday={
+                partidoData.tipoPartido === "liga"
+                  ? parseInt(partidoData.jornada) || 0
+                  : partidoData.jornada || ""
+              }
               isEmbedded={true}
               initialData={partidoData.alineacion}
               onSaveLineup={(lineupData) => {
@@ -525,6 +578,38 @@ const styles = StyleSheet.create({
     padding: 12,
     color: "#fff",
     fontSize: 16,
+  },
+  dateTimeContainer: {
+    backgroundColor: "#333",
+    borderRadius: 8,
+    padding: 12,
+  },
+  dateTimeText: {
+    color: "#fff",
+    fontSize: 16,
+    marginBottom: 8,
+  },
+  dateTimeButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 8,
+  },
+  dateTimeButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#4CAF50",
+    borderRadius: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    justifyContent: "center",
+    flex: 1,
+    marginHorizontal: 4,
+  },
+  dateTimeButtonText: {
+    color: "#fff",
+    marginLeft: 4,
+    fontSize: 14,
+    fontWeight: "500",
   },
   dateText: {
     color: "#fff",

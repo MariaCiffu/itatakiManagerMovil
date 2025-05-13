@@ -24,6 +24,8 @@ export default function CrearPartidoScreen() {
   const [currentStep, setCurrentStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  // Nuevo estado para controlar si estamos seleccionando fecha u hora
+  const [dateTimeMode, setDateTimeMode] = useState("date");
   const [partidoData, setPartidoData] = useState({
     id: Date.now().toString(),
     tipoPartido: "liga",
@@ -32,6 +34,7 @@ export default function CrearPartidoScreen() {
     notasRival: "",
     estrategia: "",
     fecha: new Date(),
+    hora: "", // Añadimos un campo para la hora en formato string (para mostrar)
     lugar: "Casa",
     lugarEspecifico: "",
     alineacion: null,
@@ -115,11 +118,38 @@ export default function CrearPartidoScreen() {
     return () => backHandler.remove(); // Limpiar el listener cuando el componente se desmonte
   }, [currentStep]);
 
-  // Función para manejar cambio de fecha
+  // Función modificada para manejar cambio de fecha y hora
   const onDateChange = (event, selectedDate) => {
+    if (event.type === "dismissed") {
+      // Si el usuario cancela, cerrar el picker
+      setShowDatePicker(false);
+      setDateTimeMode("date"); // Resetear el modo para la próxima vez
+      return;
+    }
+
     const currentDate = selectedDate || partidoData.fecha;
-    setShowDatePicker(Platform.OS === "ios");
-    setPartidoData({ ...partidoData, fecha: currentDate });
+    
+    if (dateTimeMode === "date") {
+      // Si estamos seleccionando la fecha, guardarla y cambiar al modo hora
+      setPartidoData((prev) => ({ ...prev, fecha: currentDate }));
+      
+      // En Android, cerrar el picker de fecha y abrir el de hora
+      if (Platform.OS === "android") {
+        setShowDatePicker(false);
+        setTimeout(() => {
+          setDateTimeMode("time");
+          setShowDatePicker(true);
+        }, 100);
+      } else {
+        // En iOS, simplemente cambiar el modo
+        setDateTimeMode("time");
+      }
+    } else {
+      // Si estamos seleccionando la hora, guardarla y cerrar el picker
+      setPartidoData((prev) => ({ ...prev, fecha: currentDate }));
+      setShowDatePicker(false);
+      setDateTimeMode("date"); // Resetear el modo para la próxima vez
+    }
   };
 
   // Función para guardar los datos del partido
@@ -221,22 +251,26 @@ export default function CrearPartidoScreen() {
             )}
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Fecha</Text>
+              <Text style={styles.inputLabel}>Fecha y Hora</Text>
               <TouchableOpacity
                 style={styles.input}
-                onPress={() => setShowDatePicker(true)}
+                onPress={() => {
+                  setDateTimeMode("date");
+                  setShowDatePicker(true);
+                }}
               >
                 <Text style={styles.dateText}>
-                  {partidoData.fecha.toLocaleDateString()}
+                  {partidoData.fecha.toLocaleDateString()} {partidoData.fecha.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </Text>
               </TouchableOpacity>
 
               {showDatePicker && (
                 <DateTimePicker
                   value={partidoData.fecha}
-                  mode="date"
+                  mode={dateTimeMode}
                   display="default"
                   onChange={onDateChange}
+                  is24Hour={true}
                 />
               )}
             </View>
