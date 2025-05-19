@@ -1,5 +1,5 @@
 // app/jugadores/[id]/layout.js
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -10,7 +10,6 @@ import {
 } from "react-native";
 import { Tabs, useLocalSearchParams, useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
-import { useCallback } from "react";
 import { PlayerContext } from "../../../context/PlayerContext";
 import { LinearGradient } from "expo-linear-gradient";
 import {
@@ -18,7 +17,6 @@ import {
   CoinsIcon,
   PersonIcon,
   EditIcon,
-  ArrowLeftIcon,
 } from "../../../components/Icons";
 import { COLORS } from "../../../constants/colors";
 import { getJugadorById } from "../../../services/jugadoresService";
@@ -55,13 +53,14 @@ export default function PlayerLayout() {
     }, [id]) // Solo depende del ID
   );
 
-  const handleEdit = () => {
+  // Función optimizada para editar jugador
+  const handleEdit = useCallback(() => {
     // Navegar a la pantalla de edición con los datos del jugador
     router.push({
       pathname: "/jugadores/edit-player",
       params: { playerData: JSON.stringify(player) },
     });
-  };
+  }, [player, router]);
 
   return (
     <PlayerContext.Provider value={player}>
@@ -167,7 +166,7 @@ export default function PlayerLayout() {
 }
 
 const styles = StyleSheet.create({
-  // Estilos sin cambios...
+  // Los estilos permanecen igual
   headerContainer: {
     position: "relative",
     paddingTop: 50,

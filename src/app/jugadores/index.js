@@ -6,24 +6,22 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Image,
-  FlatList,
   TextInput,
   Alert,
   ActivityIndicator,
-  Dimensions,
+  FlatList,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { LinearGradient } from "expo-linear-gradient";
-import { Swipeable, GestureHandlerRootView } from "react-native-gesture-handler";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useFocusEffect } from "@react-navigation/native";
 import { COLORS } from "../../constants/colors";
 import {
   getAllJugadores,
   deleteJugador,
 } from "../../services/jugadoresService";
-import { Search, Plus, Trash2 } from "react-native-feather";
+import { Search, Plus } from "react-native-feather";
 import BackButton from "../../components/BackButton";
+import PlayerCard from "../../components/jugadores/PlayerCard";
 
 export default function Jugadores() {
   const router = useRouter();
@@ -38,6 +36,7 @@ export default function Jugadores() {
   // Mapa de referencias para todos los swipeables
   const swipeableRefs = useRef({});
 
+  // Función optimizada para cargar jugadores
   const loadPlayers = useCallback(async () => {
     try {
       const data = await getAllJugadores();
@@ -61,6 +60,7 @@ export default function Jugadores() {
     }, [loadPlayers])
   );
 
+  // Filtrado de jugadores
   useEffect(() => {
     if (searchQuery.trim() === "") {
       setFilteredPlayers(players);
@@ -74,26 +74,31 @@ export default function Jugadores() {
     }
   }, [searchQuery, players]);
 
-  const handleAddPlayer = () => {
+  // Función optimizada para cerrar el swipeable abierto
+  const closeOpenSwipeable = useCallback(() => {
     if (openSwipeableRef.current) {
       openSwipeableRef.current.close();
       openSwipeableRef.current = null;
     }
-    router.push("/jugadores/add-player");
-  };
+  }, []);
 
-  const handlePlayerPress = (player) => {
-    if (openSwipeableRef.current) {
-      openSwipeableRef.current.close();
-      openSwipeableRef.current = null;
-    }
+  // Función optimizada para añadir jugador
+  const handleAddPlayer = useCallback(() => {
+    closeOpenSwipeable();
+    router.push("/jugadores/add-player");
+  }, [closeOpenSwipeable, router]);
+
+  // Función optimizada para manejar el press en un jugador
+  const handlePlayerPress = useCallback((player) => {
+    closeOpenSwipeable();
     router.push({
       pathname: `/jugadores/${player.id}`,
       params: { id: player.id },
     });
-  };
+  }, [closeOpenSwipeable, router]);
 
-  const handleDeletePlayer = (playerId) => {
+  // Función optimizada para eliminar jugador
+  const handleDeletePlayer = useCallback((playerId) => {
     Alert.alert(
       "Eliminar jugador",
       "¿Estás seguro de que quieres eliminar este jugador?",
@@ -101,12 +106,7 @@ export default function Jugadores() {
         {
           text: "Cancelar",
           style: "cancel",
-          onPress: () => {
-            if (openSwipeableRef.current) {
-              openSwipeableRef.current.close();
-              openSwipeableRef.current = null;
-            }
-          },
+          onPress: closeOpenSwipeable,
         },
         {
           text: "Eliminar",
@@ -134,9 +134,9 @@ export default function Jugadores() {
         },
       ]
     );
-  };
+  }, [closeOpenSwipeable]);
 
-  // Función para cerrar todos los swipeables excepto el actual
+  // Función optimizada para cerrar otros swipeables
   const closeOtherSwipeables = useCallback((currentRef) => {
     if (openSwipeableRef.current && openSwipeableRef.current !== currentRef) {
       openSwipeableRef.current.close();
@@ -144,83 +144,27 @@ export default function Jugadores() {
     openSwipeableRef.current = currentRef;
   }, []);
 
-  const renderRightActions = (playerId) => {
-    return (
-      <View style={styles.rightActionContainer}>
-        <TouchableOpacity
-          style={styles.deleteAction}
-          onPress={() => handleDeletePlayer(playerId)}
-        >
-          <Trash2 width={24} height={24} color="#fff" />
-        </TouchableOpacity>
-      </View>
-    );
-  };
-
-  const renderPlayer = ({ item }) => {
-    return (
-      <View style={styles.playerCardContainer}>
-        <Swipeable
-          ref={(ref) => {
-            if (ref) {
-              swipeableRefs.current[item.id] = ref;
-            } else {
-              delete swipeableRefs.current[item.id];
-            }
-          }}
-          renderRightActions={() => renderRightActions(item.id)}
-          onSwipeableOpen={() => {
-            closeOtherSwipeables(swipeableRefs.current[item.id]);
-          }}
-          friction={0.8}
-          overshootFriction={8}
-          rightThreshold={40}
-          useNativeAnimations={true}
-        >
-          <TouchableOpacity
-            style={styles.playerCard}
-            activeOpacity={0.8}
-            onPress={() => handlePlayerPress(item)}
-          >
-            <LinearGradient
-              colors={[COLORS.card, "#252525"]}
-              style={styles.cardGradient}
-            >
-              <View style={styles.playerInfo}>
-                <Image
-                  source={{
-                    uri:
-                      item.image ||
-                      "https://randomuser.me/api/portraits/lego/1.jpg",
-                  }}
-                  style={styles.playerImage}
-                />
-                <View style={styles.playerDetails}>
-                  <Text style={styles.playerName}>{item.name}</Text>
-                  <Text style={styles.playerPosition}>
-                    {item.position || "Sin posición"}
-                  </Text>
-                </View>
-                {item.number && (
-                  <View style={styles.numberContainer}>
-                    <Text style={styles.playerNumber}>{item.number}</Text>
-                  </View>
-                )}
-              </View>
-            </LinearGradient>
-          </TouchableOpacity>
-        </Swipeable>
-      </View>
-    );
-  };
-
-  // Función para cerrar el swipeable abierto
-  const closeOpenSwipeable = useCallback(() => {
-    if (openSwipeableRef.current) {
-      openSwipeableRef.current.close();
-      openSwipeableRef.current = null;
+  // Función para manejar las referencias de swipeable
+  const handleSwipeableRef = useCallback((ref, id) => {
+    if (ref) {
+      swipeableRefs.current[id] = ref;
+      ref.onSwipeableOpen = () => closeOtherSwipeables(ref);
+    } else {
+      delete swipeableRefs.current[id];
     }
-  }, []);
+  }, [closeOtherSwipeables]);
+
+  // Renderizado optimizado de elementos
+  const renderPlayer = useCallback(({ item }) => {
+    return (
+      <PlayerCard 
+        player={item} 
+        onPress={() => handlePlayerPress(item)}
+        onDelete={() => handleDeletePlayer(item.id)}
+        swipeableRef={(ref, id) => handleSwipeableRef(ref, id)}
+      />
+    );
+  }, [handlePlayerPress, handleDeletePlayer, handleSwipeableRef]);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -269,6 +213,7 @@ export default function Jugadores() {
             removeClippedSubviews={true}
             maxToRenderPerBatch={10}
             windowSize={10}
+            initialNumToRender={10}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
                 <Text style={styles.emptyText}>No hay jugadores</Text>
@@ -322,60 +267,6 @@ const styles = StyleSheet.create({
   playersList: {
     paddingBottom: 20,
   },
-  playerCardContainer: {
-    marginBottom: 12,
-    borderRadius: 12,
-    overflow: "hidden",
-  },
-  playerCard: {
-    borderRadius: 12,
-    overflow: "hidden",
-    backgroundColor: COLORS.background,
-  },
-  cardGradient: {
-    borderRadius: 12,
-    padding: 1, // Borde gradiente
-  },
-  playerInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: COLORS.card,
-    borderRadius: 11,
-    padding: 12,
-  },
-  playerImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    marginRight: 12,
-    backgroundColor: COLORS.card,
-  },
-  playerDetails: {
-    flex: 1,
-  },
-  playerName: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: COLORS.text,
-    marginBottom: 4,
-  },
-  playerPosition: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-  },
-  numberContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: COLORS.primary,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  playerNumber: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#fff",
-  },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
@@ -391,18 +282,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: COLORS.textSecondary,
   },
-  rightActionContainer: {
-    width: 80,
-    height: "100%",
-  },
-  deleteAction: {
-    backgroundColor: COLORS.danger,
-    justifyContent: "center",
-    alignItems: "center",
-    flex: 1,
-    borderTopRightRadius: 12,
-    borderBottomRightRadius: 12,
-  },
   addButton: {
     width: 44,
     height: 44,
@@ -414,12 +293,5 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 5,
-  },
-  addButtonGradient: {
-    width: "100%",
-    height: "100%",
-    borderRadius: 28,
-    justifyContent: "center",
-    alignItems: "center",
   },
 });

@@ -1,7 +1,6 @@
 "use client"
 
-// app/jugadores/add-multa.js
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from "react-native"
 import { useRouter, useLocalSearchParams } from "expo-router"
 import { LinearGradient } from "expo-linear-gradient"
@@ -24,15 +23,18 @@ export default function AddMulta() {
   const [formErrors, setFormErrors] = useState({})
   const [isLoading, setIsLoading] = useState(false)
 
-  const handleChange = (field, value) => {
-    setMulta({ ...multa, [field]: value })
+  // Función optimizada para manejar cambios en los campos
+  const handleChange = useCallback((field, value) => {
+    setMulta(prevMulta => ({ ...prevMulta, [field]: value }))
+    
     // Limpiar error cuando se modifica el campo
     if (formErrors[field]) {
-      setFormErrors({ ...formErrors, [field]: null })
+      setFormErrors(prevErrors => ({ ...prevErrors, [field]: null }))
     }
-  }
+  }, [formErrors])
 
-  const handleDateChange = (event, selectedDate) => {
+  // Función optimizada para manejar cambios en la fecha
+  const handleDateChange = useCallback((event, selectedDate) => {
     setShowDatePicker(false)
     if (selectedDate) {
       const day = String(selectedDate.getDate()).padStart(2, "0")
@@ -41,13 +43,15 @@ export default function AddMulta() {
       const dateStr = `${day}/${month}/${year}`
       handleChange("date", dateStr)
     }
-  }
+  }, [handleChange])
 
-  const togglePagado = () => {
-    setMulta({ ...multa, paid: !multa.paid })
-  }
+  // Función optimizada para cambiar el estado de pago
+  const togglePagado = useCallback(() => {
+    setMulta(prevMulta => ({ ...prevMulta, paid: !prevMulta.paid }))
+  }, [])
 
-  const validateForm = () => {
+  // Función optimizada para validar el formulario
+  const validateForm = useCallback(() => {
     const errors = {}
 
     if (!multa.reason.trim()) {
@@ -66,9 +70,10 @@ export default function AddMulta() {
 
     setFormErrors(errors)
     return Object.keys(errors).length === 0
-  }
+  }, [multa])
 
-  const handleSave = async () => {
+  // Función optimizada para guardar la multa
+  const handleSave = useCallback(async () => {
     if (!validateForm()) {
       // Mostrar alerta con el primer error
       const firstError = Object.values(formErrors)[0]
@@ -104,8 +109,9 @@ export default function AddMulta() {
       console.error("Error al guardar multa:", error)
       Alert.alert("Error", "Ocurrió un error al guardar la multa")
     }
-  }
+  }, [multa, formErrors, validateForm, jugadorId, router])
 
+  // El resto del componente permanece igual
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
@@ -204,6 +210,7 @@ export default function AddMulta() {
 }
 
 const styles = StyleSheet.create({
+  // Los estilos permanecen igual
   container: {
     flex: 1,
     backgroundColor: COLORS.background,

@@ -1,4 +1,3 @@
-// app/jugadores/[id]/datos.js
 import {
   View,
   Text,
@@ -7,7 +6,7 @@ import {
   Linking,
   ScrollView,
 } from "react-native";
-import { useContext } from "react";
+import { useContext, useCallback } from "react";
 import { PlayerContext } from "../../../context/PlayerContext";
 import {
   CalendarIcon,
@@ -22,17 +21,19 @@ import WhatsAppButton from "../../../components/WhatsAppButton";
 export default function DatosPersonales() {
   const player = useContext(PlayerContext);
 
-  const handleCall = (phoneNumber) => {
+  // Función optimizada para realizar llamadas
+  const handleCall = useCallback((phoneNumber) => {
     if (phoneNumber) {
       Linking.openURL(`tel:${phoneNumber}`)
     }
-  }
+  }, []);
 
-  const handleEmail = () => {
+  // Función optimizada para enviar emails
+  const handleEmail = useCallback(() => {
     if (player.email) {
       Linking.openURL(`mailto:${player.email}`);
     }
-  };
+  }, [player?.email]);
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -160,6 +161,7 @@ export default function DatosPersonales() {
 }
 
 const styles = StyleSheet.create({
+  // Los estilos permanecen igual
   container: {
     flex: 1,
     backgroundColor: COLORS.background,

@@ -1,15 +1,16 @@
 "use client"
 
-// app/jugadores/[id]/multas.js
-import { useState, useCallback, useContext } from "react"
+import { useState, useCallback, useContext, useMemo } from "react"
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal, ActivityIndicator } from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
-import { Calendar, Check, Clock, Plus, Edit, Trash2, X } from "react-native-feather"
+import { Plus, Edit, Trash2, X } from "react-native-feather"
 import { COLORS } from "../../../constants/colors"
-import { useRouter, useLocalSearchParams } from "expo-router"
+import { useRouter } from "expo-router"
 import { useFocusEffect } from "@react-navigation/native"
 import { PlayerContext } from "../../../context/PlayerContext"
 import { updateMultaStatus, deleteMulta } from "../../../services/jugadoresService"
+import MultaCard from "../../../components/jugadores/MultaCard"
+import { CheckIcon, ClockIcon } from "../../../components/Icons"
 
 export default function Multas() {
   const router = useRouter()
@@ -32,19 +33,22 @@ export default function Multas() {
     }, [player]),
   )
 
-  const handleAddMulta = () => {
+  // Función optimizada para añadir multa
+  const handleAddMulta = useCallback(() => {
     router.push({
       pathname: "/jugadores/add-multa",
       params: { jugadorId: player.id },
     })
-  }
+  }, [player?.id, router])
 
-  const handleMultaPress = (multa) => {
+  // Función optimizada para manejar el press en una multa
+  const handleMultaPress = useCallback((multa) => {
     setSelectedMulta(multa)
     setShowActionModal(true)
-  }
+  }, [])
 
-  const handleEditMulta = () => {
+  // Función optimizada para editar multa
+  const handleEditMulta = useCallback(() => {
     setShowActionModal(false)
     router.push({
       pathname: `/jugadores/edit-multa`,
@@ -53,9 +57,10 @@ export default function Multas() {
         jugadorId: player.id,
       },
     })
-  }
+  }, [selectedMulta, player?.id, router])
 
-  const handleTogglePagado = async () => {
+  // Función optimizada para cambiar estado de multa
+  const handleTogglePagado = useCallback(async () => {
     setShowActionModal(false)
     setIsLoading(true)
 
@@ -68,7 +73,6 @@ export default function Multas() {
       if (result.success) {
         // Actualizar el estado local solo si la API fue exitosa
         setMultas(multas.map((m) => (m.id === selectedMulta.id ? { ...m, paid: !m.paid } : m)))
-
       } else {
         Alert.alert("Error", result.message || "No se pudo actualizar el estado de la multa")
       }
@@ -77,9 +81,10 @@ export default function Multas() {
       console.error("Error al actualizar estado:", error)
       Alert.alert("Error", "Ocurrió un error al actualizar el estado")
     }
-  }
+  }, [player?.id, selectedMulta, multas])
 
-  const handleDeleteMulta = () => {
+  // Función optimizada para eliminar multa
+  const handleDeleteMulta = useCallback(() => {
     setShowActionModal(false)
 
     Alert.alert("Eliminar multa", "¿Estás seguro de que quieres eliminar esta multa?", [
@@ -112,12 +117,16 @@ export default function Multas() {
         style: "destructive",
       },
     ])
-  }
+  }, [player?.id, selectedMulta, multas])
 
-  // Cálculos para el resumen
-  const totalMultas = multas.length
-  const importeTotal = multas.reduce((sum, multa) => sum + multa.amount, 0)
-  const importePendiente = multas.filter((multa) => !multa.paid).reduce((sum, multa) => sum + multa.amount, 0)
+  // Cálculos optimizados con useMemo
+  const { totalMultas, importeTotal, importePendiente } = useMemo(() => {
+    return {
+      totalMultas: multas.length,
+      importeTotal: multas.reduce((sum, multa) => sum + multa.amount, 0),
+      importePendiente: multas.filter((multa) => !multa.paid).reduce((sum, multa) => sum + multa.amount, 0)
+    };
+  }, [multas])
 
   return (
     <View style={styles.container}>
@@ -142,7 +151,13 @@ export default function Multas() {
             <Text style={styles.emptyStateText}>No hay multas registradas</Text>
           </View>
         ) : (
-          multas.map((multa) => <MultaCard key={multa.id} multa={multa} onPress={() => handleMultaPress(multa)} />)
+          multas.map((multa) => (
+            <MultaCard 
+              key={multa.id} 
+              multa={multa} 
+              onPress={handleMultaPress} 
+            />
+          ))
         )}
       </ScrollView>
 
@@ -200,12 +215,12 @@ export default function Multas() {
               <TouchableOpacity style={styles.modalOption} onPress={handleTogglePagado}>
                 {selectedMulta?.paid ? (
                   <>
-                    <Clock size={20} color={COLORS.warning} />
+                    <ClockIcon size={20} color={COLORS.warning} />
                     <Text style={styles.modalOptionText}>Marcar como pendiente</Text>
                   </>
                 ) : (
                   <>
-                    <Check size={20} color={COLORS.success} />
+                    <CheckIcon size={20} color={COLORS.success} />
                     <Text style={styles.modalOptionText}>Marcar como pagada</Text>
                   </>
                 )}
@@ -220,52 +235,6 @@ export default function Multas() {
         </TouchableOpacity>
       </Modal>
     </View>
-  )
-}
-
-function MultaCard({ multa, onPress }) {
-  return (
-    <TouchableOpacity style={styles.cardContainer} activeOpacity={0.9} onPress={onPress}>
-      <LinearGradient colors={[COLORS.card, "#252525"]} style={styles.cardGradient}>
-        <View style={styles.cardContent}>
-          {/* Indicador de estado de pago */}
-          <View
-            style={[
-              styles.statusIndicator,
-              { backgroundColor: multa.paid ? `${COLORS.success}20` : `${COLORS.danger}20` },
-            ]}
-          >
-            {multa.paid ? (
-              <Check width={16} height={16} color={COLORS.success} />
-            ) : (
-              <Clock width={16} height={16} color={COLORS.danger} />
-            )}
-          </View>
-
-          {/* Contenido principal */}
-          <View style={styles.cardMain}>
-            {/* Fecha y motivo */}
-            <View style={styles.cardHeader}>
-              <View style={styles.fechaContainer}>
-                <Calendar width={14} height={14} color="#999" style={styles.fechaIcon} />
-                <Text style={styles.fechaText}>{multa.date}</Text>
-              </View>
-              <Text style={styles.motivoText}>{multa.reason}</Text>
-            </View>
-
-            {/* Importe y estado */}
-            <View style={styles.cardFooter}>
-              <View style={styles.importeContainer}>
-                <Text style={styles.importeText}>{multa.amount}€</Text>
-              </View>
-              <Text style={[styles.estadoText, { color: multa.paid ? COLORS.success : COLORS.danger }]}>
-                {multa.paid ? "Pagado" : "Pendiente"}
-              </Text>
-            </View>
-          </View>
-        </View>
-      </LinearGradient>
-    </TouchableOpacity>
   )
 }
 
@@ -319,73 +288,6 @@ const styles = StyleSheet.create({
   emptyStateText: {
     color: COLORS.textSecondary,
     fontSize: 16,
-  },
-
-  // Tarjeta de multa
-  cardContainer: {
-    marginBottom: 12,
-    borderRadius: 16,
-    overflow: "hidden",
-  },
-  cardGradient: {
-    borderRadius: 16,
-    padding: 1, // Borde gradiente
-  },
-  cardContent: {
-    flexDirection: "row",
-    backgroundColor: COLORS.card,
-    borderRadius: 15,
-    padding: 16,
-  },
-  statusIndicator: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
-  },
-  cardMain: {
-    flex: 1,
-    justifyContent: "space-between",
-  },
-  cardHeader: {
-    marginBottom: 8,
-  },
-  fechaContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 4,
-  },
-  fechaIcon: {
-    marginRight: 4,
-  },
-  fechaText: {
-    color: COLORS.textSecondary,
-    fontSize: 12,
-  },
-  motivoText: {
-    color: COLORS.text,
-    fontSize: 16,
-    fontWeight: "500",
-  },
-  cardFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  importeContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  importeText: {
-    color: COLORS.warning,
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  estadoText: {
-    fontSize: 14,
-    fontWeight: "500",
   },
 
   // Botón para añadir
