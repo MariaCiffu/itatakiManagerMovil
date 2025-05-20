@@ -1,18 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  TextInput,
-  Alert,
-  Linking,
-  Modal,
-  FlatList,
-} from "react-native"
+import { useState, useEffect, useCallback, useMemo } from "react"
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Linking } from "react-native"
 import { useRouter } from "expo-router"
 import { LinearGradient } from "expo-linear-gradient"
 import DateTimePicker from "@react-native-community/datetimepicker"
@@ -26,6 +15,8 @@ import {
   EnvelopeIcon,
   FileIcon,
   MapIcon,
+  TrophyIcon,
+  NumberIcon,
 } from "../../components/Icons"
 import { COLORS } from "../../constants/colors"
 import { PLAYERS, getJugadoresConMultas } from "../../data/teamData"
@@ -39,20 +30,61 @@ export default function Convocatorias() {
   const [searchQuery, setSearchQuery] = useState("")
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [showTimePicker, setShowTimePicker] = useState(false)
+  const [showCitacionPicker, setShowCitacionPicker] = useState(false)
   const [datos, setDatos] = useState({
     fecha: "",
+    fechaHora: "", // Nueva propiedad para almacenar fecha y hora juntas
     hora: "",
+    citacion: "", // Nueva propiedad para la hora de citación
     lugar: "",
     rival: "",
+    tipoPartido: "liga", // Valor por defecto: liga
+    jornada: "", // Para partidos de liga
+    nombreTorneo: "", // Para torneos
   })
   const [mensajeFinal, setMensajeFinal] = useState("")
   const [mostrarPreview, setMostrarPreview] = useState(false)
 
-  // Estados para la búsqueda de ubicaciones
-  const [searchLocation, setSearchLocation] = useState("")
-  const [searchResults, setSearchResults] = useState([])
-  const [showLocationModal, setShowLocationModal] = useState(false)
-  const [selectedLocation, setSelectedLocation] = useState(null)
+  // Función para formatear la fecha en el formato "MARTES 18 SEPTIEMBRE"
+  const formatearFecha = useCallback((fechaStr) => {
+    if (!fechaStr) return ""
+
+    try {
+      // Convertir de formato DD/MM/YYYY a Date
+      const partes = fechaStr.split("/")
+      if (partes.length !== 3) return fechaStr
+
+      const fecha = new Date(partes[2], partes[1] - 1, partes[0])
+
+      // Días de la semana en español y en mayúsculas
+      const diasSemana = ["DOMINGO", "LUNES", "MARTES", "MIÉRCOLES", "JUEVES", "VIERNES", "SÁBADO"]
+
+      // Meses en español y en mayúsculas
+      const meses = [
+        "ENERO",
+        "FEBRERO",
+        "MARZO",
+        "ABRIL",
+        "MAYO",
+        "JUNIO",
+        "JULIO",
+        "AGOSTO",
+        "SEPTIEMBRE",
+        "OCTUBRE",
+        "NOVIEMBRE",
+        "DICIEMBRE",
+      ]
+
+      const diaSemana = diasSemana[fecha.getDay()]
+      const dia = fecha.getDate()
+      const mes = meses[fecha.getMonth()]
+
+      return `${diaSemana} ${dia} ${mes}`
+    } catch (error) {
+      console.error("Error al formatear fecha:", error)
+      return fechaStr
+    }
+  }, [])
 
   // Filtrar jugadores según la búsqueda
   const jugadoresFiltrados = searchQuery
@@ -64,10 +96,19 @@ export default function Convocatorias() {
       )
     : jugadores
 
+  // Calcular jugadores convocados y no convocados
+  const jugadoresConvocados = useMemo(() => {
+    return jugadores.filter((j) => jugadoresSeleccionados[j.id])
+  }, [jugadores, jugadoresSeleccionados])
+
+  const jugadoresNoConvocados = useMemo(() => {
+    return jugadores.filter((j) => !jugadoresSeleccionados[j.id])
+  }, [jugadores, jugadoresSeleccionados])
+
   // Actualizar mensaje cuando cambian los datos o jugadores seleccionados
   useEffect(() => {
     generarMensaje()
-  }, [datos, jugadoresSeleccionados, plantillaSeleccionada, selectedLocation])
+  }, [datos, jugadoresSeleccionados, plantillaSeleccionada, jugadoresConvocados, jugadoresNoConvocados])
 
   const handleDateChange = (event, selectedDate) => {
     setShowDatePicker(false)
@@ -76,7 +117,15 @@ export default function Convocatorias() {
       const month = String(selectedDate.getMonth() + 1).padStart(2, "0")
       const year = selectedDate.getFullYear()
       const dateStr = `${day}/${month}/${year}`
-      setDatos({ ...datos, fecha: dateStr })
+
+      // Actualizar fecha y fecha con hora
+      const fechaHoraStr = datos.hora ? `${dateStr} a las ${datos.hora}` : dateStr
+
+      setDatos({
+        ...datos,
+        fecha: dateStr,
+        fechaHora: fechaHoraStr,
+      })
     }
   }
 
@@ -86,95 +135,116 @@ export default function Convocatorias() {
       const hours = String(selectedTime.getHours()).padStart(2, "0")
       const minutes = String(selectedTime.getMinutes()).padStart(2, "0")
       const timeStr = `${hours}:${minutes}`
-      setDatos({ ...datos, hora: timeStr })
+
+      // Actualizar hora y fecha con hora
+      const fechaHoraStr = datos.fecha ? `${datos.fecha} a las ${timeStr}` : `a las ${timeStr}`
+
+      setDatos({
+        ...datos,
+        hora: timeStr,
+        fechaHora: fechaHoraStr,
+      })
     }
   }
 
-  const toggleJugadorSeleccionado = (jugadorId) => {
+  const handleCitacionChange = (event, selectedTime) => {
+    setShowCitacionPicker(false)
+    if (selectedTime) {
+      const hours = String(selectedTime.getHours()).padStart(2, "0")
+      const minutes = String(selectedTime.getMinutes()).padStart(2, "0")
+      const timeStr = `${hours}:${minutes}`
+      setDatos({ ...datos, citacion: timeStr })
+    }
+  }
+
+  const toggleJugadorSeleccionado = useCallback((jugadorId) => {
     setJugadoresSeleccionados((prev) => ({
       ...prev,
       [jugadorId]: !prev[jugadorId],
     }))
-  }
+  }, [])
 
-  const seleccionarTodos = () => {
+  const seleccionarTodos = useCallback(() => {
     const todos = {}
     jugadores.forEach((jugador) => {
       todos[jugador.id] = true
     })
     setJugadoresSeleccionados(todos)
-  }
+  }, [jugadores])
 
-  const deseleccionarTodos = () => {
+  const deseleccionarTodos = useCallback(() => {
     setJugadoresSeleccionados({})
-  }
+  }, [])
 
-  // Función para buscar lugares (simulada, en producción usarías la API de Google Places)
-  const searchPlaces = (query) => {
-    // Simulación de resultados
-    const mockResults = [
-      {
-        id: "1",
-        name: "Estadio Camp Nou",
-        address: "C. d'Arístides Maillol, 12, 08028 Barcelona",
-        coords: { lat: 41.3809, lng: 2.1228 },
-      },
-      {
-        id: "2",
-        name: "Ciudad Deportiva Joan Gamper",
-        address: "Av. Onze de Setembre, s/n, 08970 Sant Joan Despí, Barcelona",
-        coords: { lat: 41.3773, lng: 2.0502 },
-      },
-      {
-        id: "3",
-        name: "Estadio Olímpico Lluís Companys",
-        address: "Passeig Olímpic, 17-19, 08038 Barcelona",
-        coords: { lat: 41.365, lng: 2.1544 },
-      },
-    ]
-
-    return mockResults.filter(
-      (place) =>
-        place.name.toLowerCase().includes(query.toLowerCase()) ||
-        place.address.toLowerCase().includes(query.toLowerCase()),
-    )
-  }
-
-  // Función para seleccionar un lugar
-  const selectLocation = (location) => {
-    setSelectedLocation(location)
-    setDatos({ ...datos, lugar: location.name })
-    setShowLocationModal(false)
-  }
+  // Función para cambiar el tipo de partido
+  const cambiarTipoPartido = useCallback((tipo) => {
+    setDatos((prev) => ({
+      ...prev,
+      tipoPartido: tipo,
+      // Limpiar campos específicos al cambiar de tipo
+      jornada: tipo === "liga" ? prev.jornada : "",
+      nombreTorneo: tipo === "torneo" ? prev.nombreTorneo : "",
+      rival: tipo === "torneo" ? "" : prev.rival,
+    }))
+  }, [])
 
   // Función para generar enlace de Google Maps
-  const generateMapsLink = (coords) => {
-    return `https://www.google.com/maps/search/?api=1&query=${coords.lat},${coords.lng}`
-  }
+  const generateMapsLink = useCallback((lugar) => {
+    if (!lugar) return ""
 
-  const generarMensaje = () => {
+    // Codificar el lugar para la URL
+    const encodedPlace = encodeURIComponent(lugar)
+    return `https://www.google.com/maps/search/?api=1&query=${encodedPlace}`
+  }, [])
+
+  const generarMensaje = useCallback(() => {
     let mensaje = plantillaSeleccionada.texto
 
-    // Reemplazar variables en la plantilla
-    mensaje = mensaje.replace("{fecha}", datos.fecha || "[FECHA]")
+    // Formatear la fecha en el formato "MARTES 18 SEPTIEMBRE"
+    const fechaFormateada = formatearFecha(datos.fecha)
 
-    // Solo reemplazar hora y lugar si no es informe de multas
+    // Reemplazar variables en la plantilla
+    mensaje = mensaje.replace("{fecha}", fechaFormateada || "[FECHA]")
+
+    // Generar el texto del tipo de partido
+    let tipoPartidoTexto = ""
+    if (datos.tipoPartido === "liga") {
+      tipoPartidoTexto = `JORNADA ${datos.jornada} DE PRIMERA CADETE`
+    } else if (datos.tipoPartido === "torneo") {
+      tipoPartidoTexto = `TORNEO ${datos.nombreTorneo.toUpperCase || "[NOMBRE DEL TORNEO]"}`
+    } else if (datos.tipoPartido === "amistoso") {
+      tipoPartidoTexto = "AMISTOSO"
+    }
+
+    mensaje = mensaje.replace("{tipoPartido}", tipoPartidoTexto)
+
+    // Solo reemplazar hora, citación y lugar si no es informe de multas
     if (plantillaSeleccionada.id !== "multas") {
       mensaje = mensaje.replace("{hora}", datos.hora || "[HORA]")
+      mensaje = mensaje.replace("{citacion}", datos.citacion || "[HORA DE CITACIÓN]")
 
-      // Si hay una ubicación seleccionada con coordenadas, añadir el enlace de Maps usando formato Markdown
-      if (selectedLocation && selectedLocation.coords) {
-        const mapsLink = generateMapsLink(selectedLocation.coords)
-        mensaje = mensaje.replace("{lugar}", `[${datos.lugar || "[LUGAR]"}](${mapsLink})`)
+      // Generar enlace de Google Maps para el lugar
+      if (datos.lugar) {
+        const mapsLink = generateMapsLink(datos.lugar)
+        mensaje = mensaje.replace("{lugar}", `${datos.lugar}\n${mapsLink}`)
       } else {
-        mensaje = mensaje.replace("{lugar}", datos.lugar || "[LUGAR]")
+        mensaje = mensaje.replace("{lugar}", "[LUGAR]")
+      }
+
+      // Solo incluir rival si no es un torneo
+      if (datos.tipoPartido !== "torneo") {
+        mensaje = mensaje.replace("{rival}", datos.rival || "[RIVAL]")
+      } else {
+        // Si es torneo, eliminar la parte del rival
+        mensaje = mensaje.replace(" - {rival}", "")
       }
     }
 
-    mensaje = mensaje.replace("{rival}", datos.rival || "[RIVAL]")
+    // Generar lista de jugadores convocados
+    let listaJugadoresConvocados = ""
 
-    // Generar lista de jugadores
-    let listaJugadores = ""
+    // Generar lista de jugadores no convocados
+    let listaJugadoresNoConvocados = ""
 
     // Caso especial para el informe de multas
     if (plantillaSeleccionada.id === "multas") {
@@ -182,40 +252,52 @@ export default function Convocatorias() {
 
       if (jugadoresConMultas.length > 0) {
         jugadoresConMultas.forEach((jugador, index) => {
-          listaJugadores += `${index + 1}. ${jugador.name} - Total: ${jugador.totalPendiente}€\n`
+          listaJugadoresConvocados += `${index + 1}. ${jugador.name} - Total: ${jugador.totalPendiente}€\n`
           jugador.multasPendientes.forEach((multa) => {
-            listaJugadores += `   • ${multa.reason}: ${multa.amount}€ (${multa.date})\n`
+            listaJugadoresConvocados += `   • ${multa.reason}: ${multa.amount}€ (${multa.date})\n`
           })
-          listaJugadores += "\n"
+          listaJugadoresConvocados += "\n"
         })
       } else {
-        listaJugadores = "No hay jugadores con multas pendientes."
+        listaJugadoresConvocados = "No hay jugadores con multas pendientes."
       }
     } else {
       // Para otros tipos de plantillas, usar la selección manual
-      const jugadoresConvocados = jugadores.filter((j) => jugadoresSeleccionados[j.id])
-
       if (jugadoresConvocados.length > 0) {
         jugadoresConvocados.forEach((jugador, index) => {
-          listaJugadores += `${index + 1}. ${jugador.name} (${jugador.number})\n`
+          listaJugadoresConvocados += `${index + 1}. ${jugador.name} (${jugador.number})\n`
         })
       } else {
-        listaJugadores = "[SELECCIONA JUGADORES]"
+        listaJugadoresConvocados = "[SELECCIONA JUGADORES]"
+      }
+
+      // Lista de jugadores no convocados - solo si hay jugadores no convocados
+      if (jugadoresNoConvocados.length > 0) {
+        jugadoresNoConvocados.forEach((jugador, index) => {
+          listaJugadoresNoConvocados += `${index + 1}. ${jugador.name} (${jugador.number})\n`
+        })
+        // Incluir la sección de jugadores no convocados en el mensaje
+        mensaje = mensaje.replace("{jugadoresNo}", listaJugadoresNoConvocados)
+      } else {
+        // Si todos están convocados, eliminar la sección de jugadores no convocados
+        mensaje = mensaje.replace("\n\n*Jugadores no convocados:*\n{jugadoresNo}", "")
       }
     }
 
-    mensaje = mensaje.replace("{jugadores}", listaJugadores)
+    mensaje = mensaje.replace("{jugadores}", listaJugadoresConvocados)
 
     setMensajeFinal(mensaje)
-  }
+  }, [datos, jugadoresConvocados, jugadoresNoConvocados, plantillaSeleccionada, formatearFecha, generateMapsLink])
 
-  const enviarPorWhatsApp = async () => {
+  const enviarPorWhatsApp = useCallback(async () => {
     // Verificar que todos los campos necesarios estén completos
     if (
       !datos.fecha ||
       (plantillaSeleccionada.id !== "multas" && !datos.hora) ||
       (plantillaSeleccionada.id !== "multas" && !datos.lugar) ||
-      (plantillaSeleccionada.id === "convocatoria" && !datos.rival) ||
+      (plantillaSeleccionada.id === "convocatoria" && datos.tipoPartido !== "torneo" && !datos.rival) ||
+      (plantillaSeleccionada.id === "convocatoria" && datos.tipoPartido === "liga" && !datos.jornada) ||
+      (plantillaSeleccionada.id === "convocatoria" && datos.tipoPartido === "torneo" && !datos.nombreTorneo) ||
       (plantillaSeleccionada.id !== "multas" &&
         Object.keys(jugadoresSeleccionados).filter((id) => jugadoresSeleccionados[id]).length === 0)
     ) {
@@ -240,15 +322,17 @@ export default function Convocatorias() {
     } catch (error) {
       Alert.alert("Error", "No se pudo abrir WhatsApp.")
     }
-  }
+  }, [datos, jugadoresSeleccionados, mensajeFinal, plantillaSeleccionada])
 
-  const enviarPorWhatsAppIndividual = async () => {
+  const enviarPorWhatsAppIndividual = useCallback(async () => {
     // Verificar que todos los campos necesarios estén completos
     if (
       !datos.fecha ||
       (plantillaSeleccionada.id !== "multas" && !datos.hora) ||
       (plantillaSeleccionada.id !== "multas" && !datos.lugar) ||
-      (plantillaSeleccionada.id === "convocatoria" && !datos.rival) ||
+      (plantillaSeleccionada.id === "convocatoria" && datos.tipoPartido !== "torneo" && !datos.rival) ||
+      (plantillaSeleccionada.id === "convocatoria" && datos.tipoPartido === "liga" && !datos.jornada) ||
+      (plantillaSeleccionada.id === "convocatoria" && datos.tipoPartido === "torneo" && !datos.nombreTorneo) ||
       (plantillaSeleccionada.id !== "multas" &&
         Object.keys(jugadoresSeleccionados).filter((id) => jugadoresSeleccionados[id]).length === 0)
     ) {
@@ -272,7 +356,7 @@ export default function Convocatorias() {
             jugadoresDestino = getJugadoresConMultas()
           } else {
             // Para otros tipos, usar los jugadores seleccionados
-            jugadoresDestino = jugadores.filter((j) => jugadoresSeleccionados[j.id])
+            jugadoresDestino = jugadoresConvocados
           }
 
           if (jugadoresDestino.length === 0) {
@@ -320,68 +404,17 @@ export default function Convocatorias() {
         },
       },
     ])
+  }, [datos, jugadoresConvocados, jugadoresSeleccionados, mensajeFinal, plantillaSeleccionada])
+
+  // Función para obtener el texto del placeholder según el tipo de partido
+  const getPlaceholderText = (field) => {
+    if (field === "fecha") {
+      return datos.tipoPartido === "torneo" ? "Fecha del torneo *" : "Fecha del partido *"
+    } else if (field === "hora") {
+      return datos.tipoPartido === "torneo" ? "Hora del torneo *" : "Hora del partido *"
+    }
+    return ""
   }
-
-  // Componente para el modal de búsqueda de ubicaciones
-  const LocationSearchModal = () => (
-    <Modal
-      visible={showLocationModal}
-      animationType="slide"
-      transparent={true}
-      onRequestClose={() => setShowLocationModal(false)}
-    >
-      <View style={styles.modalContainer}>
-        <View style={styles.modalContent}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Buscar lugar</Text>
-            <TouchableOpacity onPress={() => setShowLocationModal(false)} style={styles.closeButton}>
-              <Text style={styles.closeButtonText}>X</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.searchContainer}>
-            <SearchIcon size={20} color={COLORS.textSecondary} />
-            <TextInput
-              placeholder="Buscar estadio, campo, etc..."
-              placeholderTextColor={COLORS.textSecondary}
-              value={searchLocation}
-              onChangeText={(text) => {
-                setSearchLocation(text)
-                if (text.length > 2) {
-                  setSearchResults(searchPlaces(text))
-                } else {
-                  setSearchResults([])
-                }
-              }}
-              style={styles.searchInput}
-              autoFocus={true}
-            />
-          </View>
-
-          <FlatList
-            data={searchResults}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <TouchableOpacity style={styles.locationItem} onPress={() => selectLocation(item)}>
-                <MapIcon size={20} color={COLORS.primary} />
-                <View style={styles.locationInfo}>
-                  <Text style={styles.locationName}>{item.name}</Text>
-                  <Text style={styles.locationAddress}>{item.address}</Text>
-                </View>
-              </TouchableOpacity>
-            )}
-            ListEmptyComponent={
-              <Text style={styles.emptyResultsText}>
-                {searchLocation.length > 2
-                  ? "No se encontraron resultados"
-                  : "Escribe al menos 3 caracteres para buscar"}
-              </Text>
-            }
-          />
-        </View>
-      </View>
-    </Modal>
-  )
 
   return (
     <View style={styles.container}>
@@ -433,16 +466,89 @@ export default function Convocatorias() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Datos</Text>
 
+          {/* Tipo de partido - solo visible para convocatorias */}
+          {plantillaSeleccionada.id === "convocatoria" && (
+            <View style={styles.tipoPartidoContainer}>
+              <Text style={styles.tipoPartidoLabel}>Tipo de partido:</Text>
+              <View style={styles.tipoPartidoOptions}>
+                <TouchableOpacity
+                  style={[styles.tipoPartidoOption, datos.tipoPartido === "liga" && styles.tipoPartidoOptionSelected]}
+                  onPress={() => cambiarTipoPartido("liga")}
+                >
+                  <Text
+                    style={[styles.tipoPartidoText, datos.tipoPartido === "liga" && styles.tipoPartidoTextSelected]}
+                  >
+                    Liga
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.tipoPartidoOption,
+                    datos.tipoPartido === "amistoso" && styles.tipoPartidoOptionSelected,
+                  ]}
+                  onPress={() => cambiarTipoPartido("amistoso")}
+                >
+                  <Text
+                    style={[styles.tipoPartidoText, datos.tipoPartido === "amistoso" && styles.tipoPartidoTextSelected]}
+                  >
+                    Amistoso
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.tipoPartidoOption, datos.tipoPartido === "torneo" && styles.tipoPartidoOptionSelected]}
+                  onPress={() => cambiarTipoPartido("torneo")}
+                >
+                  <Text
+                    style={[styles.tipoPartidoText, datos.tipoPartido === "torneo" && styles.tipoPartidoTextSelected]}
+                  >
+                    Torneo
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          {/* Jornada - solo visible para partidos de liga */}
+          {plantillaSeleccionada.id === "convocatoria" && datos.tipoPartido === "liga" && (
+            <View style={styles.inputContainer}>
+              <NumberIcon size={20} color={COLORS.primary} />
+              <TextInput
+                placeholder="Número de jornada *"
+                placeholderTextColor={COLORS.textSecondary}
+                value={datos.jornada}
+                onChangeText={(text) => setDatos({ ...datos, jornada: text })}
+                style={styles.input}
+                keyboardType="numeric"
+              />
+            </View>
+          )}
+
+          {/* Nombre del torneo - solo visible para torneos */}
+          {plantillaSeleccionada.id === "convocatoria" && datos.tipoPartido === "torneo" && (
+            <View style={styles.inputContainer}>
+              <TrophyIcon size={20} color={COLORS.primary} />
+              <TextInput
+                placeholder="Nombre del torneo *"
+                placeholderTextColor={COLORS.textSecondary}
+                value={datos.nombreTorneo}
+                onChangeText={(text) => setDatos({ ...datos, nombreTorneo: text })}
+                style={styles.input}
+              />
+            </View>
+          )}
+
           {/* Fecha - siempre visible para todas las plantillas */}
           <TouchableOpacity style={styles.inputContainer} onPress={() => setShowDatePicker(true)} activeOpacity={0.7}>
             <CalendarIcon size={20} color={COLORS.primary} />
-            <Text style={datos.fecha ? styles.input : styles.inputPlaceholder}>{datos.fecha || "Fecha *"}</Text>
+            <Text style={datos.fecha ? styles.input : styles.inputPlaceholder}>
+              {datos.fecha ? formatearFecha(datos.fecha) : getPlaceholderText("fecha")}
+            </Text>
           </TouchableOpacity>
           {showDatePicker && (
             <DateTimePicker value={new Date()} mode="date" display="spinner" onChange={handleDateChange} />
           )}
 
-          {/* Hora - solo visible para convocatorias y entrenamientos */}
+          {/* Hora del partido - solo visible para convocatorias y entrenamientos */}
           {plantillaSeleccionada.id !== "multas" && (
             <>
               <TouchableOpacity
@@ -451,10 +557,45 @@ export default function Convocatorias() {
                 activeOpacity={0.7}
               >
                 <ClockIcon size={20} color={COLORS.primary} />
-                <Text style={datos.hora ? styles.input : styles.inputPlaceholder}>{datos.hora || "Hora *"}</Text>
+                <Text style={datos.hora ? styles.input : styles.inputPlaceholder}>
+                  {datos.hora || getPlaceholderText("hora")}
+                </Text>
               </TouchableOpacity>
               {showTimePicker && (
                 <DateTimePicker value={new Date()} mode="time" display="spinner" onChange={handleTimeChange} />
+              )}
+            </>
+          )}
+
+          {/* Rival - solo visible para convocatorias de liga y amistosos */}
+          {plantillaSeleccionada.id === "convocatoria" && datos.tipoPartido !== "torneo" && (
+            <View style={styles.inputContainer}>
+              <UserFriendsIcon size={20} color={COLORS.primary} />
+              <TextInput
+                placeholder="Rival *"
+                placeholderTextColor={COLORS.textSecondary}
+                value={datos.rival}
+                onChangeText={(text) => setDatos({ ...datos, rival: text })}
+                style={styles.input}
+              />
+            </View>
+          )}
+
+          {/* Hora de citación - solo visible para convocatorias y entrenamientos */}
+          {plantillaSeleccionada.id !== "multas" && (
+            <>
+              <TouchableOpacity
+                style={styles.inputContainer}
+                onPress={() => setShowCitacionPicker(true)}
+                activeOpacity={0.7}
+              >
+                <ClockIcon size={20} color={COLORS.warning} />
+                <Text style={datos.citacion ? styles.input : styles.inputPlaceholder}>
+                  {datos.citacion || "Hora de citación *"}
+                </Text>
+              </TouchableOpacity>
+              {showCitacionPicker && (
+                <DateTimePicker value={new Date()} mode="time" display="spinner" onChange={handleCitacionChange} />
               )}
             </>
           )}
@@ -468,23 +609,6 @@ export default function Convocatorias() {
                 placeholderTextColor={COLORS.textSecondary}
                 value={datos.lugar}
                 onChangeText={(text) => setDatos({ ...datos, lugar: text })}
-                style={styles.input}
-              />
-              <TouchableOpacity style={styles.locationButton} onPress={() => setShowLocationModal(true)}>
-                <Text style={styles.locationButtonText}>Buscar</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {/* Rival (solo para convocatoria de partido) */}
-          {plantillaSeleccionada.id === "convocatoria" && (
-            <View style={styles.inputContainer}>
-              <UserFriendsIcon size={20} color={COLORS.primary} />
-              <TextInput
-                placeholder="Rival *"
-                placeholderTextColor={COLORS.textSecondary}
-                value={datos.rival}
-                onChangeText={(text) => setDatos({ ...datos, rival: text })}
                 style={styles.input}
               />
             </View>
@@ -540,6 +664,13 @@ export default function Convocatorias() {
                   </View>
                 </TouchableOpacity>
               ))}
+            </View>
+
+            {/* Resumen de selección */}
+            <View style={styles.selectionSummary}>
+              <Text style={styles.summaryText}>
+                Convocados: {jugadoresConvocados.length} | No convocados: {jugadoresNoConvocados.length}
+              </Text>
             </View>
           </View>
         )}
@@ -611,9 +742,6 @@ export default function Convocatorias() {
           </View>
         </View>
       </ScrollView>
-
-      {/* Modal de búsqueda de ubicaciones */}
-      {showLocationModal && <LocationSearchModal />}
     </View>
   )
 }
@@ -706,6 +834,41 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     fontWeight: "bold",
   },
+  // Estilos para el selector de tipo de partido
+  tipoPartidoContainer: {
+    marginBottom: 16,
+  },
+  tipoPartidoLabel: {
+    color: COLORS.text,
+    fontSize: 16,
+    marginBottom: 8,
+  },
+  tipoPartidoOptions: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  tipoPartidoOption: {
+    flex: 1,
+    backgroundColor: COLORS.card,
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
+  },
+  tipoPartidoOptionSelected: {
+    borderColor: COLORS.primary,
+    backgroundColor: `${COLORS.primary}20`,
+  },
+  tipoPartidoText: {
+    color: COLORS.textSecondary,
+    fontWeight: "500",
+  },
+  tipoPartidoTextSelected: {
+    color: COLORS.text,
+    fontWeight: "bold",
+  },
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -716,6 +879,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.cardBorder,
     marginBottom: 12,
     gap: 12,
+    minHeight: 52, // Altura fija para todos los inputs
   },
   input: {
     flex: 1,
@@ -736,6 +900,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     borderWidth: 1,
     borderColor: COLORS.cardBorder,
+    minHeight: 52, // Altura fija para el buscador
   },
   searchInput: {
     flex: 1,
@@ -827,84 +992,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
   },
-  // Estilos para el modal de ubicaciones
-  modalContainer: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  modalContent: {
-    width: "90%",
-    maxHeight: "80%",
-    backgroundColor: COLORS.background,
-    borderRadius: 16,
-    padding: 16,
-  },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  modalTitle: {
-    color: COLORS.text,
-    fontSize: 18,
-    fontWeight: "bold",
-  },
-  closeButton: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  closeButtonText: {
-    color: COLORS.text,
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  locationButton: {
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 6,
-  },
-  locationButtonText: {
-    color: "#fff",
-    fontSize: 12,
-    fontWeight: "bold",
-  },
-  locationItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.cardBorder,
-    gap: 12,
-  },
-  locationInfo: {
-    flex: 1,
-  },
-  locationName: {
-    color: COLORS.text,
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  locationAddress: {
-    color: COLORS.textSecondary,
-    fontSize: 14,
-  },
-  emptyResultsText: {
-    color: COLORS.textSecondary,
-    textAlign: "center",
-    padding: 16,
-  },
   // Estilos para la sección de multas
   infoText: {
     color: COLORS.textSecondary,
     marginBottom: 16,
+  },
+  infoContainer: {
+    backgroundColor: `${COLORS.info}20`,
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: COLORS.info,
   },
   multasSummary: {
     backgroundColor: COLORS.card,
@@ -962,5 +1061,16 @@ const styles = StyleSheet.create({
     textAlign: "center",
     padding: 16,
     fontSize: 16,
+  },
+  selectionSummary: {
+    marginTop: 12,
+    backgroundColor: COLORS.card,
+    padding: 10,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  summaryText: {
+    color: COLORS.text,
+    fontSize: 14,
   },
 })

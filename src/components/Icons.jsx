@@ -114,3 +114,11 @@ export const MapIcon = (props) => (
   export const CornerIcon = (props) => (
     <Ionicons name="flag-outline" size={10} color="#fff" />
   )
+
+  export const HashtagIcon = (props) => (
+    <FontAwesome5 name="hashtag" size={24} color="white" {...props} />
+)
+
+export const NumberIcon = (props) => (
+    <FontAwesome5 name="sort-numeric-down" size={24} color="white" {...props} />
+)
