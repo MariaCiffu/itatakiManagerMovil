@@ -181,6 +181,7 @@ export default function EditarPartidoScreen() {
       // Si la alineación se maneja por referencia
       if (alineacionRef.current) {
         const alineacionData = alineacionRef.current.getAlineacionData();
+        // Asegurarse de que los datos de alineación incluyen los jugadores temporales
         setPartidoData((prev) => ({ ...prev, alineacion: alineacionData }));
       }
 

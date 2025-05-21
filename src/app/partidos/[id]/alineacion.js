@@ -9,7 +9,6 @@ import {
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { getPartidoByIdWithDelay } from "../../../services/partidosService";
-import { PLAYERS } from "../../../data/teamData"; // Importar jugadores
 import LineupScreen from "../../alineacion";
 
 export default function PartidoAlineacionScreen() {

@@ -1,6 +1,6 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
+import { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -10,133 +10,168 @@ import {
   SafeAreaView,
   ActivityIndicator,
   Alert,
-} from "react-native"
-import { useRouter, useLocalSearchParams } from "expo-router"
-import { Ionicons } from "@expo/vector-icons"
-import { getPartidoByIdWithDelay, deletePartidoWithDelay } from "../../services/partidosService"
-import { getAllJugadores } from "../../services/jugadoresService"
-import { availableRoles } from "../../data/roles"
+} from "react-native";
+import { useRouter, useLocalSearchParams } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import {
+  getPartidoByIdWithDelay,
+  deletePartidoWithDelay,
+} from "../../services/partidosService";
+import { getAllJugadores } from "../../services/jugadoresService";
+import { availableRoles } from "../../data/roles";
 
 export default function DetallePartidoScreen() {
-  const router = useRouter()
-  const { id } = useLocalSearchParams()
-  const [partido, setPartido] = useState(null)
-  const [jugadores, setJugadores] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [deleting, setDeleting] = useState(false)
-  const [generatingConvocatoria, setGeneratingConvocatoria] = useState(false)
+  const router = useRouter();
+  const { id } = useLocalSearchParams();
+  const [partido, setPartido] = useState(null);
+  const [jugadores, setJugadores] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState(false);
+  const [generatingConvocatoria, setGeneratingConvocatoria] = useState(false);
 
   // Estados para la convocatoria
-  const [mensajeConvocatoria, setMensajeConvocatoria] = useState("")
+  const [mensajeConvocatoria, setMensajeConvocatoria] = useState("");
 
   useEffect(() => {
-    loadData()
-  }, [id])
+    loadData();
+  }, [id]);
 
   const loadData = async () => {
     try {
-      setLoading(true)
+      setLoading(true);
       // Cargar partido y jugadores en paralelo
-      const [partidoData, jugadoresData] = await Promise.all([getPartidoByIdWithDelay(id), getAllJugadores()])
+      const [partidoData, jugadoresData] = await Promise.all([
+        getPartidoByIdWithDelay(id),
+        getAllJugadores(),
+      ]);
 
       if (partidoData) {
         // Asegurarse de que la fecha es un objeto Date
-        partidoData.fecha = new Date(partidoData.fecha)
-        setPartido(partidoData)
+        partidoData.fecha = new Date(partidoData.fecha);
+        setPartido(partidoData);
       } else {
         // Manejar caso de partido no encontrado
-        Alert.alert("Error", "Partido no encontrado")
-        router.replace("/partidos")
-        return
+        Alert.alert("Error", "Partido no encontrado");
+        router.replace("/partidos");
+        return;
       }
 
-      setJugadores(jugadoresData)
+      setJugadores(jugadoresData);
     } catch (error) {
-      console.error("Error al cargar datos:", error)
-      Alert.alert("Error", "No se pudieron cargar los datos")
-      router.replace("/partidos")
+      console.error("Error al cargar datos:", error);
+      Alert.alert("Error", "No se pudieron cargar los datos");
+      router.replace("/partidos");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleEditarPartido = () => {
-    router.push(`/partidos/editar/${id}`)
-  }
+    router.push(`/partidos/editar/${id}`);
+  };
 
   const handleEliminarPartido = () => {
-    Alert.alert("Eliminar partido", "¿Estás seguro de que quieres eliminar este partido?", [
-      { text: "Cancelar", style: "cancel" },
-      {
-        text: "Eliminar",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            setDeleting(true)
-            await deletePartidoWithDelay(id)
-            router.replace("/partidos")
-          } catch (error) {
-            console.error("Error al eliminar partido:", error)
-            Alert.alert("Error", "No se pudo eliminar el partido")
-            setDeleting(false)
-          }
+    Alert.alert(
+      "Eliminar partido",
+      "¿Estás seguro de que quieres eliminar este partido?",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Eliminar",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setDeleting(true);
+              await deletePartidoWithDelay(id);
+              router.replace("/partidos");
+            } catch (error) {
+              console.error("Error al eliminar partido:", error);
+              Alert.alert("Error", "No se pudo eliminar el partido");
+              setDeleting(false);
+            }
+          },
         },
-      },
-    ])
-  }
+      ]
+    );
+  };
 
   const handleVerAlineacion = () => {
-    router.push(`/partidos/${id}/alineacion`)
-  }
+    router.push(`/partidos/${id}/alineacion`);
+  };
 
   // Función para obtener el nombre del jugador por ID usando el estado local
   const getPlayerNameById = (playerId) => {
-    if (!playerId) return "No asignado"
+    if (!playerId) return "No asignado";
 
-    const jugador = jugadores.find((player) => player.id === playerId)
-    return jugador ? jugador.name : "No asignado"
-  }
+    // Primero buscar en jugadores regulares
+    const jugador = jugadores.find((player) => player.id === playerId);
+    if (jugador) return jugador.name;
+
+    // Si no se encuentra, buscar en jugadores temporales
+    if (partido.alineacion && partido.alineacion.temporaryPlayers) {
+      const tempPlayer = partido.alineacion.temporaryPlayers.find(
+        (p) => p.id === playerId
+      );
+      if (tempPlayer) return tempPlayer.name;
+    }
+
+    return "No asignado";
+  };
 
   // Función para renderizar el indicador de rol (icono o letra)
   const renderRoleIndicator = (role) => {
     if (role.type === "icon") {
       return (
-        <View style={[styles.rolBadge, { backgroundColor: role.backgroundColor }]}>
-          <Ionicons name={role.icon.replace("-outline", "")} size={12} color={role.iconColor || "#FFFFFF"} />
+        <View
+          style={[styles.rolBadge, { backgroundColor: role.backgroundColor }]}
+        >
+          <Ionicons
+            name={role.icon.replace("-outline", "")}
+            size={12}
+            color={role.iconColor || "#FFFFFF"}
+          />
         </View>
-      )
+      );
     } else if (role.type === "letter") {
       return (
-        <View style={[styles.rolBadge, { backgroundColor: role.backgroundColor }]}>
-          <Text style={[styles.rolBadgeText, { color: role.letterColor }]}>{role.letter}</Text>
+        <View
+          style={[styles.rolBadge, { backgroundColor: role.backgroundColor }]}
+        >
+          <Text style={[styles.rolBadgeText, { color: role.letterColor }]}>
+            {role.letter}
+          </Text>
         </View>
-      )
+      );
     }
-    return null
-  }
+    return null;
+  };
 
   // Función para generar la convocatoria
   function handleGenerarConvocatoria() {
-    if (!partido) return
+    if (!partido) return;
 
     try {
       // Formatear fecha en formato DD/MM/YYYY para la pantalla de convocatoria
-      const fechaFormateada = `${String(partido.fecha.getDate()).padStart(2, "0")}/${String(partido.fecha.getMonth() + 1).padStart(2, "0")}/${partido.fecha.getFullYear()}`
+      const fechaFormateada = `${String(partido.fecha.getDate()).padStart(2, "0")}/${String(partido.fecha.getMonth() + 1).padStart(2, "0")}/${partido.fecha.getFullYear()}`;
 
       // Formatear hora en formato HH:MM
       const horaFormateada = partido.fecha.toLocaleTimeString([], {
         hour: "2-digit",
         minute: "2-digit",
         hour12: false,
-      })
+      });
 
       // Determinar tipo de partido y datos relacionados
-      const tipoPartido = partido.tipoPartido || "liga"
-      const jornada = partido.jornada || ""
-      const nombreTorneo = partido.tipoPartido === "torneo" ? partido.jornada : ""
+      const tipoPartido = partido.tipoPartido || "liga";
+      const jornada = partido.jornada || "";
+      const nombreTorneo =
+        partido.tipoPartido === "torneo" ? partido.jornada : "";
 
       // Determinar lugar específico
-      const lugarEspecifico = partido.lugar === "Casa" ? "Campo local" : partido.lugarEspecifico || "Campo visitante"
+      const lugarEspecifico =
+        partido.lugar === "Casa"
+          ? "Campo local"
+          : partido.lugarEspecifico || "Campo visitante";
 
       // Crear objeto con los datos a pasar
       const datosConvocatoria = {
@@ -150,20 +185,31 @@ export default function DetallePartidoScreen() {
         // Si hay alineación, pasar los jugadores seleccionados
         jugadoresSeleccionados: partido.alineacion
           ? {
-              titulares: partido.alineacion.titulares?.map((j) => (typeof j === "string" ? j : j.id)) || [],
-              suplentes: partido.alineacion.suplentes?.map((j) => (typeof j === "string" ? j : j.id)) || [],
+              titulares:
+                partido.alineacion.titulares?.map((j) =>
+                  typeof j === "string" ? j : j.id
+                ) || [],
+              suplentes:
+                partido.alineacion.suplentes?.map((j) =>
+                  typeof j === "string" ? j : j.id
+                ) || [],
             }
           : {},
-      }
+        // Añadir los jugadores temporales
+        temporaryPlayers: partido.alineacion?.temporaryPlayers || [],
+      };
 
       // Navegar a la pantalla de convocatoria pasando los datos
       router.push({
         pathname: "/convocatorias",
         params: { datosPartido: JSON.stringify(datosConvocatoria) },
-      })
+      });
     } catch (error) {
-      console.error("Error al preparar datos para convocatoria:", error)
-      Alert.alert("Error", "No se pudieron preparar los datos para la convocatoria")
+      console.error("Error al preparar datos para convocatoria:", error);
+      Alert.alert(
+        "Error",
+        "No se pudieron preparar los datos para la convocatoria"
+      );
     }
   }
 
@@ -175,26 +221,34 @@ export default function DetallePartidoScreen() {
           <Text style={styles.loadingText}>Cargando partido...</Text>
         </View>
       </SafeAreaView>
-    )
+    );
   }
 
   // Determinar si hay notas para mostrar (estrategia o notas del rival)
-  const hayNotas = partido.estrategia || partido.notasRival
+  const hayNotas = partido.estrategia || partido.notasRival;
 
   // Determinar si hay roles especiales asignados
   const hayRolesEspeciales =
     partido.alineacion &&
     partido.alineacion.specialRoles &&
-    Object.values(partido.alineacion.specialRoles).some((role) => role !== null)
+    Object.values(partido.alineacion.specialRoles).some(
+      (role) => role !== null
+    );
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.backButton}
+        >
           <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Detalles del partido</Text>
-        <TouchableOpacity onPress={handleEditarPartido} style={styles.editButton}>
+        <TouchableOpacity
+          onPress={handleEditarPartido}
+          style={styles.editButton}
+        >
           <Ionicons name="create-outline" size={24} color="#fff" />
         </TouchableOpacity>
       </View>
@@ -207,13 +261,19 @@ export default function DetallePartidoScreen() {
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Tipo:</Text>
             <Text style={styles.infoValue}>
-              {partido.tipoPartido === "liga" ? "Liga" : partido.tipoPartido === "torneo" ? "Torneo" : "Amistoso"}
+              {partido.tipoPartido === "liga"
+                ? "Liga"
+                : partido.tipoPartido === "torneo"
+                  ? "Torneo"
+                  : "Amistoso"}
             </Text>
           </View>
 
           {partido.tipoPartido !== "amistoso" && (
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>{partido.tipoPartido === "liga" ? "Jornada:" : "Torneo:"}</Text>
+              <Text style={styles.infoLabel}>
+                {partido.tipoPartido === "liga" ? "Jornada:" : "Torneo:"}
+              </Text>
               <Text style={styles.infoValue}>{partido.jornada}</Text>
             </View>
           )}
@@ -233,7 +293,9 @@ export default function DetallePartidoScreen() {
             <Text style={styles.infoLabel}>Lugar:</Text>
             <Text style={styles.infoValue}>
               {partido.lugar === "Casa" ? "Local" : "Visitante"}
-              {partido.lugar === "Fuera" && partido.lugarEspecifico ? ` (${partido.lugarEspecifico})` : ""}
+              {partido.lugar === "Fuera" && partido.lugarEspecifico
+                ? ` (${partido.lugarEspecifico})`
+                : ""}
             </Text>
           </View>
 
@@ -251,20 +313,28 @@ export default function DetallePartidoScreen() {
             <>
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Formación:</Text>
-                <Text style={styles.infoValue}>{partido.alineacion.formacion || "4-3-3"}</Text>
+                <Text style={styles.infoValue}>
+                  {partido.alineacion.formacion || "4-3-3"}
+                </Text>
               </View>
 
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Titulares:</Text>
                 <Text style={styles.infoValue}>
-                  {partido.alineacion.titulares ? partido.alineacion.titulares.length : 11} jugadores
+                  {partido.alineacion.titulares
+                    ? partido.alineacion.titulares.length
+                    : 11}{" "}
+                  jugadores
                 </Text>
               </View>
 
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Suplentes:</Text>
                 <Text style={styles.infoValue}>
-                  {partido.alineacion.suplentes ? partido.alineacion.suplentes.length : 5} jugadores
+                  {partido.alineacion.suplentes
+                    ? partido.alineacion.suplentes.length
+                    : 5}{" "}
+                  jugadores
                 </Text>
               </View>
 
@@ -274,8 +344,8 @@ export default function DetallePartidoScreen() {
                   <Text style={styles.rolesTitle}>Roles especiales:</Text>
 
                   {availableRoles.map((role) => {
-                    const playerId = partido.alineacion.specialRoles?.[role.id]
-                    if (!playerId) return null
+                    const playerId = partido.alineacion.specialRoles?.[role.id];
+                    if (!playerId) return null;
 
                     return (
                       <View style={styles.rolRow} key={role.id}>
@@ -284,17 +354,24 @@ export default function DetallePartidoScreen() {
                           {role.name}: {getPlayerNameById(playerId)}
                         </Text>
                       </View>
-                    )
+                    );
                   })}
                 </View>
               )}
 
-              <TouchableOpacity style={styles.verAlineacionButton} onPress={handleVerAlineacion}>
-                <Text style={styles.verAlineacionButtonText}>Ver alineación completa</Text>
+              <TouchableOpacity
+                style={styles.verAlineacionButton}
+                onPress={handleVerAlineacion}
+              >
+                <Text style={styles.verAlineacionButtonText}>
+                  Ver alineación completa
+                </Text>
               </TouchableOpacity>
             </>
           ) : (
-            <Text style={styles.noAlineacionText}>No hay alineación configurada</Text>
+            <Text style={styles.noAlineacionText}>
+              No hay alineación configurada
+            </Text>
           )}
         </View>
 
@@ -311,7 +388,12 @@ export default function DetallePartidoScreen() {
             )}
 
             {partido.notasRival && (
-              <View style={[styles.notasContainer, partido.estrategia && styles.notasSeparator]}>
+              <View
+                style={[
+                  styles.notasContainer,
+                  partido.estrategia && styles.notasSeparator,
+                ]}
+              >
                 <Text style={styles.notasSubtitle}>Sobre el rival:</Text>
                 <Text style={styles.notasText}>{partido.notasRival}</Text>
               </View>
@@ -329,8 +411,15 @@ export default function DetallePartidoScreen() {
             <ActivityIndicator size="small" color="#fff" />
           ) : (
             <>
-              <Ionicons name="megaphone-outline" size={20} color="#fff" style={styles.buttonIcon} />
-              <Text style={styles.convocatoriaButtonText}>Generar convocatoria</Text>
+              <Ionicons
+                name="megaphone-outline"
+                size={20}
+                color="#fff"
+                style={styles.buttonIcon}
+              />
+              <Text style={styles.convocatoriaButtonText}>
+                Generar convocatoria
+              </Text>
             </>
           )}
         </TouchableOpacity>
@@ -345,14 +434,19 @@ export default function DetallePartidoScreen() {
             <ActivityIndicator size="small" color="#fff" />
           ) : (
             <>
-              <Ionicons name="trash-outline" size={20} color="#fff" style={styles.buttonIcon} />
+              <Ionicons
+                name="trash-outline"
+                size={20}
+                color="#fff"
+                style={styles.buttonIcon}
+              />
               <Text style={styles.eliminarButtonText}>Eliminar partido</Text>
             </>
           )}
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
-  )
+  );
 }
 
 const styles = StyleSheet.create({
@@ -606,4 +700,4 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
   },
-})
+});
