@@ -4,6 +4,7 @@ import React from 'react';
 import { TouchableOpacity, StyleSheet, Linking, Alert } from 'react-native';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import { COLORS } from '../constants/colors';
+import { WhatsAppIcon } from './Icons';
 
 const WhatsAppButton = ({ phone, size = 24, color = '#25D366' }) => {
   const openWhatsApp = async () => {
@@ -33,7 +34,7 @@ const WhatsAppButton = ({ phone, size = 24, color = '#25D366' }) => {
       onPress={openWhatsApp}
       activeOpacity={0.7}
     >
-      <FontAwesome5 name="whatsapp" size={size} color={color} />
+      <WhatsAppIcon size={size} color={color} />
     </TouchableOpacity>
   );
 };

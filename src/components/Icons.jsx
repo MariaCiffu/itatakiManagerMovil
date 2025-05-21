@@ -122,3 +122,7 @@ export const MapIcon = (props) => (
 export const NumberIcon = (props) => (
     <FontAwesome5 name="sort-numeric-down" size={24} color="white" {...props} />
 )
+
+export const WhatsAppIcon = (props) => (
+    <FontAwesome5 name="whatsapp" size={24} color="white" {...props} />
+)
