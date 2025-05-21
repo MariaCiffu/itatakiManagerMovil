@@ -7,7 +7,7 @@ export const PARTIDOS = [
     rival: "FC Barcelona",
     fecha: "2023-09-10T18:00:00.000Z",
     lugar: "Casa",
-    notas:
+    notasRival:
       "Equipo con buen juego de posesión. Debemos presionar alto y aprovechar las contras.",
     alineacion: {
       formacion: "4-3-3", // Solo el nombre de la formación
@@ -40,7 +40,7 @@ export const PARTIDOS = [
     rival: "Real Madrid",
     fecha: "2023-09-17T20:00:00.000Z",
     lugar: "Fuera",
-    notas: "Cuidado con las transiciones rápidas y las bandas.",
+    notasRival: "Cuidado con las transiciones rápidas y las bandas.",
     alineacion: null,
   },
   {
