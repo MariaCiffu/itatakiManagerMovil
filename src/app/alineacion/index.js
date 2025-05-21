@@ -12,12 +12,16 @@ import {
   Dimensions,
   SafeAreaView,
   Animated,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native"
 import { useRouter } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
 import { LinearGradient } from "expo-linear-gradient"
 import { PLAYERS } from "../../data/teamData" // Importamos los jugadores desde el archivo de datos
-import { FORMATIONS, getPositionsForFormation } from "../../data/formations" // Importamos las formaciones
+import { FORMATIONS, getPositionsForFormation } from "../../constants/formations" // Importamos las formaciones
+import { POSICIONES } from "../../constants/positions" // Importamos las posiciones disponibles
 import PlayerRoleIndicators from "../../components/alineacion/PlayerRoleIndicators"
 import PlayerRoleSelector from "../../components/alineacion/PlayerRoleSelector"
 import PlayerContextMenu from "../../context/PlayerContextMenu"
@@ -94,6 +98,15 @@ const LineupScreen = forwardRef(
     // Estado para mostrar el indicador de guardado
     const [showSavedIndicator, setShowSavedIndicator] = useState(false)
 
+    // Estados para el formulario de nuevo jugador
+    const [newPlayerModalVisible, setNewPlayerModalVisible] = useState(false)
+    const [newPlayerName, setNewPlayerName] = useState("")
+    const [newPlayerNumber, setNewPlayerNumber] = useState("")
+    const [newPlayerPosition, setNewPlayerPosition] = useState(POSICIONES[0])
+    
+    // Estado para jugadores temporales
+    const [temporaryPlayers, setTemporaryPlayers] = useState([])
+
     // Título de la pantalla
     const screenTitle = useMemo(() => {
       return matchTitle || (typeof matchday === "number" ? `Jornada ${matchday}` : matchday || "Alineación")
@@ -127,9 +140,10 @@ const LineupScreen = forwardRef(
           suplentes: newSubstitutes,
           specialRoles: newSpecialRoles,
           lineup: newLineup,
+          temporaryPlayers, // Guardar también los jugadores temporales
         })
       },
-      [isEmbedded, onSaveLineup, lineup, substitutes, specialRoles, selectedFormation],
+      [isEmbedded, onSaveLineup, lineup, substitutes, specialRoles, selectedFormation, temporaryPlayers],
     )
 
     // Función para mostrar el indicador de guardado
@@ -162,6 +176,7 @@ const LineupScreen = forwardRef(
               return {
                 id: player.id,
                 fieldPosition: position,
+                isTemporary: player.isTemporary || false, // Indicar si es un jugador temporal
               }
             }
             return null
@@ -169,7 +184,10 @@ const LineupScreen = forwardRef(
           .filter((player) => player !== null)
 
         // Convertir suplentes a solo IDs
-        const suplentesIds = substitutes.map((player) => player.id)
+        const suplentesIds = substitutes.map((player) => ({
+          id: player.id,
+          isTemporary: player.isTemporary || false, // Indicar si es un jugador temporal
+        }))
 
         // Convertir roles especiales a un objeto con solo IDs
         const rolesIds = {}
@@ -183,6 +201,7 @@ const LineupScreen = forwardRef(
           titulares, // Array de jugadores titulares con sus IDs y posiciones
           suplentes: suplentesIds, // Array de IDs de jugadores suplentes
           specialRoles: rolesIds, // Objeto con roles especiales (IDs)
+          temporaryPlayers, // Incluir los jugadores temporales completos
         }
       },
     }))
@@ -194,7 +213,8 @@ const LineupScreen = forwardRef(
       console.log("- Titulares:", Object.keys(lineup).length)
       console.log("- Suplentes:", substitutes.length)
       console.log("- Roles especiales:", Object.values(specialRoles).filter(Boolean).length)
-    }, [selectedFormation, lineup, substitutes, specialRoles])
+      console.log("- Jugadores temporales:", temporaryPlayers.length)
+    }, [selectedFormation, lineup, substitutes, specialRoles, temporaryPlayers])
 
     // Inicializar con datos si se proporcionan - USANDO REF PARA EVITAR MÚLTIPLES EJECUCIONES
     useEffect(() => {
@@ -202,6 +222,11 @@ const LineupScreen = forwardRef(
       if (initialData && !initialDataProcessedRef.current) {
         initialDataProcessedRef.current = true;
         console.log("Inicializando con datos:", initialData)
+
+        // Cargar jugadores temporales si existen
+        if (initialData.temporaryPlayers && Array.isArray(initialData.temporaryPlayers)) {
+          setTemporaryPlayers(initialData.temporaryPlayers)
+        }
 
         // Buscar la formación por nombre
         if (initialData.formacion && typeof initialData.formacion === "string") {
@@ -223,10 +248,18 @@ const LineupScreen = forwardRef(
           // Reconstruir jugadores completos a partir de IDs
           initialData.titulares.forEach((item) => {
             if (item && item.id && item.fieldPosition) {
-              // Buscar el jugador completo por ID
-              const player = PLAYERS.find((p) => p.id === item.id)
-              if (player) {
-                newLineup[item.fieldPosition] = player
+              // Buscar primero en jugadores temporales si es un jugador temporal
+              if (item.isTemporary) {
+                const tempPlayer = initialData.temporaryPlayers?.find(p => p.id === item.id)
+                if (tempPlayer) {
+                  newLineup[item.fieldPosition] = tempPlayer
+                }
+              } else {
+                // Buscar el jugador completo por ID en la lista principal
+                const player = PLAYERS.find((p) => p.id === item.id)
+                if (player) {
+                  newLineup[item.fieldPosition] = player
+                }
               }
             }
           })
@@ -238,19 +271,39 @@ const LineupScreen = forwardRef(
         // Reconstruir suplentes a partir de IDs
         if (initialData.suplentes && Array.isArray(initialData.suplentes) && initialData.suplentes.length > 0) {
           console.log("Procesando suplentes:", initialData.suplentes.length)
+          const newSubstitutes = []
 
-          // Si son solo IDs
-          if (typeof initialData.suplentes[0] === "string" || typeof initialData.suplentes[0] === "number") {
-            const suplentesCompletos = initialData.suplentes
-              .map((id) => PLAYERS.find((p) => p.id === id))
-              .filter((player) => player !== undefined)
-            console.log("Suplentes reconstruidos:", suplentesCompletos.length)
-            setSubstitutes(suplentesCompletos)
-          } else {
-            // Si son objetos completos (para compatibilidad)
-            console.log("Suplentes como objetos completos:", initialData.suplentes.length)
-            setSubstitutes(initialData.suplentes)
-          }
+          // Procesar cada suplente
+          initialData.suplentes.forEach((item) => {
+            // Si es solo un ID
+            if (typeof item === "string" || typeof item === "number") {
+              const player = PLAYERS.find((p) => p.id === item)
+              if (player) {
+                newSubstitutes.push(player)
+              }
+            } 
+            // Si es un objeto con ID y flag de temporal
+            else if (item && item.id) {
+              if (item.isTemporary) {
+                const tempPlayer = initialData.temporaryPlayers?.find(p => p.id === item.id)
+                if (tempPlayer) {
+                  newSubstitutes.push(tempPlayer)
+                }
+              } else {
+                const player = PLAYERS.find((p) => p.id === item.id)
+                if (player) {
+                  newSubstitutes.push(player)
+                }
+              }
+            }
+            // Si es un objeto completo (para compatibilidad)
+            else if (item) {
+              newSubstitutes.push(item)
+            }
+          })
+
+          console.log("Suplentes reconstruidos:", newSubstitutes.length)
+          setSubstitutes(newSubstitutes)
         }
 
         // Manejar roles especiales (solo IDs)
@@ -375,15 +428,81 @@ const LineupScreen = forwardRef(
       }
     }, [selectedFormation, previousFormation]);
 
-    // Obtener jugadores disponibles (memoizado)
+    // Obtener jugadores disponibles (memoizado) - INCLUYE JUGADORES TEMPORALES
     const getAvailablePlayers = useCallback(() => {
       const selectedPlayerIds = [
         ...Object.values(lineup).map((player) => player?.id),
         ...substitutes.map((player) => player.id),
       ].filter((id) => id !== undefined)
 
-      return PLAYERS.filter((player) => !selectedPlayerIds.includes(player.id))
-    }, [lineup, substitutes])
+      // Combinar jugadores regulares y temporales
+      const allPlayers = [...PLAYERS, ...temporaryPlayers]
+      
+      return allPlayers.filter((player) => !selectedPlayerIds.includes(player.id))
+    }, [lineup, substitutes, temporaryPlayers])
+
+    // Función para crear un nuevo jugador temporal
+    const createTemporaryPlayer = useCallback(() => {
+      if (!newPlayerName.trim() || !newPlayerNumber.trim()) {
+        // Mostrar algún tipo de error o alerta
+        return
+      }
+
+      // Generar un ID único para el jugador temporal
+      const tempId = `temp_${Date.now()}_${Math.floor(Math.random() * 1000)}`
+      
+      // Crear el objeto del jugador temporal
+      const newPlayer = {
+        id: tempId,
+        name: newPlayerName.trim(),
+        number: parseInt(newPlayerNumber.trim(), 10),
+        position: newPlayerPosition,
+        isTemporary: true, // Marcar como jugador temporal
+      }
+
+      // Añadir a la lista de jugadores temporales
+      setTemporaryPlayers((prev) => [...prev, newPlayer])
+
+      // Limpiar el formulario
+      setNewPlayerName("")
+      setNewPlayerNumber("")
+      setNewPlayerPosition(POSICIONES[0])
+      
+      // Cerrar el modal
+      setNewPlayerModalVisible(false)
+
+      // Si estamos añadiendo directamente a una posición o como suplente
+      if (selectedPosition) {
+        if (selectedPosition === "substitute") {
+          // Añadir como suplente
+          const newSubstitutes = [...substitutes, newPlayer]
+          setSubstitutes(newSubstitutes)
+          
+          // Guardar la alineación
+          saveLineup(lineup, newSubstitutes)
+        } else {
+          // Añadir a la posición seleccionada
+          const newLineup = { ...lineup }
+          newLineup[selectedPosition] = newPlayer
+          setLineup(newLineup)
+          
+          // Guardar la alineación
+          saveLineup(newLineup, substitutes)
+        }
+        
+        // Mostrar indicador de guardado
+        displaySavedIndicator()
+      }
+    }, [
+      newPlayerName, 
+      newPlayerNumber, 
+      newPlayerPosition, 
+      selectedPosition, 
+      lineup, 
+      substitutes, 
+      saveLineup, 
+      displaySavedIndicator
+    ])
 
     // Función para seleccionar un jugador para una posición
     const selectPlayerForPosition = useCallback(
@@ -595,7 +714,10 @@ const LineupScreen = forwardRef(
             >
               {player ? (
                 <Animated.View style={[styles.playerAssigned, { transform: [{ scale: playerScaleAnim }] }]}>
-                  <View style={styles.playerCircle}>
+                  <View style={[
+                    styles.playerCircle, 
+                    player.isTemporary && { borderColor: "#FFA500" } // Borde naranja para jugadores temporales
+                  ]}>
                     <Text style={[styles.playerNumber, { color: colors.text }]}>{player.number}</Text>
                   </View>
                   <View style={styles.playerNameContainer}>
@@ -713,7 +835,10 @@ const LineupScreen = forwardRef(
           >
             {substitutes.map((player) => (
               <View key={player.id} style={styles.substituteItem}>
-                <View style={styles.substituteCircle}>
+                <View style={[
+                  styles.substituteCircle,
+                  player.isTemporary && { borderColor: "#FFA500" } // Borde naranja para jugadores temporales
+                ]}>
                   <Text style={[styles.substituteNumber, { color: colors.text }]}>{player.number}</Text>
                 </View>
                 <Text style={[styles.substituteName, { color: colors.textSecondary }]} numberOfLines={1}>
@@ -773,7 +898,11 @@ const LineupScreen = forwardRef(
                 keyExtractor={(item) => item.id}
                 renderItem={({ item }) => (
                   <TouchableOpacity
-                    style={[styles.playerItem, { borderBottomColor: colors.modalBorder }]}
+                    style={[
+                      styles.playerItem, 
+                      { borderBottomColor: colors.modalBorder },
+                      item.isTemporary && { backgroundColor: `rgba(255, 165, 0, 0.1)` } // Fondo ligeramente naranja para jugadores temporales
+                    ]}
                     onPress={() => {
                       if (selectedPosition === "substitute") {
                         addSubstitute(item)
@@ -782,15 +911,33 @@ const LineupScreen = forwardRef(
                       }
                     }}
                   >
-                    <View style={styles.playerItemCircle}>
+                    <View style={[
+                      styles.playerItemCircle,
+                      item.isTemporary && { borderColor: "#FFA500" } // Borde naranja para jugadores temporales
+                    ]}>
                       <Text style={[styles.playerItemNumber, { color: colors.text }]}>{item.number}</Text>
                     </View>
                     <View style={styles.playerItemInfo}>
-                      <Text style={[styles.playerItemName, { color: colors.modalText }]}>{item.name}</Text>
+                      <Text style={[styles.playerItemName, { color: colors.modalText }]}>
+                        {item.name}
+                        {item.isTemporary && " (Temporal)"}
+                      </Text>
                       <Text style={[styles.playerItemPosition, { color: colors.textSecondary }]}>{item.position}</Text>
                     </View>
                   </TouchableOpacity>
                 )}
+                ListHeaderComponent={
+                  <TouchableOpacity
+                    style={[styles.addNewPlayerButton, { borderBottomColor: colors.modalBorder }]}
+                    onPress={() => {
+                      setPlayerSelectorVisible(false)
+                      setNewPlayerModalVisible(true)
+                    }}
+                  >
+                    <Ionicons name="add-circle" size={24} color="#FFA500" />
+                    <Text style={[styles.addNewPlayerText, { color: "#FFA500" }]}>Añadir jugador nuevo</Text>
+                  </TouchableOpacity>
+                }
                 ListEmptyComponent={
                   <View style={styles.emptyListContainer}>
                     <Text style={[styles.emptyListText, { color: colors.textSecondary }]}>
@@ -801,6 +948,93 @@ const LineupScreen = forwardRef(
               />
             </View>
           </View>
+        </Modal>
+
+        {/* Modal para añadir nuevo jugador */}
+        <Modal
+          visible={newPlayerModalVisible}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setNewPlayerModalVisible(false)}
+        >
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={{ flex: 1 }}
+          >
+            <View style={[styles.modalContainer, { backgroundColor: colors.modalBackground }]}>
+              <View style={[styles.modalContent, { backgroundColor: colors.modalContent }]}>
+                <View style={[styles.modalHeader, { borderBottomColor: colors.modalBorder }]}>
+                  <Text style={[styles.modalTitle, { color: colors.modalText }]}>Añadir jugador nuevo</Text>
+                  <TouchableOpacity style={styles.closeButton} onPress={() => setNewPlayerModalVisible(false)}>
+                    <Ionicons name="close" size={24} color={colors.modalText} />
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.newPlayerForm}>
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.formLabel, { color: colors.modalText }]}>Nombre:</Text>
+                    <TextInput
+                      style={[styles.formInput, { color: colors.modalText, borderColor: colors.modalBorder }]}
+                      value={newPlayerName}
+                      onChangeText={setNewPlayerName}
+                      placeholder="Nombre del jugador"
+                      placeholderTextColor={`${colors.textSecondary}80`}
+                    />
+                  </View>
+
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.formLabel, { color: colors.modalText }]}>Número:</Text>
+                    <TextInput
+                      style={[styles.formInput, { color: colors.modalText, borderColor: colors.modalBorder }]}
+                      value={newPlayerNumber}
+                      onChangeText={setNewPlayerNumber}
+                      placeholder="Número"
+                      placeholderTextColor={`${colors.textSecondary}80`}
+                      keyboardType="number-pad"
+                    />
+                  </View>
+
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.formLabel, { color: colors.modalText }]}>Posición:</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.positionScrollView}>
+                      <View style={styles.positionSelector}>
+                        {POSICIONES.map((posicion) => (
+                          <TouchableOpacity
+                            key={posicion}
+                            style={[
+                              styles.positionButton,
+                              {
+                                backgroundColor: newPlayerPosition === posicion ? "#FFA500" : colors.card,
+                              },
+                            ]}
+                            onPress={() => setNewPlayerPosition(posicion)}
+                          >
+                            <Text
+                              style={[
+                                styles.positionButtonText,
+                                {
+                                  color: newPlayerPosition === posicion ? "#000" : colors.textSecondary,
+                                },
+                              ]}
+                            >
+                              {posicion}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </ScrollView>
+                  </View>
+
+                  <TouchableOpacity
+                    style={[styles.createPlayerButton, { backgroundColor: "#FFA500" }]}
+                    onPress={createTemporaryPlayer}
+                  >
+                    <Text style={[styles.createPlayerButtonText, { color: "#000" }]}>Crear jugador</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
         </Modal>
 
         {/* Modal para la selección de roles especiales */}
@@ -1059,6 +1293,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
+    borderWidth: 1,
+    borderColor: "#666",
   },
   playerItemNumber: {
     fontWeight: "bold",
@@ -1095,6 +1331,67 @@ const styles = StyleSheet.create({
   contextMenuContainer: {
     position: "absolute",
     zIndex: 1000,
+  },
+  // Estilos para añadir nuevo jugador
+  addNewPlayerButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    borderBottomWidth: 1,
+  },
+  addNewPlayerText: {
+    fontSize: 16,
+    fontWeight: "500",
+    marginLeft: 12,
+  },
+  newPlayerForm: {
+    padding: 16,
+  },
+  formGroup: {
+    marginBottom: 16,
+  },
+  formLabel: {
+    fontSize: 16,
+    marginBottom: 8,
+    fontWeight: "500",
+  },
+  formInput: {
+    height: 48,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    fontSize: 16,
+  },
+  positionScrollView: {
+    maxHeight: 120,
+  },
+  positionSelector: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginTop: 8,
+    paddingBottom: 8,
+  },
+  positionButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  positionButtonText: {
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  createPlayerButton: {
+    height: 48,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 16,
+  },
+  createPlayerButtonText: {
+    fontSize: 16,
+    fontWeight: "bold",
   },
 })
 
