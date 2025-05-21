@@ -1,5 +1,3 @@
-"use client"
-
 import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle, useMemo, useCallback, useReducer } from "react"
 import {
   View,
@@ -232,17 +230,17 @@ const NewPlayerForm = React.memo(({
       </View>
 
       <View style={styles.formGroup}>
-        <Text style={[styles.formLabel, { color: COLORS.modalText }]}>Número:</Text>
+        <Text style={[styles.formLabel, { color: COLORS.modalText }]}>Dorsal:</Text>
         <TextInput
           style={[styles.formInput, { color: COLORS.modalText, borderColor: COLORS.modalBorder }]}
           value={number}
           onChangeText={onNumberChange}
-          placeholder="Número"
+          placeholder="Número del dorsal"
           placeholderTextColor={`${COLORS.textSecondary}80`}
           keyboardType="number-pad"
           accessible={true}
-          accessibilityLabel="Número del jugador"
-          accessibilityHint="Introduce el número del nuevo jugador"
+          accessibilityLabel="Dorsal del jugador"
+          accessibilityHint="Introduce el número del dorsal del nuevo jugador"
         />
       </View>
 
