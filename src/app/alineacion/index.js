@@ -1,13 +1,6 @@
-"use client";
+"use client"
 
-import React, {
-  useState,
-  useEffect,
-  useRef,
-  forwardRef,
-  useImperativeHandle,
-  useMemo,
-} from "react";
+import { useState, useEffect, useRef, forwardRef, useImperativeHandle, useMemo, useCallback } from "react"
 import {
   View,
   Text,
@@ -19,21 +12,23 @@ import {
   Dimensions,
   SafeAreaView,
   Animated,
-  Alert,
-} from "react-native";
-import { useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
-import { PLAYERS } from "../../data/teamData"; // Importamos los jugadores desde el archivo de datos
-import { FORMATIONS, getPositionsForFormation } from "../../data/formations"; // Importamos las formaciones
-import PlayerRoleIndicators from "../../components/alineacion/PlayerRoleIndicators";
-import PlayerRoleSelector from "../../components/alineacion/PlayerRoleSelector";
-import PlayerContextMenu from "../../context/PlayerContextMenu";
-import FootballField from "../../components/alineacion/FootballField";
+} from "react-native"
+import { useRouter } from "expo-router"
+import { Ionicons } from "@expo/vector-icons"
+import { LinearGradient } from "expo-linear-gradient"
+import { PLAYERS } from "../../data/teamData" // Importamos los jugadores desde el archivo de datos
+import { FORMATIONS, getPositionsForFormation } from "../../data/formations" // Importamos las formaciones
+import PlayerRoleIndicators from "../../components/alineacion/PlayerRoleIndicators"
+import PlayerRoleSelector from "../../components/alineacion/PlayerRoleSelector"
+import PlayerContextMenu from "../../context/PlayerContextMenu"
+import FootballField from "../../components/alineacion/FootballField"
 
-// Obtener dimensiones de la pantalla
-const { width, height } = Dimensions.get("window");
-const FIELD_RATIO = 0.65; // Proporción del campo respecto a la altura de la pantalla
+// Constantes para dimensiones y animaciones
+const { width, height } = Dimensions.get("window")
+const FIELD_RATIO = 0.65 // Proporción del campo respecto a la altura de la pantalla
+const MODAL_MAX_HEIGHT_RATIO = 0.7 // Altura máxima del modal como proporción de la pantalla
+const CONTEXT_MENU_Y_OFFSET = 50 // Desplazamiento vertical del menú contextual
+const CONTEXT_MENU_MAX_Y = height - 200 // Posición Y máxima para el menú contextual
 
 // Mapeo de posiciones para mostrar abreviatura
 const POSITION_MAPPING = {
@@ -41,21 +36,14 @@ const POSITION_MAPPING = {
   Defensa: "DEF",
   Centrocampista: "MED",
   Delantero: "DEL",
-};
+}
 
 const LineupScreen = forwardRef(
   (
-    {
-      matchday = "",
-      matchTitle = null,
-      isEmbedded = false,
-      initialData = null,
-      onSaveLineup = null,
-      readOnly = false,
-    },
-    ref
+    { matchday = "", matchTitle = null, isEmbedded = false, initialData = null, onSaveLineup = null, readOnly = false },
+    ref,
   ) => {
-    const router = useRouter();
+    const router = useRouter()
 
     // Definir colores fijos en lugar de tema
     const colors = {
@@ -73,54 +61,79 @@ const LineupScreen = forwardRef(
       modalContent: "#333333",
       modalText: "#ffffff",
       modalBorder: "#444444",
-    };
+    }
 
-    const [selectedFormation, setSelectedFormation] = useState(FORMATIONS[0]);
-    const [previousFormation, setPreviousFormation] = useState(null);
-    const [lineup, setLineup] = useState({});
-    const [substitutes, setSubstitutes] = useState([]);
-    const [playerSelectorVisible, setPlayerSelectorVisible] = useState(false);
-    const [selectedPosition, setSelectedPosition] = useState(null);
-    const [availablePlayers, setAvailablePlayers] = useState(PLAYERS); // Usamos los jugadores del archivo de datos
+    const [selectedFormation, setSelectedFormation] = useState(FORMATIONS[0])
+    const [previousFormation, setPreviousFormation] = useState(null)
+    const [lineup, setLineup] = useState({})
+    const [substitutes, setSubstitutes] = useState([])
+    const [playerSelectorVisible, setPlayerSelectorVisible] = useState(false)
+    const [selectedPosition, setSelectedPosition] = useState(null)
 
     // Estados para los roles especiales
     const [specialRoles, setSpecialRoles] = useState({
       captain: null, // ID del jugador capitán
       freeKicks: null, // ID del jugador lanzador de faltas
+      freeKicksNear: null, // ID del jugador lanzador de faltas cercanas
       corners: null, // ID del jugador lanzador de córners
       penalties: null, // ID del jugador lanzador de penaltis
-    });
-    const [roleModalVisible, setRoleModalVisible] = useState(false);
-    const [selectedPlayer, setSelectedPlayer] = useState(null);
-    const [contextMenuVisible, setContextMenuVisible] = useState(false);
+    })
+    const [roleModalVisible, setRoleModalVisible] = useState(false)
+    const [selectedPlayer, setSelectedPlayer] = useState(null)
+    const [contextMenuVisible, setContextMenuVisible] = useState(false)
     const [contextMenuPosition, setContextMenuPosition] = useState({
       x: 0,
       y: 0,
-    });
+    })
 
     // Estado para mostrar el indicador de guardado
-    const [showSavedIndicator, setShowSavedIndicator] = useState(false);
+    const [showSavedIndicator, setShowSavedIndicator] = useState(false)
 
     // Título de la pantalla
     const screenTitle = useMemo(() => {
-      return (
-        matchTitle ||
-        (typeof matchday === "number"
-          ? `Jornada ${matchday}`
-          : matchday || "Alineación")
-      );
-    }, [matchTitle, matchday]);
+      return matchTitle || (typeof matchday === "number" ? `Alineación jornada ${matchday}` : matchday || "Alineación")
+    }, [matchTitle, matchday])
 
     // Animaciones
-    const formationChangeAnim = useRef(new Animated.Value(0)).current;
-    const playerScaleAnim = useRef(new Animated.Value(1)).current;
-    const savedIndicatorAnim = useRef(new Animated.Value(0)).current;
+    const formationChangeAnim = useRef(new Animated.Value(0)).current
+    const playerScaleAnim = useRef(new Animated.Value(1)).current
+    const savedIndicatorAnim = useRef(new Animated.Value(0)).current
 
-    // Función para mostrar el indicador de guardado (nombre cambiado para evitar conflicto)
-    const displaySavedIndicator = () => {
-      console.log("Mostrando indicador de guardado...");
-      setShowSavedIndicator(true);
-      savedIndicatorAnim.setValue(1);
+    // Función unificada para guardar la alineación
+    const saveLineup = useCallback(
+      (newLineup = lineup, newSubstitutes = substitutes, newSpecialRoles = specialRoles) => {
+        if (!isEmbedded || !onSaveLineup) return
+
+        const titulares = Object.entries(newLineup)
+          .map(([position, p]) => {
+            if (p) {
+              return {
+                ...p,
+                fieldPosition: position,
+              }
+            }
+            return null
+          })
+          .filter((p) => p !== null)
+
+        onSaveLineup({
+          formacion: selectedFormation.name,
+          titulares,
+          suplentes: newSubstitutes,
+          specialRoles: newSpecialRoles,
+          lineup: newLineup,
+        })
+      },
+      [isEmbedded, onSaveLineup, lineup, substitutes, specialRoles, selectedFormation],
+    )
+
+    // Función para mostrar el indicador de guardado
+    const displaySavedIndicator = useCallback(() => {
+      // No mostrar el indicador en modo de solo lectura
+      if (readOnly) return
+
+      setShowSavedIndicator(true)
+      savedIndicatorAnim.setValue(1)
       setTimeout(() => {
         Animated.timing(savedIndicatorAnim, {
           toValue: 0,
@@ -128,10 +141,10 @@ const LineupScreen = forwardRef(
           delay: 1000,
           useNativeDriver: true,
         }).start(() => {
-          setShowSavedIndicator(false);
-        });
-      }, 0);
-    };
+          setShowSavedIndicator(false)
+        })
+      }, 0)
+    }, [savedIndicatorAnim, readOnly])
 
     // Exponer métodos a través de la referencia
     useImperativeHandle(ref, () => ({
@@ -144,20 +157,20 @@ const LineupScreen = forwardRef(
               return {
                 id: player.id,
                 fieldPosition: position,
-              };
+              }
             }
-            return null;
+            return null
           })
-          .filter((player) => player !== null);
+          .filter((player) => player !== null)
 
         // Convertir suplentes a solo IDs
-        const suplentesIds = substitutes.map((player) => player.id);
+        const suplentesIds = substitutes.map((player) => player.id)
 
         // Convertir roles especiales a un objeto con solo IDs
-        const rolesIds = {};
+        const rolesIds = {}
         Object.entries(specialRoles).forEach(([role, player]) => {
-          rolesIds[role] = player;
-        });
+          rolesIds[role] = player
+        })
 
         // Devolver los datos de la alineación con la estructura correcta
         return {
@@ -165,84 +178,140 @@ const LineupScreen = forwardRef(
           titulares, // Array de jugadores titulares con sus IDs y posiciones
           suplentes: suplentesIds, // Array de IDs de jugadores suplentes
           specialRoles: rolesIds, // Objeto con roles especiales (IDs)
-        };
+        }
       },
-    }));
+    }))
 
     // Inicializar con datos si se proporcionan
-    // Modificar la función que inicializa los datos
     useEffect(() => {
       if (initialData) {
-        console.log("Datos iniciales recibidos:", initialData); // Para depuración
-
         // Buscar la formación por nombre
         if (typeof initialData.formacion === "string") {
-          const formation =
-            FORMATIONS.find((f) => f.name === initialData.formacion) ||
-            FORMATIONS[0];
-          setSelectedFormation(formation);
+          const formation = FORMATIONS.find((f) => f.name === initialData.formacion) || FORMATIONS[0]
+          setSelectedFormation(formation)
         } else if (initialData.formation) {
-          setSelectedFormation(initialData.formation);
+          setSelectedFormation(initialData.formation)
         }
 
         // Reconstruir el lineup a partir de los titulares con IDs
         if (initialData.titulares && Array.isArray(initialData.titulares)) {
-          const newLineup = {};
+          const newLineup = {}
 
           // Reconstruir jugadores completos a partir de IDs
           initialData.titulares.forEach((item) => {
             if (item && item.id && item.fieldPosition) {
               // Buscar el jugador completo por ID
-              const player = PLAYERS.find((p) => p.id === item.id);
+              const player = PLAYERS.find((p) => p.id === item.id)
               if (player) {
-                newLineup[item.fieldPosition] = player;
+                newLineup[item.fieldPosition] = player
               }
             }
-          });
+          })
 
-          setLineup(newLineup);
+          setLineup(newLineup)
         }
 
         // Reconstruir suplentes a partir de IDs
         if (initialData.suplentes && Array.isArray(initialData.suplentes)) {
           // Si son solo IDs
-          if (
-            typeof initialData.suplentes[0] === "string" ||
-            typeof initialData.suplentes[0] === "number"
-          ) {
+          if (typeof initialData.suplentes[0] === "string" || typeof initialData.suplentes[0] === "number") {
             const suplentesCompletos = initialData.suplentes
               .map((id) => PLAYERS.find((p) => p.id === id))
-              .filter((player) => player !== undefined);
-            setSubstitutes(suplentesCompletos);
-            console.log("Suplentes cargados:", suplentesCompletos.length);
+              .filter((player) => player !== undefined)
+            setSubstitutes(suplentesCompletos)
           } else {
             // Si son objetos completos (para compatibilidad)
-            setSubstitutes(initialData.suplentes);
-            console.log(
-              "Suplentes cargados (objetos completos):",
-              initialData.suplentes.length
-            );
+            setSubstitutes(initialData.suplentes)
           }
         }
 
         // Manejar roles especiales (solo IDs)
         if (initialData.specialRoles) {
-          setSpecialRoles(initialData.specialRoles);
+          setSpecialRoles((prevRoles) => ({
+            ...prevRoles,
+            ...initialData.specialRoles,
+          }))
         }
       }
-    }, [initialData]);
+    }, [initialData])
+
+    const reasignarJugadoresEnNuevaFormacion = useCallback(
+      (formacionAnterior, nuevaFormacion) => {
+        // Si no hay jugadores en la alineación, no hay nada que hacer
+        if (Object.keys(lineup).length === 0) return
+
+        // Obtener las posiciones de ambas formaciones
+        const posicionesAnteriores = getPositionsForFormation(formacionAnterior)
+        const nuevasPosiciones = getPositionsForFormation(nuevaFormacion)
+
+        // Crear una nueva alineación
+        const nuevaLineup = {}
+
+        // Mapeo de tipos de posiciones para intentar mantener jugadores en posiciones similares
+        const mapeoTiposPosiciones = {
+          // Portero
+          GK: ["GK"],
+          // Defensas
+          DEF1: ["DEF1", "DEF2", "DEF3", "DEF4", "DEF5"],
+          DEF2: ["DEF1", "DEF2", "DEF3", "DEF4", "DEF5"],
+          DEF3: ["DEF1", "DEF2", "DEF3", "DEF4", "DEF5"],
+          DEF4: ["DEF1", "DEF2", "DEF3", "DEF4", "DEF5"],
+          DEF5: ["DEF1", "DEF2", "DEF3", "DEF4", "DEF5"],
+          // Centrocampistas
+          MID1: ["MID1", "MID2", "MID3", "MID4", "MID5"],
+          MID2: ["MID1", "MID2", "MID3", "MID4", "MID5"],
+          MID3: ["MID1", "MID2", "MID3", "MID4", "MID5"],
+          MID4: ["MID1", "MID2", "MID3", "MID4", "MID5"],
+          MID5: ["MID1", "MID2", "MID3", "MID4", "MID5"],
+          // Delanteros
+          FWD1: ["FWD1", "FWD2", "FWD3"],
+          FWD2: ["FWD1", "FWD2", "FWD3"],
+          FWD3: ["FWD1", "FWD2", "FWD3"],
+        }
+
+        // Posiciones ya asignadas en la nueva formación
+        const posicionesAsignadas = new Set()
+
+        // Primero, intentar mantener jugadores en posiciones equivalentes
+        Object.entries(lineup).forEach(([posicionAnterior, jugador]) => {
+          // Intentar encontrar la misma posición en la nueva formación
+          if (nuevasPosiciones[posicionAnterior] && !posicionesAsignadas.has(posicionAnterior)) {
+            nuevaLineup[posicionAnterior] = jugador
+            posicionesAsignadas.add(posicionAnterior)
+          } else {
+            // Si no existe la misma posición, buscar una posición similar
+            const tiposPosicionesSimilares = mapeoTiposPosiciones[posicionAnterior] || []
+
+            // Buscar una posición similar disponible
+            const posicionSimilar = tiposPosicionesSimilares.find(
+              (tipo) => nuevasPosiciones[tipo] && !posicionesAsignadas.has(tipo),
+            )
+
+            if (posicionSimilar) {
+              nuevaLineup[posicionSimilar] = jugador
+              posicionesAsignadas.add(posicionSimilar)
+            }
+            // Si no se encuentra posición similar, el jugador no se asigna
+          }
+        })
+
+        // Actualizar la alineación
+        setLineup(nuevaLineup)
+      },
+      [lineup],
+    )
 
     // Actualizar posiciones cuando cambia la formación
     useEffect(() => {
-      if (previousFormation) {
+      // Solo ejecutar cuando cambia la formación seleccionada
+      if (selectedFormation && selectedFormation !== previousFormation) {
         // Animar el cambio de formación
-        formationChangeAnim.setValue(0);
+        formationChangeAnim.setValue(0)
 
-        // Primero reasignar jugadores a nuevas posiciones
-        reasignarJugadoresEnNuevaFormacion(
-          previousFormation,
-          selectedFormation
-        );
+        // Si hay una formación anterior, reasignar jugadores
+        if (previousFormation) {
+          reasignarJugadoresEnNuevaFormacion(previousFormation, selectedFormation)
+        }
 
         // Luego iniciar la animación
         setTimeout(() => {
@@ -250,500 +319,293 @@ const LineupScreen = forwardRef(
             toValue: 1,
             duration: 500,
             useNativeDriver: false,
-          }).start();
+          }).start()
 
           // Mostrar indicador de guardado cuando cambia la formación
-          displaySavedIndicator();
+          displaySavedIndicator()
 
-          // Guardar la alineación si estamos en modo embebido
-          if (isEmbedded && onSaveLineup) {
-            const titulares = Object.entries(lineup)
-              .map(([position, player]) => {
-                if (player) {
-                  return {
-                    ...player,
-                    fieldPosition: position,
-                  };
-                }
-                return null;
-              })
-              .filter((player) => player !== null);
+          // Guardar la alineación
+          saveLineup()
+        }, 0)
 
-            onSaveLineup({
-              formacion: selectedFormation.name,
-              titulares,
-              suplentes: substitutes,
-              specialRoles,
-              lineup: lineup,
-            });
-          }
-        }, 0);
+        // Actualizar la formación anterior
+        setPreviousFormation(selectedFormation)
       }
+    }, [
+      selectedFormation,
+      displaySavedIndicator,
+      saveLineup,
+      previousFormation,
+      formationChangeAnim,
+      reasignarJugadoresEnNuevaFormacion,
+    ])
 
-      setPreviousFormation(selectedFormation);
-    }, [selectedFormation]);
-
-    // Función para seleccionar un jugador para una posición
-    const selectPlayerForPosition = (position, event) => {
-      if (readOnly) return;
-
-      const player = lineup[position];
-
-      // Animar la selección
-      playerScaleAnim.setValue(1);
-      Animated.sequence([
-        Animated.timing(playerScaleAnim, {
-          toValue: 1.2,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(playerScaleAnim, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start();
-
-      if (player) {
-        // Si ya hay un jugador en esa posición, mostrar menú contextual
-        setSelectedPlayer(player);
-        setSelectedPosition(position);
-
-        // Calcular posición del menú contextual
-        if (event && event.nativeEvent) {
-          // Ajustar la posición Y para que aparezca más abajo
-          const adjustedY = Math.min(
-            event.nativeEvent.pageY,
-            height - 200 // Asegurar que no aparezca demasiado abajo
-          );
-
-          setContextMenuPosition({
-            x: event.nativeEvent.pageX,
-            y: adjustedY + 50, // Desplazar 50 puntos hacia abajo
-          });
-        }
-
-        setContextMenuVisible(true);
-      } else {
-        // Si no hay jugador, mostrar el selector de jugadores
-        setSelectedPosition(position);
-        setPlayerSelectorVisible(true);
-      }
-    };
-
-    // Función para asignar un jugador a una posición
-    const assignPlayerToPosition = (player) => {
-      // Crear una copia de la alineación actual
-      const newLineup = { ...lineup };
-
-      // Si el jugador ya está en otra posición, quitarlo de ahí
-      Object.keys(newLineup).forEach((pos) => {
-        if (newLineup[pos]?.id === player.id) {
-          delete newLineup[pos];
-        }
-      });
-
-      // Si el jugador está en suplentes, quitarlo de ahí
-      const newSubstitutes = substitutes.filter((sub) => sub.id !== player.id);
-      setSubstitutes(newSubstitutes);
-
-      // Asignar el jugador a la posición seleccionada
-      newLineup[selectedPosition] = player;
-      setLineup(newLineup);
-      setPlayerSelectorVisible(false);
-
-      // Mostrar indicador de guardado
-      displaySavedIndicator();
-
-      // Guardar la alineación si estamos en modo embebido
-      if (isEmbedded && onSaveLineup) {
-        const titulares = Object.entries(newLineup)
-          .map(([position, p]) => {
-            if (p) {
-              return {
-                ...p,
-                fieldPosition: position,
-              };
-            }
-            return null;
-          })
-          .filter((p) => p !== null);
-
-        onSaveLineup({
-          formacion: selectedFormation.name,
-          titulares,
-          suplentes: newSubstitutes,
-          specialRoles,
-          lineup: newLineup,
-        });
-      }
-    };
-
-    // Función para añadir un jugador a suplentes
-    const addSubstitute = (player) => {
-      // Verificar si el jugador ya está en la alineación
-      const isInLineup = Object.values(lineup).some((p) => p?.id === player.id);
-
-      // Verificar si el jugador ya está en suplentes
-      const isInSubstitutes = substitutes.some((p) => p.id === player.id);
-
-      if (!isInLineup && !isInSubstitutes) {
-        const newSubstitutes = [...substitutes, player];
-        setSubstitutes(newSubstitutes);
-
-        // Mostrar indicador de guardado
-        displaySavedIndicator();
-
-        // Guardar la alineación si estamos en modo embebido
-        if (isEmbedded && onSaveLineup) {
-          const titulares = Object.entries(lineup)
-            .map(([position, p]) => {
-              if (p) {
-                return {
-                  ...p,
-                  fieldPosition: position,
-                };
-              }
-              return null;
-            })
-            .filter((p) => p !== null);
-
-          onSaveLineup({
-            formacion: selectedFormation.name,
-            titulares,
-            suplentes: newSubstitutes,
-            specialRoles,
-            lineup,
-          });
-        }
-      }
-
-      setPlayerSelectorVisible(false);
-    };
-
-    // Función para quitar un jugador de una posición
-    const removePlayerFromPosition = (position) => {
-      const newLineup = { ...lineup };
-      delete newLineup[position];
-      setLineup(newLineup);
-
-      // Mostrar indicador de guardado
-      displaySavedIndicator();
-
-      // Guardar la alineación si estamos en modo embebido
-      if (isEmbedded && onSaveLineup) {
-        const titulares = Object.entries(newLineup)
-          .map(([pos, p]) => {
-            if (p) {
-              return {
-                ...p,
-                fieldPosition: pos,
-              };
-            }
-            return null;
-          })
-          .filter((p) => p !== null);
-
-        onSaveLineup({
-          formacion: selectedFormation.name,
-          titulares,
-          suplentes: substitutes,
-          specialRoles,
-          lineup: newLineup,
-        });
-      }
-    };
-
-    // Función para quitar un jugador de suplentes
-    const removeSubstitute = (playerId) => {
-      const newSubstitutes = substitutes.filter((sub) => sub.id !== playerId);
-      setSubstitutes(newSubstitutes);
-
-      // Mostrar indicador de guardado
-      displaySavedIndicator();
-
-      // Guardar la alineación si estamos en modo embebido
-      if (isEmbedded && onSaveLineup) {
-        const titulares = Object.entries(lineup)
-          .map(([position, p]) => {
-            if (p) {
-              return {
-                ...p,
-                fieldPosition: position,
-              };
-            }
-            return null;
-          })
-          .filter((p) => p !== null);
-
-        onSaveLineup({
-          formacion: selectedFormation.name,
-          titulares,
-          suplentes: newSubstitutes,
-          specialRoles,
-          lineup,
-        });
-      }
-    };
-
-    // Obtener jugadores disponibles (no seleccionados como titulares o suplentes)
-    const getAvailablePlayers = () => {
+    // Obtener jugadores disponibles (memoizado)
+    const getAvailablePlayers = useCallback(() => {
       const selectedPlayerIds = [
         ...Object.values(lineup).map((player) => player?.id),
         ...substitutes.map((player) => player.id),
-      ].filter((id) => id !== undefined);
+      ].filter((id) => id !== undefined)
 
-      return PLAYERS.filter((player) => !selectedPlayerIds.includes(player.id));
-    };
+      return PLAYERS.filter((player) => !selectedPlayerIds.includes(player.id))
+    }, [lineup, substitutes])
 
-    // Función para reasignar jugadores cuando cambia la formación
-    const reasignarJugadoresEnNuevaFormacion = (
-      formacionAnterior,
-      nuevaFormacion
-    ) => {
-      // Si no hay jugadores en la alineación, no hay nada que hacer
-      if (Object.keys(lineup).length === 0) return;
+    // Función para seleccionar un jugador para una posición
+    const selectPlayerForPosition = useCallback(
+      (position, event) => {
+        if (readOnly) return
 
-      // Obtener las posiciones de ambas formaciones
-      const posicionesAnteriores = getPositionsForFormation(formacionAnterior);
-      const nuevasPosiciones = getPositionsForFormation(nuevaFormacion);
+        const player = lineup[position]
 
-      // Crear una nueva alineación
-      const nuevaLineup = {};
+        // Animar la selección
+        playerScaleAnim.setValue(1)
+        Animated.sequence([
+          Animated.timing(playerScaleAnim, {
+            toValue: 1.2,
+            duration: 200,
+            useNativeDriver: true,
+          }),
+          Animated.timing(playerScaleAnim, {
+            toValue: 1,
+            duration: 200,
+            useNativeDriver: true,
+          }),
+        ]).start()
 
-      // Mapeo de tipos de posiciones para intentar mantener jugadores en posiciones similares
-      const mapeoTiposPosiciones = {
-        // Portero
-        GK: ["GK"],
-        // Defensas
-        DEF1: ["DEF1", "DEF2", "DEF3", "DEF4", "DEF5"],
-        DEF2: ["DEF1", "DEF2", "DEF3", "DEF4", "DEF5"],
-        DEF3: ["DEF1", "DEF2", "DEF3", "DEF4", "DEF5"],
-        DEF4: ["DEF1", "DEF2", "DEF3", "DEF4", "DEF5"],
-        DEF5: ["DEF1", "DEF2", "DEF3", "DEF4", "DEF5"],
-        // Centrocampistas
-        MID1: ["MID1", "MID2", "MID3", "MID4", "MID5"],
-        MID2: ["MID1", "MID2", "MID3", "MID4", "MID5"],
-        MID3: ["MID1", "MID2", "MID3", "MID4", "MID5"],
-        MID4: ["MID1", "MID2", "MID3", "MID4", "MID5"],
-        MID5: ["MID1", "MID2", "MID3", "MID4", "MID5"],
-        // Delanteros
-        FWD1: ["FWD1", "FWD2", "FWD3"],
-        FWD2: ["FWD1", "FWD2", "FWD3"],
-        FWD3: ["FWD1", "FWD2", "FWD3"],
-      };
+        if (player) {
+          // Si ya hay un jugador en esa posición, mostrar menú contextual
+          setSelectedPlayer(player)
+          setSelectedPosition(position)
 
-      // Posiciones ya asignadas en la nueva formación
-      const posicionesAsignadas = new Set();
+          // Calcular posición del menú contextual
+          if (event && event.nativeEvent) {
+            // Ajustar la posición Y para que aparezca más abajo
+            const adjustedY = Math.min(event.nativeEvent.pageY, CONTEXT_MENU_MAX_Y)
 
-      // Primero, intentar mantener jugadores en posiciones equivalentes
-      Object.entries(lineup).forEach(([posicionAnterior, jugador]) => {
-        // Intentar encontrar la misma posición en la nueva formación
-        if (
-          nuevasPosiciones[posicionAnterior] &&
-          !posicionesAsignadas.has(posicionAnterior)
-        ) {
-          nuevaLineup[posicionAnterior] = jugador;
-          posicionesAsignadas.add(posicionAnterior);
-        } else {
-          // Si no existe la misma posición, buscar una posición similar
-          const tiposPosicionesSimilares =
-            mapeoTiposPosiciones[posicionAnterior] || [];
-
-          // Buscar una posición similar disponible
-          const posicionSimilar = tiposPosicionesSimilares.find(
-            (tipo) => nuevasPosiciones[tipo] && !posicionesAsignadas.has(tipo)
-          );
-
-          if (posicionSimilar) {
-            nuevaLineup[posicionSimilar] = jugador;
-            posicionesAsignadas.add(posicionSimilar);
+            setContextMenuPosition({
+              x: event.nativeEvent.pageX,
+              y: adjustedY + CONTEXT_MENU_Y_OFFSET,
+            })
           }
-          // Si no se encuentra posición similar, el jugador no se asigna
-        }
-      });
 
-      // Actualizar la alineación
-      setLineup(nuevaLineup);
-    };
+          setContextMenuVisible(true)
+        } else {
+          // Si no hay jugador, mostrar el selector de jugadores
+          setSelectedPosition(position)
+          setPlayerSelectorVisible(true)
+        }
+      },
+      [lineup, playerScaleAnim, readOnly],
+    )
+
+    // Función para asignar un jugador a una posición
+    const assignPlayerToPosition = useCallback(
+      (player) => {
+        // Crear una copia de la alineación actual
+        const newLineup = { ...lineup }
+
+        // Si el jugador ya está en otra posición, quitarlo de ahí
+        Object.keys(newLineup).forEach((pos) => {
+          if (newLineup[pos]?.id === player.id) {
+            delete newLineup[pos]
+          }
+        })
+
+        // Si el jugador está en suplentes, quitarlo de ahí
+        const newSubstitutes = substitutes.filter((sub) => sub.id !== player.id)
+        setSubstitutes(newSubstitutes)
+
+        // Asignar el jugador a la posición seleccionada
+        newLineup[selectedPosition] = player
+        setLineup(newLineup)
+        setPlayerSelectorVisible(false)
+
+        // Mostrar indicador de guardado
+        displaySavedIndicator()
+
+        // Guardar la alineación
+        saveLineup(newLineup, newSubstitutes)
+      },
+      [lineup, selectedPosition, substitutes, displaySavedIndicator, saveLineup],
+    )
+
+    // Función para añadir un jugador a suplentes
+    const addSubstitute = useCallback(
+      (player) => {
+        // Verificar si el jugador ya está en la alineación
+        const isInLineup = Object.values(lineup).some((p) => p?.id === player.id)
+
+        // Verificar si el jugador ya está en suplentes
+        const isInSubstitutes = substitutes.some((p) => p.id === player.id)
+
+        if (!isInLineup && !isInSubstitutes) {
+          const newSubstitutes = [...substitutes, player]
+          setSubstitutes(newSubstitutes)
+
+          // Mostrar indicador de guardado
+          displaySavedIndicator()
+
+          // Guardar la alineación
+          saveLineup(lineup, newSubstitutes)
+        }
+
+        setPlayerSelectorVisible(false)
+      },
+      [lineup, substitutes, displaySavedIndicator, saveLineup],
+    )
+
+    // Función para quitar un jugador de una posición
+    const removePlayerFromPosition = useCallback(
+      (position) => {
+        const newLineup = { ...lineup }
+        delete newLineup[position]
+        setLineup(newLineup)
+
+        // Mostrar indicador de guardado
+        displaySavedIndicator()
+
+        // Guardar la alineación
+        saveLineup(newLineup)
+      },
+      [lineup, displaySavedIndicator, saveLineup],
+    )
+
+    // Función para quitar un jugador de suplentes
+    const removeSubstitute = useCallback(
+      (playerId) => {
+        const newSubstitutes = substitutes.filter((sub) => sub.id !== playerId)
+        setSubstitutes(newSubstitutes)
+
+        // Mostrar indicador de guardado
+        displaySavedIndicator()
+
+        // Guardar la alineación
+        saveLineup(lineup, newSubstitutes)
+      },
+      [substitutes, lineup, displaySavedIndicator, saveLineup],
+    )
 
     // Función para manejar la asignación de roles desde el menú contextual
-    const handleAssignRoleFromMenu = () => {
-      setContextMenuVisible(false);
-      setRoleModalVisible(true);
-    };
+    const handleAssignRoleFromMenu = useCallback(() => {
+      setContextMenuVisible(false)
+      setRoleModalVisible(true)
+    }, [])
 
     // Función para quitar un jugador desde el menú contextual
-    const handleRemovePlayerFromMenu = () => {
-      removePlayerFromPosition(selectedPosition);
-      setContextMenuVisible(false);
-    };
+    const handleRemovePlayerFromMenu = useCallback(() => {
+      removePlayerFromPosition(selectedPosition)
+      setContextMenuVisible(false)
+    }, [removePlayerFromPosition, selectedPosition])
 
     // Función para manejar la pulsación larga en un jugador
-    const handleLongPressPlayer = (position) => {
-      if (readOnly) return;
+    const handleLongPressPlayer = useCallback(
+      (position) => {
+        if (readOnly) return
 
-      const player = lineup[position];
-      if (player) {
-        setSelectedPlayer(player);
-        setSelectedPosition(position);
-        setRoleModalVisible(true);
-      }
-    };
+        const player = lineup[position]
+        if (player) {
+          setSelectedPlayer(player)
+          setSelectedPosition(position)
+          setRoleModalVisible(true)
+        }
+      },
+      [lineup, readOnly],
+    )
 
-    // Función para reiniciar la alineación
-    const handleResetLineup = () => {
-      Alert.alert(
-        "Reiniciar alineación",
-        "¿Estás seguro de que quieres quitar todos los jugadores?",
-        [
-          { text: "Cancelar", style: "cancel" },
-          {
-            text: "Reiniciar",
-            onPress: () => {
-              setLineup({});
-              setSubstitutes([]);
-              setSpecialRoles({
-                captain: null,
-                freeKicks: null,
-                corners: null,
-                penalties: null,
-              });
+    // Renderizar jugador en posición (memoizado)
+    const renderPlayerPosition = useCallback(
+      (position, positionStyle) => {
+        const player = lineup[position]
 
-              // Mostrar indicador de guardado
-              displaySavedIndicator();
-
-              // Guardar la alineación si estamos en modo embebido
-              if (isEmbedded && onSaveLineup) {
-                onSaveLineup({
-                  formacion: selectedFormation.name,
-                  titulares: [],
-                  suplentes: [],
-                  specialRoles: {
-                    captain: null,
-                    freeKicks: null,
-                    corners: null,
-                    penalties: null,
-                  },
-                  lineup: {},
-                });
-              }
-            },
-          },
-        ]
-      );
-    };
-
-    // Renderizar jugador en posición
-    const renderPlayerPosition = (position, positionStyle) => {
-      const player = lineup[position];
-
-      // Calcular posición animada durante cambio de formación
-      const animatedStyle = previousFormation
-        ? {
-            left: formationChangeAnim.interpolate({
-              inputRange: [0, 1],
-              outputRange: [positionStyle.left, positionStyle.left],
-            }),
-            top: formationChangeAnim.interpolate({
-              inputRange: [0, 1],
-              outputRange: [positionStyle.top, positionStyle.top],
-            }),
-          }
-        : positionStyle;
-
-      return (
-        <Animated.View
-          style={[
-            styles.playerPosition,
-            animatedStyle,
-            { transform: [{ translateX: -25 }, { translateY: -35 }] }, // Ajustado para fichas más grandes
-          ]}
-          key={position}
-        >
-          <TouchableOpacity
-            onPress={(event) => selectPlayerForPosition(position, event)}
-            onLongPress={() => handleLongPressPlayer(position)}
-            delayLongPress={500}
-            activeOpacity={readOnly ? 1 : 0.7}
-            accessible={true}
-            accessibilityLabel={
-              player
-                ? `Jugador ${player.name}, número ${player.number}`
-                : `Posición vacía ${position}`
+        // Calcular posición animada durante cambio de formación
+        const animatedStyle = previousFormation
+          ? {
+              left: formationChangeAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [
+                  positionStyle.left, // Posición inicial
+                  positionStyle.left, // Posición final
+                ],
+              }),
+              top: formationChangeAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [
+                  positionStyle.top, // Posición inicial
+                  positionStyle.top, // Posición final
+                ],
+              }),
             }
-            accessibilityHint={
-              player
-                ? "Toca para ver opciones del jugador"
-                : "Toca para asignar un jugador"
-            }
-            disabled={readOnly}
-          >
-            {player ? (
-              <Animated.View
-                style={[
-                  styles.playerAssigned,
-                  { transform: [{ scale: playerScaleAnim }] },
-                ]}
-              >
-                <View style={styles.playerCircle}>
-                  <Text style={[styles.playerNumber, { color: colors.text }]}>
-                    {player.number}
-                  </Text>
-                </View>
-                <View style={styles.playerNameContainer}>
-                  <Text
-                    style={[styles.playerName, { color: colors.text }]}
-                    numberOfLines={1}
-                  >
-                    {player.name.split(" ")[0]}
-                  </Text>
-                </View>
+          : positionStyle
 
-                {/* Añadir los indicadores de roles especiales */}
-                <PlayerRoleIndicators
-                  player={player}
-                  specialRoles={specialRoles}
-                />
-              </Animated.View>
-            ) : (
-              <View
-                style={[
-                  styles.emptyPosition,
-                  { backgroundColor: `${colors.playerCircle}80` },
-                ]}
-              >
-                <Ionicons name="add" size={24} color={colors.fieldLines} />
-              </View>
-            )}
-          </TouchableOpacity>
-        </Animated.View>
-      );
-    };
-
-    return (
-      <SafeAreaView
-        style={[styles.container, { backgroundColor: colors.background }]}
-      >
-        {!isEmbedded && (
-          <View
-            style={[styles.header, { borderBottomColor: `${colors.text}20` }]}
+        return (
+          <Animated.View
+            style={[
+              styles.playerPosition,
+              animatedStyle,
+              { transform: [{ translateX: -25 }, { translateY: -35 }] }, // Ajustado para fichas más grandes
+            ]}
+            key={position}
           >
             <TouchableOpacity
-              onPress={() => router.back()}
-              style={styles.backButton}
+              onPress={(event) => selectPlayerForPosition(position, event)}
+              onLongPress={() => handleLongPressPlayer(position)}
+              delayLongPress={500}
+              activeOpacity={readOnly ? 1 : 0.7}
+              accessible={true}
+              accessibilityLabel={
+                player ? `Jugador ${player.name}, número ${player.number}` : `Posición vacía ${position}`
+              }
+              accessibilityHint={player ? "Toca para ver opciones del jugador" : "Toca para asignar un jugador"}
+              disabled={readOnly}
             >
+              {player ? (
+                <Animated.View style={[styles.playerAssigned, { transform: [{ scale: playerScaleAnim }] }]}>
+                  <View style={styles.playerCircle}>
+                    <Text style={[styles.playerNumber, { color: colors.text }]}>{player.number}</Text>
+                  </View>
+                  <View style={styles.playerNameContainer}>
+                    <Text style={[styles.playerName, { color: colors.text }]} numberOfLines={1}>
+                      {player.name.split(" ")[0]}
+                    </Text>
+                  </View>
+
+                  {/* Añadir los indicadores de roles especiales */}
+                  <PlayerRoleIndicators player={player} specialRoles={specialRoles} />
+                </Animated.View>
+              ) : (
+                <View style={[styles.emptyPosition, { backgroundColor: `${colors.playerCircle}80` }]}>
+                  <Ionicons name="add" size={24} color={colors.fieldLines} />
+                </View>
+              )}
+            </TouchableOpacity>
+          </Animated.View>
+        )
+      },
+      [
+        lineup,
+        previousFormation,
+        formationChangeAnim,
+        playerScaleAnim,
+        colors,
+        selectPlayerForPosition,
+        handleLongPressPlayer,
+        readOnly,
+        specialRoles,
+      ],
+    )
+
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        {!isEmbedded && (
+          <View style={[styles.header, { borderBottomColor: `${colors.text}20` }]}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
               <Ionicons name="arrow-back" size={24} color={colors.text} />
             </TouchableOpacity>
-            <Text style={[styles.headerTitle, { color: colors.text }]}>
-              {screenTitle}
-            </Text>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>{screenTitle}</Text>
 
-            {/* Indicador de guardado */}
-            {showSavedIndicator && (
-              <Animated.View
-                style={[styles.savedIndicator, { opacity: savedIndicatorAnim }]}
-              >
+            {/* Indicador de guardado - solo visible si no es de solo lectura */}
+            {showSavedIndicator && !readOnly && (
+              <Animated.View style={[styles.savedIndicator, { opacity: savedIndicatorAnim }]}>
                 <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
                 <Text style={styles.savedIndicatorText}>Guardado</Text>
               </Animated.View>
@@ -767,11 +629,7 @@ const LineupScreen = forwardRef(
                   disabled={readOnly}
                 >
                   <LinearGradient
-                    colors={
-                      selectedFormation.id === formation.id
-                        ? ["#4CAF50", "#2E7D32"]
-                        : [colors.card, "#2a2a2a"]
-                    }
+                    colors={selectedFormation.id === formation.id ? ["#4CAF50", "#2E7D32"] : [colors.card, "#2a2a2a"]}
                     style={styles.formationButton}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
@@ -780,13 +638,9 @@ const LineupScreen = forwardRef(
                       style={[
                         styles.formationText,
                         {
-                          color:
-                            selectedFormation.id === formation.id
-                              ? "#fff"
-                              : colors.textSecondary,
+                          color: selectedFormation.id === formation.id ? "#fff" : colors.textSecondary,
                         },
-                        selectedFormation.id === formation.id &&
-                          styles.formationTextSelected,
+                        selectedFormation.id === formation.id && styles.formationTextSelected,
                       ]}
                     >
                       {formation.name}
@@ -800,8 +654,8 @@ const LineupScreen = forwardRef(
 
         <FootballField style={{ marginBottom: 8 }}>
           {/* Posiciones de jugadores */}
-          {Object.entries(getPositionsForFormation(selectedFormation)).map(
-            ([position, posStyle]) => renderPlayerPosition(position, posStyle)
+          {Object.entries(getPositionsForFormation(selectedFormation)).map(([position, posStyle]) =>
+            renderPlayerPosition(position, posStyle),
           )}
         </FootballField>
 
@@ -815,9 +669,7 @@ const LineupScreen = forwardRef(
             },
           ]}
         >
-          <Text style={[styles.substitutesTitle, { color: colors.text }]}>
-            Suplentes:
-          </Text>
+          <Text style={[styles.substitutesTitle, { color: colors.text }]}>Suplentes:</Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -827,19 +679,9 @@ const LineupScreen = forwardRef(
             {substitutes.map((player) => (
               <View key={player.id} style={styles.substituteItem}>
                 <View style={styles.substituteCircle}>
-                  <Text
-                    style={[styles.substituteNumber, { color: colors.text }]}
-                  >
-                    {player.number}
-                  </Text>
+                  <Text style={[styles.substituteNumber, { color: colors.text }]}>{player.number}</Text>
                 </View>
-                <Text
-                  style={[
-                    styles.substituteName,
-                    { color: colors.textSecondary },
-                  ]}
-                  numberOfLines={1}
-                >
+                <Text style={[styles.substituteName, { color: colors.textSecondary }]} numberOfLines={1}>
                   {player.name.split(" ")[0]}
                 </Text>
                 {!readOnly && (
@@ -857,42 +699,21 @@ const LineupScreen = forwardRef(
               <TouchableOpacity
                 style={styles.addSubstituteButton}
                 onPress={() => {
-                  setSelectedPosition("substitute");
-                  setPlayerSelectorVisible(true);
+                  setSelectedPosition("substitute")
+                  setPlayerSelectorVisible(true)
                 }}
               >
                 <Ionicons name="add-circle" size={24} color={colors.accent} />
-                <Text
-                  style={[styles.addSubstituteText, { color: colors.accent }]}
-                >
-                  Añadir
-                </Text>
+                <Text style={[styles.addSubstituteText, { color: colors.accent }]}>Añadir</Text>
               </TouchableOpacity>
             )}
             {substitutes.length === 0 && readOnly && (
-              <Text
-                style={[
-                  styles.emptyListText,
-                  { color: colors.textSecondary, marginLeft: 10 },
-                ]}
-              >
+              <Text style={[styles.emptyListText, { color: colors.textSecondary, marginLeft: 10 }]}>
                 No hay suplentes
               </Text>
             )}
           </ScrollView>
         </View>
-
-        {/* Solo botón flotante para reiniciar si no es de solo lectura y no está embebido */}
-        {!readOnly && !isEmbedded && (
-          <View style={styles.fabContainer}>
-            <TouchableOpacity
-              style={[styles.fab, { backgroundColor: "#F44336" }]}
-              onPress={handleResetLineup}
-            >
-              <Ionicons name="refresh" size={24} color="#fff" />
-            </TouchableOpacity>
-          </View>
-        )}
 
         {/* Modal para seleccionar jugador */}
         <Modal
@@ -901,33 +722,13 @@ const LineupScreen = forwardRef(
           animationType="slide"
           onRequestClose={() => setPlayerSelectorVisible(false)}
         >
-          <View
-            style={[
-              styles.modalContainer,
-              { backgroundColor: colors.modalBackground },
-            ]}
-          >
-            <View
-              style={[
-                styles.modalContent,
-                { backgroundColor: colors.modalContent },
-              ]}
-            >
-              <View
-                style={[
-                  styles.modalHeader,
-                  { borderBottomColor: colors.modalBorder },
-                ]}
-              >
+          <View style={[styles.modalContainer, { backgroundColor: colors.modalBackground }]}>
+            <View style={[styles.modalContent, { backgroundColor: colors.modalContent }]}>
+              <View style={[styles.modalHeader, { borderBottomColor: colors.modalBorder }]}>
                 <Text style={[styles.modalTitle, { color: colors.modalText }]}>
-                  {selectedPosition === "substitute"
-                    ? "Seleccionar suplente"
-                    : "Seleccionar jugador"}
+                  {selectedPosition === "substitute" ? "Seleccionar suplente" : "Seleccionar jugador"}
                 </Text>
-                <TouchableOpacity
-                  style={styles.closeButton}
-                  onPress={() => setPlayerSelectorVisible(false)}
-                >
+                <TouchableOpacity style={styles.closeButton} onPress={() => setPlayerSelectorVisible(false)}>
                   <Ionicons name="close" size={24} color={colors.modalText} />
                 </TouchableOpacity>
               </View>
@@ -937,56 +738,27 @@ const LineupScreen = forwardRef(
                 keyExtractor={(item) => item.id}
                 renderItem={({ item }) => (
                   <TouchableOpacity
-                    style={[
-                      styles.playerItem,
-                      { borderBottomColor: colors.modalBorder },
-                    ]}
+                    style={[styles.playerItem, { borderBottomColor: colors.modalBorder }]}
                     onPress={() => {
                       if (selectedPosition === "substitute") {
-                        addSubstitute(item);
+                        addSubstitute(item)
                       } else {
-                        assignPlayerToPosition(item);
+                        assignPlayerToPosition(item)
                       }
                     }}
                   >
                     <View style={styles.playerItemCircle}>
-                      <Text
-                        style={[
-                          styles.playerItemNumber,
-                          { color: colors.text },
-                        ]}
-                      >
-                        {item.number}
-                      </Text>
+                      <Text style={[styles.playerItemNumber, { color: colors.text }]}>{item.number}</Text>
                     </View>
                     <View style={styles.playerItemInfo}>
-                      <Text
-                        style={[
-                          styles.playerItemName,
-                          { color: colors.modalText },
-                        ]}
-                      >
-                        {item.name}
-                      </Text>
-                      <Text
-                        style={[
-                          styles.playerItemPosition,
-                          { color: colors.textSecondary },
-                        ]}
-                      >
-                        {item.position}
-                      </Text>
+                      <Text style={[styles.playerItemName, { color: colors.modalText }]}>{item.name}</Text>
+                      <Text style={[styles.playerItemPosition, { color: colors.textSecondary }]}>{item.position}</Text>
                     </View>
                   </TouchableOpacity>
                 )}
                 ListEmptyComponent={
                   <View style={styles.emptyListContainer}>
-                    <Text
-                      style={[
-                        styles.emptyListText,
-                        { color: colors.textSecondary },
-                      ]}
-                    >
+                    <Text style={[styles.emptyListText, { color: colors.textSecondary }]}>
                       No hay jugadores disponibles
                     </Text>
                   </View>
@@ -1004,10 +776,7 @@ const LineupScreen = forwardRef(
           onRequestClose={() => setRoleModalVisible(false)}
         >
           <TouchableOpacity
-            style={[
-              styles.roleModalOverlay,
-              { backgroundColor: colors.modalBackground },
-            ]}
+            style={[styles.roleModalOverlay, { backgroundColor: colors.modalBackground }]}
             activeOpacity={1}
             onPress={() => setRoleModalVisible(false)}
           >
@@ -1018,33 +787,13 @@ const LineupScreen = forwardRef(
                     player={selectedPlayer}
                     specialRoles={specialRoles}
                     onUpdateSpecialRoles={(newRoles) => {
-                      setSpecialRoles(newRoles);
+                      setSpecialRoles(newRoles)
 
                       // Mostrar indicador de guardado
-                      displaySavedIndicator();
+                      displaySavedIndicator()
 
-                      // Guardar la alineación si estamos en modo embebido
-                      if (isEmbedded && onSaveLineup) {
-                        const titulares = Object.entries(lineup)
-                          .map(([position, p]) => {
-                            if (p) {
-                              return {
-                                ...p,
-                                fieldPosition: position,
-                              };
-                            }
-                            return null;
-                          })
-                          .filter((p) => p !== null);
-
-                        onSaveLineup({
-                          formacion: selectedFormation.name,
-                          titulares,
-                          suplentes: substitutes,
-                          specialRoles: newRoles,
-                          lineup,
-                        });
-                      }
+                      // Guardar la alineación
+                      saveLineup(lineup, substitutes, newRoles)
                     }}
                     onClose={() => setRoleModalVisible(false)}
                     theme={colors}
@@ -1067,9 +816,9 @@ const LineupScreen = forwardRef(
           />
         )}
       </SafeAreaView>
-    );
-  }
-);
+    )
+  },
+)
 
 const styles = StyleSheet.create({
   container: {
@@ -1245,7 +994,7 @@ const styles = StyleSheet.create({
   modalContent: {
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
-    maxHeight: height * 0.7,
+    maxHeight: height * MODAL_MAX_HEIGHT_RATIO,
   },
   modalHeader: {
     flexDirection: "row",
@@ -1312,27 +1061,6 @@ const styles = StyleSheet.create({
     position: "absolute",
     zIndex: 1000,
   },
-  // Botón flotante (solo reiniciar)
-  fabContainer: {
-    position: "absolute",
-    right: 20,
-    bottom: 120,
-    alignItems: "center",
-  },
-  fab: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "#4CAF50",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-    elevation: 5,
-  },
-});
+})
 
-export default LineupScreen;
+export default LineupScreen

@@ -128,11 +128,11 @@ export default function CrearPartidoScreen() {
     }
 
     const currentDate = selectedDate || partidoData.fecha;
-    
+
     if (dateTimeMode === "date") {
       // Si estamos seleccionando la fecha, guardarla y cambiar al modo hora
       setPartidoData((prev) => ({ ...prev, fecha: currentDate }));
-      
+
       // En Android, cerrar el picker de fecha y abrir el de hora
       if (Platform.OS === "android") {
         setShowDatePicker(false);
@@ -228,8 +228,8 @@ export default function CrearPartidoScreen() {
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>
                   {partidoData.tipoPartido === "liga"
-                    ? "Jornada"
-                    : "Nombre del torneo"}
+                    ? "Jornada*"
+                    : "Nombre del torneo*"}
                 </Text>
                 <TextInput
                   style={styles.input}
@@ -260,7 +260,11 @@ export default function CrearPartidoScreen() {
                 }}
               >
                 <Text style={styles.dateText}>
-                  {partidoData.fecha.toLocaleDateString()} {partidoData.fecha.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  {partidoData.fecha.toLocaleDateString()}{" "}
+                  {partidoData.fecha.toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
                 </Text>
               </TouchableOpacity>
 
@@ -306,7 +310,7 @@ export default function CrearPartidoScreen() {
             {/* Campo adicional para lugar específico cuando es visitante */}
             {partidoData.lugar === "Fuera" && (
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Lugar específico</Text>
+                <Text style={styles.inputLabel}>Lugar específico*</Text>
                 <TextInput
                   style={styles.input}
                   value={partidoData.lugarEspecifico}
@@ -320,13 +324,17 @@ export default function CrearPartidoScreen() {
             <TouchableOpacity
               style={[
                 styles.nextButton,
-                partidoData.tipoPartido !== "amistoso" &&
-                  !partidoData.jornada &&
+                ((partidoData.tipoPartido !== "amistoso" &&
+                  !partidoData.jornada) ||
+                  (partidoData.lugar === "Fuera" &&
+                    !partidoData.lugarEspecifico)) &&
                   styles.buttonDisabled,
               ]}
               onPress={nextStep}
               disabled={
-                partidoData.tipoPartido !== "amistoso" && !partidoData.jornada
+                (partidoData.tipoPartido !== "amistoso" &&
+                  !partidoData.jornada) ||
+                (partidoData.lugar === "Fuera" && !partidoData.lugarEspecifico)
               }
             >
               <Text style={styles.nextButtonText}>Siguiente</Text>
@@ -340,7 +348,7 @@ export default function CrearPartidoScreen() {
             <Text style={styles.stepTitle}>Información del rival</Text>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Nombre del equipo rival</Text>
+              <Text style={styles.inputLabel}>Nombre del equipo rival*</Text>
               <TextInput
                 style={styles.input}
                 value={partidoData.rival}
