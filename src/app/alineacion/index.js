@@ -63,6 +63,11 @@ const LineupScreen = forwardRef(
       modalBorder: "#444444",
     }
 
+    // Estado para controlar si los datos iniciales ya se han cargado
+    const [initialDataLoaded, setInitialDataLoaded] = useState(false)
+    // Referencia para evitar múltiples cargas de datos iniciales
+    const initialDataProcessedRef = useRef(false)
+
     const [selectedFormation, setSelectedFormation] = useState(FORMATIONS[0])
     const [previousFormation, setPreviousFormation] = useState(null)
     const [lineup, setLineup] = useState({})
@@ -91,7 +96,7 @@ const LineupScreen = forwardRef(
 
     // Título de la pantalla
     const screenTitle = useMemo(() => {
-      return matchTitle || (typeof matchday === "number" ? `Alineación jornada ${matchday}` : matchday || "Alineación")
+      return matchTitle || (typeof matchday === "number" ? `Jornada ${matchday}` : matchday || "Alineación")
     }, [matchTitle, matchday])
 
     // Animaciones
@@ -182,19 +187,37 @@ const LineupScreen = forwardRef(
       },
     }))
 
-    // Inicializar con datos si se proporcionan
+    // Función para depurar el estado actual (solo para desarrollo)
+    const debugState = useCallback(() => {
+      console.log("Estado actual:")
+      console.log("- Formación:", selectedFormation?.name)
+      console.log("- Titulares:", Object.keys(lineup).length)
+      console.log("- Suplentes:", substitutes.length)
+      console.log("- Roles especiales:", Object.values(specialRoles).filter(Boolean).length)
+    }, [selectedFormation, lineup, substitutes, specialRoles])
+
+    // Inicializar con datos si se proporcionan - USANDO REF PARA EVITAR MÚLTIPLES EJECUCIONES
     useEffect(() => {
-      if (initialData) {
+      // Usar una referencia para evitar múltiples procesamientos
+      if (initialData && !initialDataProcessedRef.current) {
+        initialDataProcessedRef.current = true;
+        console.log("Inicializando con datos:", initialData)
+
         // Buscar la formación por nombre
-        if (typeof initialData.formacion === "string") {
+        if (initialData.formacion && typeof initialData.formacion === "string") {
+          console.log("Estableciendo formación:", initialData.formacion)
           const formation = FORMATIONS.find((f) => f.name === initialData.formacion) || FORMATIONS[0]
           setSelectedFormation(formation)
+          // También establecer previousFormation para evitar que se active el efecto de cambio de formación
+          setPreviousFormation(formation)
         } else if (initialData.formation) {
           setSelectedFormation(initialData.formation)
+          setPreviousFormation(initialData.formation)
         }
 
         // Reconstruir el lineup a partir de los titulares con IDs
-        if (initialData.titulares && Array.isArray(initialData.titulares)) {
+        if (initialData.titulares && Array.isArray(initialData.titulares) && initialData.titulares.length > 0) {
+          console.log("Procesando titulares:", initialData.titulares.length)
           const newLineup = {}
 
           // Reconstruir jugadores completos a partir de IDs
@@ -208,32 +231,41 @@ const LineupScreen = forwardRef(
             }
           })
 
+          console.log("Lineup reconstruido:", Object.keys(newLineup).length)
           setLineup(newLineup)
         }
 
         // Reconstruir suplentes a partir de IDs
-        if (initialData.suplentes && Array.isArray(initialData.suplentes)) {
+        if (initialData.suplentes && Array.isArray(initialData.suplentes) && initialData.suplentes.length > 0) {
+          console.log("Procesando suplentes:", initialData.suplentes.length)
+
           // Si son solo IDs
           if (typeof initialData.suplentes[0] === "string" || typeof initialData.suplentes[0] === "number") {
             const suplentesCompletos = initialData.suplentes
               .map((id) => PLAYERS.find((p) => p.id === id))
               .filter((player) => player !== undefined)
+            console.log("Suplentes reconstruidos:", suplentesCompletos.length)
             setSubstitutes(suplentesCompletos)
           } else {
             // Si son objetos completos (para compatibilidad)
+            console.log("Suplentes como objetos completos:", initialData.suplentes.length)
             setSubstitutes(initialData.suplentes)
           }
         }
 
         // Manejar roles especiales (solo IDs)
         if (initialData.specialRoles) {
+          console.log("Procesando roles especiales:", Object.keys(initialData.specialRoles).length)
           setSpecialRoles((prevRoles) => ({
             ...prevRoles,
             ...initialData.specialRoles,
           }))
         }
+
+        // Marcar que los datos iniciales ya se han cargado
+        setInitialDataLoaded(true)
       }
-    }, [initialData])
+    }, [initialData]); // Solo depende de initialData
 
     const reasignarJugadoresEnNuevaFormacion = useCallback(
       (formacionAnterior, nuevaFormacion) => {
@@ -301,17 +333,20 @@ const LineupScreen = forwardRef(
       [lineup],
     )
 
-    // Actualizar posiciones cuando cambia la formación
+    // Actualizar posiciones cuando cambia la formación - CON REFERENCIA PARA EVITAR BUCLES
+    const formationChangeRef = useRef(false);
+    
     useEffect(() => {
-      // Solo ejecutar cuando cambia la formación seleccionada
-      if (selectedFormation && selectedFormation !== previousFormation) {
-        // Animar el cambio de formación
-        formationChangeAnim.setValue(0)
+      // Solo ejecutar cuando cambia la formación seleccionada y no es la primera carga
+      if (selectedFormation && previousFormation && selectedFormation !== previousFormation && !formationChangeRef.current) {
+        formationChangeRef.current = true;
+        console.log("Cambiando formación de", previousFormation.name, "a", selectedFormation.name);
 
-        // Si hay una formación anterior, reasignar jugadores
-        if (previousFormation) {
-          reasignarJugadoresEnNuevaFormacion(previousFormation, selectedFormation)
-        }
+        // Animar el cambio de formación
+        formationChangeAnim.setValue(0);
+
+        // Reasignar jugadores
+        reasignarJugadoresEnNuevaFormacion(previousFormation, selectedFormation);
 
         // Luego iniciar la animación
         setTimeout(() => {
@@ -319,26 +354,26 @@ const LineupScreen = forwardRef(
             toValue: 1,
             duration: 500,
             useNativeDriver: false,
-          }).start()
+          }).start();
 
           // Mostrar indicador de guardado cuando cambia la formación
-          displaySavedIndicator()
+          displaySavedIndicator();
 
           // Guardar la alineación
-          saveLineup()
-        }, 0)
-
-        // Actualizar la formación anterior
-        setPreviousFormation(selectedFormation)
+          saveLineup();
+          
+          // Resetear la referencia después de un tiempo para permitir futuros cambios
+          setTimeout(() => {
+            formationChangeRef.current = false;
+          }, 100);
+        }, 0);
       }
-    }, [
-      selectedFormation,
-      displaySavedIndicator,
-      saveLineup,
-      previousFormation,
-      formationChangeAnim,
-      reasignarJugadoresEnNuevaFormacion,
-    ])
+
+      // Siempre actualizar previousFormation si hay un cambio
+      if (selectedFormation !== previousFormation) {
+        setPreviousFormation(selectedFormation);
+      }
+    }, [selectedFormation, previousFormation]);
 
     // Obtener jugadores disponibles (memoizado)
     const getAvailablePlayers = useCallback(() => {
