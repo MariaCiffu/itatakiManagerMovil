@@ -30,22 +30,8 @@ import {
   ChevronDownIcon,
 } from "../../components/Icons";
 import { COLORS } from "../../constants/colors";
+import { POSICIONES } from "../../constants/positions";
 import { updateJugador } from "../../services/jugadoresService";
-
-// Opciones de posición
-const POSICIONES = [
-  "Portero",
-  "Lateral izq.",
-  "Lateral dcho.",
-  "Defensa central",
-  "Carrilero izq.",
-  "Carrilero dcho.",
-  "Mediocentro",
-  "Mediapunta",
-  "Extremo izq.",
-  "Extremo dcho.",
-  "Delantero",
-];
 
 export default function EditPlayer() {
   const router = useRouter();
