@@ -33,10 +33,14 @@ import { COLORS } from "../../constants/colors";
 import { PLAYERS, getJugadoresConMultas } from "../../data/teamData";
 import PLANTILLAS from "../../data/plantillasConv"; // Importar plantillas desde el archivo separado
 import { POSICIONES } from "../../constants/positions"; // Importamos las posiciones desde el archivo existente
+import { useAuth } from "../../context/authContext";
 
 export default function Convocatorias() {
   const router = useRouter();
   const params = useLocalSearchParams();
+    const { state } = useAuth();
+  const { user } = state;
+
   const [plantillaSeleccionada, setPlantillaSeleccionada] = useState(
     PLANTILLAS[0]
   );
@@ -299,7 +303,7 @@ export default function Convocatorias() {
     // Generar el texto del tipo de partido
     let tipoPartidoTexto = "";
     if (datos.tipoPartido === "liga") {
-      tipoPartidoTexto = `JORNADA ${datos.jornada} DE PRIMERA CADETE`;
+      tipoPartidoTexto = `JORNADA ${datos.jornada ? datos.jornada : "[NUMERO JORNADA]"} DE ${user?.category.toUpperCase() || "[CATEGORÍA]"}`;
     } else if (datos.tipoPartido === "torneo") {
       tipoPartidoTexto = `TORNEO ${datos.nombreTorneo ? datos.nombreTorneo.toUpperCase() : "[NOMBRE DEL TORNEO]"}`;
     } else if (datos.tipoPartido === "amistoso") {

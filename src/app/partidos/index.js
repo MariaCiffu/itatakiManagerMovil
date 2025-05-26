@@ -15,36 +15,39 @@ import { LinearGradient } from "expo-linear-gradient";
 import { getPartidosWithDelay } from "../../services/partidosService";
 import BackButton from "../../components/BackButton";
 import { COLORS } from "../../constants/colors";
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect } from "@react-navigation/native";
+import { useAuth } from "../../context/authContext";
 
 export default function PartidosScreen() {
   const router = useRouter();
   const [partidos, setPartidos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { state } = useAuth();
+  const { user } = state;
 
   // Cargar partidos cuando la pantalla obtiene el foco
-    useFocusEffect(
-      useCallback(() => {
-        const loadPartidos = async () => {
-          try {
-            setLoading(true);
-            const data = await getPartidosWithDelay();
-            setPartidos(data);
-            setLoading(false);
-          } catch (error) {
-            console.error('Error al cargar los partidos:', error);
-            setLoading(false);
-            setError("No se pudo cargar los partidos");
-          }
-        };
-        
-        loadPartidos();
-        
-        return () => {
-          // Limpieza si es necesaria
-        };
-      }, [])
-    );
+  useFocusEffect(
+    useCallback(() => {
+      const loadPartidos = async () => {
+        try {
+          setLoading(true);
+          const data = await getPartidosWithDelay();
+          setPartidos(data);
+          setLoading(false);
+        } catch (error) {
+          console.error("Error al cargar los partidos:", error);
+          setLoading(false);
+          setError("No se pudo cargar los partidos");
+        }
+      };
+
+      loadPartidos();
+
+      return () => {
+        // Limpieza si es necesaria
+      };
+    }, [])
+  );
 
   const navigateToPartidoDetail = (partidoId) => {
     router.push(`/partidos/${partidoId}`);
@@ -96,11 +99,11 @@ export default function PartidosScreen() {
               <View style={styles.partidoContent}>
                 <View style={styles.equipoContainer}>
                   <Text style={styles.equipoNombre}>
-                    {item.lugar === "Casa" ? "Tu Equipo" : item.rival}
+                    {item.lugar === "Casa" ? user?.teamName : item.rival}
                   </Text>
                   <Text style={styles.vs}>VS</Text>
                   <Text style={styles.equipoNombre}>
-                    {item.lugar === "Casa" ? item.rival : "Tu Equipo"}
+                    {item.lugar === "Casa" ? item.rival : user?.teamName}
                   </Text>
                 </View>
               </View>
@@ -130,13 +133,16 @@ export default function PartidosScreen() {
       )}
 
       {/* Botón flotante para añadir partido */}
-      <TouchableOpacity 
-        style={styles.addFloatingButton} 
-        activeOpacity={0.8} 
+      <TouchableOpacity
+        style={styles.addFloatingButton}
+        activeOpacity={0.8}
         onPress={navigateToCrearPartido}
       >
-        <LinearGradient 
-          colors={[COLORS ? COLORS.primary : "#4CAF50", COLORS ? COLORS.primaryDark : "#388E3C"]} 
+        <LinearGradient
+          colors={[
+            COLORS ? COLORS.primary : "#4CAF50",
+            COLORS ? COLORS.primaryDark : "#388E3C",
+          ]}
           style={styles.addButtonGradient}
         >
           <Ionicons name="add" size={24} color="#FFF" />
@@ -156,7 +162,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     padding: 16,
-
   },
   headerTitle: {
     fontSize: 24,

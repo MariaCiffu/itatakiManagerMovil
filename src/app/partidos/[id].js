@@ -19,18 +19,19 @@ import {
 } from "../../services/partidosService";
 import { getAllJugadores } from "../../services/jugadoresService";
 import { availableRoles } from "../../data/roles";
+import { useAuth } from "../../context/authContext";
 
 export default function DetallePartidoScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
+  const { state } = useAuth();
+  const { user } = state;
+
   const [partido, setPartido] = useState(null);
   const [jugadores, setJugadores] = useState([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
   const [generatingConvocatoria, setGeneratingConvocatoria] = useState(false);
-
-  // Estados para la convocatoria
-  const [mensajeConvocatoria, setMensajeConvocatoria] = useState("");
 
   useEffect(() => {
     loadData();
@@ -170,7 +171,7 @@ export default function DetallePartidoScreen() {
       // Determinar lugar específico
       const lugarEspecifico =
         partido.lugar === "Casa"
-          ? "Campo local"
+          ? user?.homeField // 👈 Usa el campo del usuario
           : partido.lugarEspecifico || "Campo visitante";
 
       // Crear objeto con los datos a pasar
