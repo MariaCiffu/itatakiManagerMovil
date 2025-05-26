@@ -1,3 +1,5 @@
+"use client"
+
 import { useState, useEffect, useCallback, useMemo } from "react"
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Linking, Modal } from "react-native"
 import { useRouter, useLocalSearchParams } from "expo-router"
@@ -154,23 +156,79 @@ export default function Convocatorias() {
     }
   }, [])
 
-  // Filtrar jugadores según la búsqueda
-  const jugadoresFiltrados = searchQuery
-    ? jugadores.filter(
-        (jugador) =>
-          jugador.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          jugador.position.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          jugador.number.toString().includes(searchQuery),
-      )
-    : jugadores
+  // Filtrar y ordenar jugadores según la búsqueda, posición y número de dorsal
+  const jugadoresFiltrados = useMemo(() => {
+    const jugadoresFiltrados = searchQuery
+      ? jugadores.filter(
+          (jugador) =>
+            jugador.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            jugador.position.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            jugador.number.toString().includes(searchQuery),
+        )
+      : jugadores
 
-  // Calcular jugadores convocados y no convocados
+    // ✅ Ordenar primero por posición (según array POSICIONES) y luego por número de dorsal
+    return jugadoresFiltrados.sort((a, b) => {
+      // Obtener índice de posición en el array POSICIONES
+      const posicionA = POSICIONES.indexOf(a.position)
+      const posicionB = POSICIONES.indexOf(b.position)
+
+      // Si las posiciones son diferentes, ordenar por posición
+      if (posicionA !== posicionB) {
+        // Si la posición no está en el array, ponerla al final
+        const indexA = posicionA === -1 ? 999 : posicionA
+        const indexB = posicionB === -1 ? 999 : posicionB
+        return indexA - indexB
+      }
+
+      // Si tienen la misma posición, ordenar por número de dorsal
+      const numeroA = Number(a.number) || 999
+      const numeroB = Number(b.number) || 999
+      return numeroA - numeroB
+    })
+  }, [jugadores, searchQuery])
+
+  // Calcular jugadores convocados y no convocados (ordenados por posición y dorsal)
   const jugadoresConvocados = useMemo(() => {
-    return jugadores.filter((j) => jugadoresSeleccionados[j.id])
+    return jugadores
+      .filter((j) => jugadoresSeleccionados[j.id])
+      .sort((a, b) => {
+        // Ordenar por posición primero
+        const posicionA = POSICIONES.indexOf(a.position)
+        const posicionB = POSICIONES.indexOf(b.position)
+
+        if (posicionA !== posicionB) {
+          const indexA = posicionA === -1 ? 999 : posicionA
+          const indexB = posicionB === -1 ? 999 : posicionB
+          return indexA - indexB
+        }
+
+        // Luego por número de dorsal
+        const numeroA = Number(a.number) || 999
+        const numeroB = Number(b.number) || 999
+        return numeroA - numeroB
+      })
   }, [jugadores, jugadoresSeleccionados])
 
   const jugadoresNoConvocados = useMemo(() => {
-    return jugadores.filter((j) => !jugadoresSeleccionados[j.id])
+    return jugadores
+      .filter((j) => !jugadoresSeleccionados[j.id])
+      .sort((a, b) => {
+        // Ordenar por posición primero
+        const posicionA = POSICIONES.indexOf(a.position)
+        const posicionB = POSICIONES.indexOf(b.position)
+
+        if (posicionA !== posicionB) {
+          const indexA = posicionA === -1 ? 999 : posicionA
+          const indexB = posicionB === -1 ? 999 : posicionB
+          return indexA - indexB
+        }
+
+        // Luego por número de dorsal
+        const numeroA = Number(a.number) || 999
+        const numeroB = Number(b.number) || 999
+        return numeroA - numeroB
+      })
   }, [jugadores, jugadoresSeleccionados])
 
   // Actualizar mensaje cuando cambian los datos o jugadores seleccionados
@@ -645,7 +703,10 @@ export default function Convocatorias() {
                   activeOpacity={0.7}
                 >
                   <View style={styles.jugadorInfo}>
-                    <Text style={styles.jugadorNombre}>{jugador.name}</Text>
+                    <View style={styles.jugadorHeader}>
+                      <Text style={styles.jugadorNombre}>{jugador.name}</Text>
+                      <Text style={styles.jugadorNumero}>#{jugador.number}</Text>
+                    </View>
                     <View style={styles.jugadorDetalles}>
                       <Text style={styles.jugadorPosicion}>{jugador.position}</Text>
                       {jugador.isTemporary && (
@@ -1016,9 +1077,20 @@ const styles = StyleSheet.create({
   jugadorInfo: {
     flex: 1,
   },
+  jugadorHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 4,
+  },
   jugadorNombre: {
     color: COLORS.text,
     fontSize: 16,
+    fontWeight: "bold",
+  },
+  jugadorNumero: {
+    color: COLORS.primary,
+    fontSize: 14,
     fontWeight: "bold",
   },
   jugadorPosicion: {
