@@ -175,23 +175,3 @@ export const PLAYERS = [
     multas: []
   },
 ];
-
-
-// Función para obtener jugadores con multas pendientes
-export const getJugadoresConMultas = () => {
-  return PLAYERS.map(jugador => {
-    // Filtrar multas no pagadas
-    const multasPendientes = jugador.multas ? jugador.multas.filter(multa => !multa.paid) : [];
-    
-    // Calcular total pendiente
-    const totalPendiente = multasPendientes.reduce((total, multa) => total + multa.amount, 0);
-    
-    return {
-      id: jugador.id,
-      name: jugador.name,
-      phone: jugador.phone,
-      multasPendientes,
-      totalPendiente
-    };
-  }).filter(jugador => jugador.multasPendientes.length > 0);
-};

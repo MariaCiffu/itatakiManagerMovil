@@ -1,5 +1,5 @@
 // components/PlayerCard.js
-import React, { memo } from "react";
+import React, { memo, useRef } from "react"; // Import useRef
 import {
   View,
   Text,
@@ -12,15 +12,24 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Trash2 } from "react-native-feather";
 import { COLORS } from "../../constants/colors";
 
-const PlayerCard = memo(function PlayerCard({ player, onPress, onDelete, swipeableRef }) {
+const PlayerCard = memo(function PlayerCard({ 
+  player, 
+  onPress, 
+  onDelete, 
+  onSwipeableOpenManager // New prop
+}) {
+  const currentSwipeableRef = useRef(null); // Ref for this specific Swipeable instance
+
+  const handleLocalSwipeableOpen = () => {
+    if (onSwipeableOpenManager && currentSwipeableRef.current) {
+      onSwipeableOpenManager(currentSwipeableRef.current);
+    }
+  };
+
   return (
     <View style={styles.playerCardContainer}>
       <Swipeable
-        ref={ref => {
-          if (swipeableRef) {
-            swipeableRef(ref, player.id);
-          }
-        }}
+        ref={currentSwipeableRef} // Assign the ref to the Swipeable component
         renderRightActions={() => (
           <View style={styles.rightActionContainer}>
             <TouchableOpacity
@@ -31,6 +40,7 @@ const PlayerCard = memo(function PlayerCard({ player, onPress, onDelete, swipeab
             </TouchableOpacity>
           </View>
         )}
+        onSwipeableOpen={handleLocalSwipeableOpen} // Call local handler when swipe opens
       >
         <TouchableOpacity
           style={styles.playerCard}

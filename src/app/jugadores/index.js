@@ -1,6 +1,4 @@
-"use client";
-
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -19,6 +17,7 @@ import {
   getAllJugadores,
   deleteJugador,
 } from "../../services/jugadoresService";
+import { useSwipeableManager } from "../../hooks/useSwipeableManager"; // Import the hook
 import { Search, Plus } from "react-native-feather";
 import BackButton from "../../components/BackButton";
 import PlayerCard from "../../components/jugadores/PlayerCard";
@@ -29,12 +28,9 @@ export default function Jugadores() {
   const [filteredPlayers, setFilteredPlayers] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  
-  // Referencia para el swipeable actualmente abierto
-  const openSwipeableRef = useRef(null);
-  
-  // Mapa de referencias para todos los swipeables
-  const swipeableRefs = useRef({});
+
+  // Instantiate the hook
+  const { handleSwipeableOpen, closeCurrentSwipeable } = useSwipeableManager();
 
   // Función optimizada para cargar jugadores
   const loadPlayers = useCallback(async () => {
@@ -48,16 +44,20 @@ export default function Jugadores() {
       setIsLoading(false);
       Alert.alert("Error", "No se pudieron cargar los jugadores");
     }
-  }, []);
+  }, []); // loadPlayers has no dependencies on hook functions
 
   // Usar useFocusEffect para recargar los datos cuando la pantalla vuelve a estar en foco
   useFocusEffect(
     useCallback(() => {
       loadPlayers();
+      // Al entrar en foco, cerrar cualquier swipeable que pudiera haber quedado abierto
+      // de otra pantalla o por alguna razón no controlada.
+      closeCurrentSwipeable(); 
       return () => {
-        // Limpieza si es necesaria
+        // Limpieza si es necesaria, por ejemplo, cerrar al salir del foco
+        closeCurrentSwipeable();
       };
-    }, [loadPlayers])
+    }, [loadPlayers, closeCurrentSwipeable]) // Added closeCurrentSwipeable
   );
 
   // Filtrado de jugadores
@@ -74,28 +74,20 @@ export default function Jugadores() {
     }
   }, [searchQuery, players]);
 
-  // Función optimizada para cerrar el swipeable abierto
-  const closeOpenSwipeable = useCallback(() => {
-    if (openSwipeableRef.current) {
-      openSwipeableRef.current.close();
-      openSwipeableRef.current = null;
-    }
-  }, []);
-
   // Función optimizada para añadir jugador
   const handleAddPlayer = useCallback(() => {
-    closeOpenSwipeable();
+    closeCurrentSwipeable();
     router.push("/jugadores/add-player");
-  }, [closeOpenSwipeable, router]);
+  }, [closeCurrentSwipeable, router]);
 
   // Función optimizada para manejar el press en un jugador
   const handlePlayerPress = useCallback((player) => {
-    closeOpenSwipeable();
+    closeCurrentSwipeable();
     router.push({
       pathname: `/jugadores/${player.id}`,
       params: { id: player.id },
     });
-  }, [closeOpenSwipeable, router]);
+  }, [closeCurrentSwipeable, router]);
 
   // Función optimizada para eliminar jugador
   const handleDeletePlayer = useCallback((playerId) => {
@@ -106,7 +98,7 @@ export default function Jugadores() {
         {
           text: "Cancelar",
           style: "cancel",
-          onPress: closeOpenSwipeable,
+          onPress: closeCurrentSwipeable, // Use hook's function
         },
         {
           text: "Eliminar",
@@ -118,7 +110,7 @@ export default function Jugadores() {
                 setPlayers((prevPlayers) =>
                   prevPlayers.filter((player) => player.id !== playerId)
                 );
-                openSwipeableRef.current = null;
+                closeCurrentSwipeable(); // Ensure closed if the deleted item was open
                 Alert.alert("Éxito", "Jugador eliminado correctamente");
               } else {
                 Alert.alert(
@@ -134,37 +126,21 @@ export default function Jugadores() {
         },
       ]
     );
-  }, [closeOpenSwipeable]);
-
-  // Función optimizada para cerrar otros swipeables
-  const closeOtherSwipeables = useCallback((currentRef) => {
-    if (openSwipeableRef.current && openSwipeableRef.current !== currentRef) {
-      openSwipeableRef.current.close();
-    }
-    openSwipeableRef.current = currentRef;
-  }, []);
-
-  // Función para manejar las referencias de swipeable
-  const handleSwipeableRef = useCallback((ref, id) => {
-    if (ref) {
-      swipeableRefs.current[id] = ref;
-      ref.onSwipeableOpen = () => closeOtherSwipeables(ref);
-    } else {
-      delete swipeableRefs.current[id];
-    }
-  }, [closeOtherSwipeables]);
+  }, [closeCurrentSwipeable, players]); // Updated dependency
 
   // Renderizado optimizado de elementos
   const renderPlayer = useCallback(({ item }) => {
     return (
-      <PlayerCard 
-        player={item} 
+      <PlayerCard
+        player={item}
         onPress={() => handlePlayerPress(item)}
         onDelete={() => handleDeletePlayer(item.id)}
-        swipeableRef={(ref, id) => handleSwipeableRef(ref, id)}
+        // Pass the hook's function to PlayerCard
+        // PlayerCard will need to call this with its swipeable ref when it opens
+        onSwipeableOpenManager={handleSwipeableOpen}
       />
     );
-  }, [handlePlayerPress, handleDeletePlayer, handleSwipeableRef]);
+  }, [handlePlayerPress, handleDeletePlayer, handleSwipeableOpen]); // Add handleSwipeableOpen to dependencies
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -184,7 +160,7 @@ export default function Jugadores() {
             placeholderTextColor={COLORS.textSecondary}
             value={searchQuery}
             onChangeText={setSearchQuery}
-            onFocus={closeOpenSwipeable}
+            onFocus={closeCurrentSwipeable} // Use hook's function
           />
           </View>
 
@@ -208,8 +184,8 @@ export default function Jugadores() {
             renderItem={renderPlayer}
             contentContainerStyle={styles.playersList}
             showsVerticalScrollIndicator={false}
-            onScrollBeginDrag={closeOpenSwipeable}
-            onTouchStart={closeOpenSwipeable}
+            onScrollBeginDrag={closeCurrentSwipeable} // Use hook's function
+            onTouchStart={closeCurrentSwipeable} // Use hook's function
             removeClippedSubviews={true}
             maxToRenderPerBatch={10}
             windowSize={10}
