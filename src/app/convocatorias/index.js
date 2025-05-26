@@ -311,8 +311,7 @@ export default function Convocatorias() {
       // Para otros tipos de plantillas, usar la selección manual
       if (jugadoresConvocados.length > 0) {
         jugadoresConvocados.forEach((jugador, index) => {
-          const esTemporal = jugador.isTemporary ? " (TEMPORAL)" : ""
-          listaJugadoresConvocados += `${index + 1}. ${jugador.name} (${jugador.number}) - ${jugador.position}${esTemporal}\n`
+          listaJugadoresConvocados += `${index + 1}. ${jugador.name}\n`
         })
       } else {
         listaJugadoresConvocados = "[SELECCIONA JUGADORES]"
@@ -320,8 +319,7 @@ export default function Convocatorias() {
 
       if (jugadoresNoConvocados.length > 0) {
         jugadoresNoConvocados.forEach((jugador, index) => {
-          const esTemporal = jugador.isTemporary ? " (TEMPORAL)" : ""
-          listaJugadoresNoConvocados += `${index + 1}. ${jugador.name} (${jugador.number}) - ${jugador.position}${esTemporal}\n`
+          listaJugadoresNoConvocados += `${index + 1}. ${jugador.name}\n`
         })
         mensaje = mensaje.replace("{jugadoresNo}", listaJugadoresNoConvocados)
       } else {
