@@ -36,9 +36,37 @@ export const getJugadorNameById = (id) => {
   return index !== -1 ? playersData[index].name : "No asignado"
 }
 
+// Función para obtener jugadores con multas pendientes
+export const getJugadoresConMultas = () => {
+  console.log("🔍 Buscando jugadores con multas...")
+  console.log("📊 Total jugadores:", playersData.length)
+
+  const jugadoresConMultas = playersData
+    .map((jugador) => {
+      // Filtrar multas no pagadas
+      const multasPendientes = jugador.multas ? jugador.multas.filter((multa) => !multa.paid) : []
+
+      // Calcular total pendiente
+      const totalPendiente = multasPendientes.reduce((total, multa) => total + multa.amount, 0)
+
+      console.log(`👤 ${jugador.name}: ${multasPendientes.length} multas pendientes, total: ${totalPendiente}€`)
+
+      return {
+        id: jugador.id,
+        name: jugador.name,
+        phone: jugador.phone,
+        multasPendientes,
+        totalPendiente,
+      }
+    })
+    .filter((jugador) => jugador.multasPendientes.length > 0)
+
+  console.log("✅ Jugadores con multas encontrados:", jugadoresConMultas.length)
+  return jugadoresConMultas
+}
+
 // Actualizar un jugador
 export const updateJugador = (jugadorData) => {
-  // Verificar si el jugador existe
   const index = _findPlayerIndexById(jugadorData.id)
 
   if (index === -1) {
@@ -48,7 +76,6 @@ export const updateJugador = (jugadorData) => {
     }
   }
 
-  // Actualizar el jugador
   const updatedPlayer = {
     ...playersData[index],
     ...jugadorData,
@@ -66,14 +93,12 @@ export const updateJugador = (jugadorData) => {
 
 // Añadir un nuevo jugador
 export const addJugador = (newPlayer) => {
-  // Generar un ID único si no se proporciona uno
   const playerToAdd = {
     ...newPlayer,
     id: newPlayer.id || String(Date.now()),
     multas: newPlayer.multas || [],
   }
 
-  // Añadir a la lista local
   playersData = [...playersData, playerToAdd]
 
   console.log("Jugador añadido:", playerToAdd)
@@ -86,7 +111,6 @@ export const addJugador = (newPlayer) => {
 
 // Eliminar un jugador
 export const deleteJugador = (id) => {
-  // Verificar si el jugador existe
   const index = _findPlayerIndexById(id)
 
   if (index === -1) {
@@ -96,7 +120,6 @@ export const deleteJugador = (id) => {
     }
   }
 
-  // Eliminar el jugador
   playersData = [...playersData.slice(0, index), ...playersData.slice(index + 1)]
 
   console.log(`Jugador ${id} eliminado`)
@@ -106,30 +129,8 @@ export const deleteJugador = (id) => {
   }
 }
 
-// Función para obtener jugadores con multas pendientes
-export const getJugadoresConMultas = () => {
-  return playersData
-    .map((jugador) => {
-      // Filtrar multas no pagadas
-        const multasPendientes = jugador.multas ? jugador.multas.filter((multa) => !multa.paid) : []
-
-        // Calcular total pendiente
-        const totalPendiente = multasPendientes.reduce((total, multa) => total + multa.amount, 0)
-
-        return {
-          id: jugador.id,
-          name: jugador.name,
-          phone: jugador.phone,
-          multasPendientes,
-          totalPendiente,
-        }
-      })
-      .filter((jugador) => jugador.multasPendientes.length > 0)
-}
-
 // Añadir una multa a un jugador
 export const addMultaToJugador = (jugadorId, multa) => {
-  // Verificar si el jugador existe
   const index = _findPlayerIndexById(jugadorId)
 
   if (index === -1) {
@@ -139,14 +140,12 @@ export const addMultaToJugador = (jugadorId, multa) => {
     }
   }
 
-  // Generar ID para la multa si no tiene
   const multaToAdd = {
     ...multa,
     id: multa.id || String(Date.now()),
     paid: multa.paid || false,
   }
 
-  // Añadir la multa al jugador
   const updatedPlayer = {
     ...playersData[index],
     multas: [...(playersData[index].multas || []), multaToAdd],
@@ -164,7 +163,6 @@ export const addMultaToJugador = (jugadorId, multa) => {
 
 // Actualizar el estado de una multa (pagado o no)
 export const updateMultaStatus = (jugadorId, multaId, isPaid) => {
-  // Verificar si el jugador existe
   const playerIndex = _findPlayerIndexById(jugadorId)
 
   if (playerIndex === -1) {
@@ -180,11 +178,10 @@ export const updateMultaStatus = (jugadorId, multaId, isPaid) => {
   if (multaIndex === -1) {
     return {
       success: false,
-      message: "Multa no encontrada", // Or "El jugador no tiene multas" if player.multas is null/empty
+      message: "Multa no encontrada",
     }
   }
 
-  // Actualizar el estado de la multa
   const updatedMultas = [
     ...player.multas.slice(0, multaIndex),
     { ...player.multas[multaIndex], paid: isPaid },
@@ -208,7 +205,6 @@ export const updateMultaStatus = (jugadorId, multaId, isPaid) => {
 
 // Actualizar una multa completa
 export const updateMulta = (jugadorId, multaData) => {
-  // Verificar si el jugador existe
   const playerIndex = _findPlayerIndexById(jugadorId)
 
   if (playerIndex === -1) {
@@ -220,9 +216,8 @@ export const updateMulta = (jugadorId, multaData) => {
 
   const player = playersData[playerIndex]
 
-  // Asegurarse de que player.multas exista antes de buscar la multa
   if (!player.multas) {
-    player.multas = [] // Inicializar si no existe, aunque _findMultaIndexById ya lo maneja
+    player.multas = []
   }
 
   const multaIndex = _findMultaIndexById(player, multaData.id)
@@ -234,7 +229,6 @@ export const updateMulta = (jugadorId, multaData) => {
     }
   }
 
-  // Actualizar la multa con todos los nuevos datos
   const updatedMultas = [
     ...player.multas.slice(0, multaIndex),
     { ...player.multas[multaIndex], ...multaData },
@@ -258,7 +252,6 @@ export const updateMulta = (jugadorId, multaData) => {
 
 // Eliminar una multa
 export const deleteMulta = (jugadorId, multaId) => {
-  // Verificar si el jugador existe
   const playerIndex = _findPlayerIndexById(jugadorId)
 
   if (playerIndex === -1) {
@@ -274,12 +267,10 @@ export const deleteMulta = (jugadorId, multaId) => {
   if (multaIndex === -1) {
     return {
       success: false,
-      // Consistent message whether player.multas is null or multa not found
       message: "Multa no encontrada en el jugador especificado",
     }
   }
 
-  // Eliminar la multa
   const updatedMultas = [...player.multas.slice(0, multaIndex), ...player.multas.slice(multaIndex + 1)]
 
   const updatedPlayer = {
@@ -296,3 +287,6 @@ export const deleteMulta = (jugadorId, multaId) => {
     jugador: updatedPlayer,
   }
 }
+
+// Exportar también PLAYERS para compatibilidad
+export { PLAYERS }
