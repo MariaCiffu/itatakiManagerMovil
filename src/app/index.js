@@ -1,24 +1,31 @@
-"use client"
+"use client";
 
-import { StyleSheet, View, TouchableOpacity, Text, Image, ScrollView, ActivityIndicator } from "react-native"
-import { useRouter } from "expo-router"
-import { LinearGradient } from "expo-linear-gradient"
-import { useEffect } from "react"
-import { COLORS } from "../constants/colors"
-import { PersonIcon, UserFriendsIcon, BarChartIcon, CalendarIcon, EnvelopeIcon } from "../components/Icons"
-import { useAuth } from "../context/authContext"
+import {
+  StyleSheet,
+  View,
+  TouchableOpacity,
+  Text,
+  Image,
+  ScrollView,
+  ActivityIndicator,
+} from "react-native";
+import { useRouter } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
+import { useEffect } from "react";
+import { COLORS } from "../constants/colors";
+import {
+  PersonIcon,
+  UserFriendsIcon,
+  BarChartIcon,
+  CalendarIcon,
+  EnvelopeIcon,
+} from "../components/Icons";
+import { useAuth } from "../context/authContext";
 
 export default function Home() {
-  const router = useRouter()
-  const { state, logout } = useAuth()
-  const { user } = state
-
-  // Redirección si no está autenticado
-  useEffect(() => {
-    if (!state.isLoading && !state.isAuthenticated) {
-      router.replace("/auth/login")
-    }
-  }, [state.isAuthenticated, state.isLoading, router])
+  const router = useRouter();
+  const { state, logout } = useAuth();
+  const { user } = state;
 
   // Pantalla de carga
   if (state.isLoading) {
@@ -27,18 +34,21 @@ export default function Home() {
         <ActivityIndicator size="large" color={COLORS.primary} />
         <Text style={styles.loadingText}>Cargando...</Text>
       </View>
-    )
+    );
   }
 
   // Si no está autenticado, no mostrar nada
   if (!state.isAuthenticated || !user) {
-    return null
+    return null;
   }
 
   return (
     <View style={styles.container}>
       {/* Header mejorado */}
-      <LinearGradient colors={["#1e293b", "#334155", "#475569"]} style={styles.headerGradient}>
+      <LinearGradient
+        colors={["#1e293b", "#334155", "#475569"]}
+        style={styles.headerGradient}
+      >
         <View style={styles.header}>
           <View style={styles.headerTop}>
             <View style={styles.welcomeSection}>
@@ -63,7 +73,9 @@ export default function Home() {
             <View style={styles.teamDetails}>
               <Text style={styles.welcomeText}>¡Hola, {user.name}!</Text>
               <Text style={styles.teamName}>{user.teamName}</Text>
-              <Text style={styles.teamCategory}>Categoría: {user.category}</Text>
+              <Text style={styles.teamCategory}>
+                Categoría: {user.category}
+              </Text>
             </View>
           </View>
         </View>
@@ -75,14 +87,23 @@ export default function Home() {
           <Text style={styles.sectionTitle}>Gestión Principal</Text>
 
           <View style={styles.mainCardsContainer}>
-            <TouchableOpacity style={styles.mainCard} onPress={() => router.push("/jugadores")} activeOpacity={0.8}>
-              <LinearGradient colors={[COLORS.primary, COLORS.primaryDark]} style={styles.mainCardGradient}>
+            <TouchableOpacity
+              style={styles.mainCard}
+              onPress={() => router.push("/jugadores")}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={[COLORS.primary, COLORS.primaryDark]}
+                style={styles.mainCardGradient}
+              >
                 <View style={styles.mainCardContent}>
                   <View style={styles.mainCardIcon}>
                     <PersonIcon size={28} color="#fff" />
                   </View>
                   <Text style={styles.mainCardTitle}>Plantilla</Text>
-                  <Text style={styles.mainCardDescription}>Gestiona jugadores y estadísticas</Text>
+                  <Text style={styles.mainCardDescription}>
+                    Gestiona jugadores y estadísticas
+                  </Text>
                   <View style={styles.cardBadge}>
                     <Text style={styles.cardBadgeText}>23 jugadores</Text>
                   </View>
@@ -90,14 +111,23 @@ export default function Home() {
               </LinearGradient>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.mainCard} onPress={() => router.push("/staff")} activeOpacity={0.8}>
-              <LinearGradient colors={[COLORS.secondary, "#E09600"]} style={styles.mainCardGradient}>
+            <TouchableOpacity
+              style={styles.mainCard}
+              onPress={() => router.push("/staff")}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={[COLORS.secondary, "#E09600"]}
+                style={styles.mainCardGradient}
+              >
                 <View style={styles.mainCardContent}>
                   <View style={styles.mainCardIcon}>
                     <UserFriendsIcon size={28} color="#fff" />
                   </View>
                   <Text style={styles.mainCardTitle}>Staff</Text>
-                  <Text style={styles.mainCardDescription}>Equipo técnico y cuerpo médico</Text>
+                  <Text style={styles.mainCardDescription}>
+                    Equipo técnico y cuerpo médico
+                  </Text>
                   <View style={styles.cardBadge}>
                     <Text style={styles.cardBadgeText}>5 miembros</Text>
                   </View>
@@ -117,7 +147,12 @@ export default function Home() {
               onPress={() => router.push("/convocatorias")}
               activeOpacity={0.7}
             >
-              <View style={[styles.quickAccessIcon, { backgroundColor: `${COLORS.primary}15` }]}>
+              <View
+                style={[
+                  styles.quickAccessIcon,
+                  { backgroundColor: `${COLORS.primary}15` },
+                ]}
+              >
                 <EnvelopeIcon size={24} color={COLORS.primary} />
               </View>
               <Text style={styles.quickAccessTitle}>Convocatorias</Text>
@@ -129,11 +164,18 @@ export default function Home() {
               onPress={() => router.push("/partidos")}
               activeOpacity={0.7}
             >
-              <View style={[styles.quickAccessIcon, { backgroundColor: `${COLORS.success}15` }]}>
+              <View
+                style={[
+                  styles.quickAccessIcon,
+                  { backgroundColor: `${COLORS.success}15` },
+                ]}
+              >
                 <CalendarIcon size={24} color={COLORS.success} />
               </View>
               <Text style={styles.quickAccessTitle}>Partidos</Text>
-              <Text style={styles.quickAccessSubtitle}>Calendario y resultados</Text>
+              <Text style={styles.quickAccessSubtitle}>
+                Calendario y resultados
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -141,7 +183,12 @@ export default function Home() {
               onPress={() => router.push("/ejercicios")}
               activeOpacity={0.7}
             >
-              <View style={[styles.quickAccessIcon, { backgroundColor: `${COLORS.warning}15` }]}>
+              <View
+                style={[
+                  styles.quickAccessIcon,
+                  { backgroundColor: `${COLORS.warning}15` },
+                ]}
+              >
                 <BarChartIcon size={24} color={COLORS.warning} />
               </View>
               <Text style={styles.quickAccessTitle}>Ejercicios</Text>
@@ -153,7 +200,12 @@ export default function Home() {
               onPress={() => console.log("Próximamente")}
               activeOpacity={0.7}
             >
-              <View style={[styles.quickAccessIcon, { backgroundColor: `${COLORS.info}15` }]}>
+              <View
+                style={[
+                  styles.quickAccessIcon,
+                  { backgroundColor: `${COLORS.info}15` },
+                ]}
+              >
                 <BarChartIcon size={24} color={COLORS.info} />
               </View>
               <Text style={styles.quickAccessTitle}>Estadísticas</Text>
@@ -168,7 +220,9 @@ export default function Home() {
 
           <View style={styles.eventCard}>
             <View style={styles.eventHeader}>
-              <View style={[styles.eventBadge, { backgroundColor: COLORS.primary }]}>
+              <View
+                style={[styles.eventBadge, { backgroundColor: COLORS.primary }]}
+              >
                 <Text style={styles.eventBadgeText}>PARTIDO</Text>
               </View>
               <Text style={styles.eventDate}>15 May</Text>
@@ -180,7 +234,12 @@ export default function Home() {
 
           <View style={styles.eventCard}>
             <View style={styles.eventHeader}>
-              <View style={[styles.eventBadge, { backgroundColor: COLORS.secondary }]}>
+              <View
+                style={[
+                  styles.eventBadge,
+                  { backgroundColor: COLORS.secondary },
+                ]}
+              >
                 <Text style={styles.eventBadgeText}>ENTRENAMIENTO</Text>
               </View>
               <Text style={styles.eventDate}>12 May</Text>
@@ -192,7 +251,7 @@ export default function Home() {
         </View>
       </ScrollView>
     </View>
-  )
+  );
 }
 
 const styles = StyleSheet.create({
@@ -467,4 +526,4 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#64748b",
   },
-})
+});
