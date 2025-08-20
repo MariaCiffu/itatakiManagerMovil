@@ -110,10 +110,10 @@ export default function Home() {
         <View style={styles.header}>
           <View style={styles.headerContent}>
             <View style={styles.userSection}>
-              <Text style={styles.greeting}>{getGreeting()}</Text>
+              <Text style={styles.greeting}>{getGreeting()},</Text>
               <Text style={styles.userName}>{user.name}</Text>
-              <Text style={styles.teamName}>{user.teamName}</Text>
-              <Text style={styles.teamField}>{user.homeField}</Text>
+              <Text style={styles.teamName}>🛡️ {user.teamName}</Text>
+              <Text style={styles.teamField}>🏟 {user.homeField}</Text>
             </View>
 
             <TouchableOpacity onPress={logout} style={styles.logoutButton}>
@@ -146,95 +146,141 @@ export default function Home() {
                 <Text style={styles.matchTitle}>vs {nextMatch.opponent}</Text>
                 <View style={styles.matchDetails}>
                   <Text style={styles.matchDetail}>{nextMatch.time}</Text>
-                  <Text style={styles.matchDetail}>{nextMatch.location}</Text>
+                  <Text style={styles.matchDetail}>
+                    📍 {nextMatch.location}
+                  </Text>
                 </View>
               </LinearGradient>
             </TouchableOpacity>
           </View>
         )}
 
-        {/* 🔥 GRID MÁS MODERNO CON EFECTOS */}
+        {/* 🔥 TARJETAS VERTICALES DE GESTIÓN */}
         <View style={styles.mainSection}>
           <Text style={styles.sectionTitle}>Gestión del Equipo</Text>
 
-          <View style={styles.gridContainer}>
+          <View style={styles.verticalContainer}>
             {/* JUGADORES */}
             <TouchableOpacity
-              style={[styles.gridCard, styles.playerCard]}
+              style={styles.verticalCard}
               onPress={() => router.push("/jugadores")}
               activeOpacity={0.8}
             >
               <LinearGradient
                 colors={["#3b82f6", "#2563eb"]}
-                style={styles.cardGradient}
+                style={styles.verticalCardGradient}
                 start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
+                end={{ x: 1, y: 0 }}
               >
-                <View style={styles.cardIcon}>
-                  <PersonIcon size={36} color="#fff" />
+                <View style={styles.verticalCardIcon}>
+                  <PersonIcon size={32} color="#fff" />
                 </View>
-                <Text style={styles.cardTitle}>Jugadores</Text>
-                <Text style={styles.cardSubtitle}>Gestionar plantilla</Text>
+                <View style={styles.verticalCardContent}>
+                  <Text style={styles.verticalCardTitle}>Jugadores</Text>
+                  <Text style={styles.verticalCardSubtitle}>
+                    Gestionar plantilla del equipo
+                  </Text>
+                </View>
+                <View style={styles.verticalCardArrow}>
+                  <Ionicons
+                    name="chevron-forward"
+                    size={20}
+                    color="rgba(255,255,255,0.8)"
+                  />
+                </View>
               </LinearGradient>
             </TouchableOpacity>
 
             {/* STAFF */}
             <TouchableOpacity
-              style={[styles.gridCard, styles.staffCard]}
+              style={styles.verticalCard}
               onPress={() => router.push("/staff")}
               activeOpacity={0.8}
             >
               <LinearGradient
                 colors={["#f59e0b", "#d97706"]}
-                style={styles.cardGradient}
+                style={styles.verticalCardGradient}
                 start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
+                end={{ x: 1, y: 0 }}
               >
-                <View style={styles.cardIcon}>
-                  <UserFriendsIcon size={36} color="#fff" />
+                <View style={styles.verticalCardIcon}>
+                  <UserFriendsIcon size={32} color="#fff" />
                 </View>
-                <Text style={styles.cardTitle}>Staff</Text>
-                <Text style={styles.cardSubtitle}>Cuerpo técnico</Text>
+                <View style={styles.verticalCardContent}>
+                  <Text style={styles.verticalCardTitle}>Staff</Text>
+                  <Text style={styles.verticalCardSubtitle}>
+                    Cuerpo técnico y entrenadores
+                  </Text>
+                </View>
+                <View style={styles.verticalCardArrow}>
+                  <Ionicons
+                    name="chevron-forward"
+                    size={20}
+                    color="rgba(255,255,255,0.8)"
+                  />
+                </View>
               </LinearGradient>
             </TouchableOpacity>
 
             {/* PARTIDOS */}
             <TouchableOpacity
-              style={[styles.gridCard, styles.matchesCard]}
+              style={styles.verticalCard}
               onPress={() => router.push("/partidos")}
               activeOpacity={0.8}
             >
               <LinearGradient
                 colors={["#10b981", "#059669"]}
-                style={styles.cardGradient}
+                style={styles.verticalCardGradient}
                 start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
+                end={{ x: 1, y: 0 }}
               >
-                <View style={styles.cardIcon}>
-                  <CalendarIcon size={36} color="#fff" />
+                <View style={styles.verticalCardIcon}>
+                  <CalendarIcon size={32} color="#fff" />
                 </View>
-                <Text style={styles.cardTitle}>Partidos</Text>
-                <Text style={styles.cardSubtitle}>Calendario</Text>
+                <View style={styles.verticalCardContent}>
+                  <Text style={styles.verticalCardTitle}>Partidos</Text>
+                  <Text style={styles.verticalCardSubtitle}>
+                    Calendario y resultados
+                  </Text>
+                </View>
+                <View style={styles.verticalCardArrow}>
+                  <Ionicons
+                    name="chevron-forward"
+                    size={20}
+                    color="rgba(255,255,255,0.8)"
+                  />
+                </View>
               </LinearGradient>
             </TouchableOpacity>
 
             {/* CONVOCATORIAS */}
             <TouchableOpacity
-              style={[styles.gridCard, styles.callupCard]}
+              style={styles.verticalCard}
               onPress={() => router.push("/convocatorias")}
               activeOpacity={0.8}
             >
               <LinearGradient
                 colors={["#6366f1", "#4f46e5"]}
-                style={styles.cardGradient}
+                style={styles.verticalCardGradient}
                 start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
+                end={{ x: 1, y: 0 }}
               >
-                <View style={styles.cardIcon}>
-                  <EnvelopeIcon size={36} color="#fff" />
+                <View style={styles.verticalCardIcon}>
+                  <EnvelopeIcon size={32} color="#fff" />
                 </View>
-                <Text style={styles.cardTitle}>Convocatorias</Text>
-                <Text style={styles.cardSubtitle}>Llamar jugadores</Text>
+                <View style={styles.verticalCardContent}>
+                  <Text style={styles.verticalCardTitle}>Convocatorias</Text>
+                  <Text style={styles.verticalCardSubtitle}>
+                    Llamar jugadores para partidos
+                  </Text>
+                </View>
+                <View style={styles.verticalCardArrow}>
+                  <Ionicons
+                    name="chevron-forward"
+                    size={20}
+                    color="rgba(255,255,255,0.8)"
+                  />
+                </View>
               </LinearGradient>
             </TouchableOpacity>
           </View>
@@ -325,7 +371,7 @@ const styles = StyleSheet.create({
   // 🔥 CONTENIDO
   content: {
     flex: 1,
-    marginTop: -12,
+    marginTop: -6,
   },
 
   // 🔥 PRÓXIMO PARTIDO MÁS LLAMATIVO
@@ -385,36 +431,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  // 🔥 BADGE CASA/FUERA
-  matchLocationBadge: {
-    position: "absolute",
-    top: 16,
-    right: 16,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  matchLocationText: {
-    color: "#fff",
-    fontSize: 10,
-    fontWeight: "700",
-    letterSpacing: 0.5,
-  },
-
-  // 🔥 INDICADOR VER MÁS
-  matchViewMore: {
-    position: "absolute",
-    bottom: 16,
-    right: 16,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.15)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
   // 🔥 SECCIÓN PRINCIPAL
   mainSection: {
     padding: 20,
@@ -427,15 +443,13 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
 
-  // 🔥 GRID MÁS MODERNO
-  gridContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
+  // 🔥 CONTENEDOR VERTICAL PARA TARJETAS
+  verticalContainer: {
     gap: 16,
   },
-  gridCard: {
-    width: "47%",
+
+  // 🔥 TARJETAS VERTICALES NUEVAS
+  verticalCard: {
     borderRadius: 16,
     overflow: "hidden",
     shadowColor: "#000",
@@ -445,33 +459,47 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
 
-  cardGradient: {
-    padding: 24,
+  verticalCardGradient: {
+    flexDirection: "row",
     alignItems: "center",
-    minHeight: 140,
-    justifyContent: "center",
+    padding: 20,
+    minHeight: 80,
   },
-  cardIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+
+  verticalCardIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: "rgba(255,255,255,0.2)",
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 12,
+    marginRight: 16,
   },
-  cardTitle: {
+
+  verticalCardContent: {
+    flex: 1,
+  },
+
+  verticalCardTitle: {
     fontSize: 18,
     fontWeight: "700",
     color: "#fff",
-    textAlign: "center",
     marginBottom: 4,
   },
-  cardSubtitle: {
-    fontSize: 13,
-    color: "rgba(255,255,255,0.9)",
-    textAlign: "center",
+
+  verticalCardSubtitle: {
+    fontSize: 14,
+    color: "rgba(255,255,255,0.85)",
     fontWeight: "500",
+  },
+
+  verticalCardArrow: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    justifyContent: "center",
+    alignItems: "center",
   },
 
   bottomSpacer: {
