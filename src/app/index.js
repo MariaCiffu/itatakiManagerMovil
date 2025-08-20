@@ -10,7 +10,6 @@ import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
-import { COLORS } from "../constants/colors";
 import {
   PersonIcon,
   UserFriendsIcon,
@@ -18,21 +17,42 @@ import {
   EnvelopeIcon,
 } from "../components/Icons";
 import { useAuth } from "../context/authContext";
-import { PARTIDOS } from "../data/partidosData"; // 🔥 IMPORTAR DATOS REALES
+import { PARTIDOS } from "../data/partidosData";
+
+// 🎨 NUEVA PALETA MÁS MODERNA Y LIMPIA
+const MODERN_COLORS = {
+  primary: "#2563eb", // Azul vibrante pero profesional
+  primaryDark: "#1d4ed8", // Azul más oscuro
+  secondary: "#10b981", // Verde moderno
+  accent: "#f59e0b", // Amarillo/naranja elegante
+  danger: "#ef4444", // Rojo moderno
+
+  // Fondos neutros modernos
+  background: "#fafafa", // Gris muy claro, casi blanco
+  surface: "#ffffff", // Blanco puro
+  surfaceGray: "#f5f5f5", // Gris clarísimo
+
+  // Textos con mejor contraste
+  textDark: "#0f172a", // Negro muy oscuro
+  textGray: "#64748b", // Gris medio
+  textLight: "#94a3b8", // Gris claro
+  textWhite: "#ffffff", // Blanco
+
+  // Bordes
+  border: "#e2e8f0", // Gris border
+};
 
 export default function Home() {
   const router = useRouter();
   const { state, logout } = useAuth();
   const { user } = state;
 
-  // 🔥 CARGAR PRÓXIMO PARTIDO REAL
   const [nextMatch, setNextMatch] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const loadNextMatch = () => {
       try {
-        // Filtrar partidos futuros y ordenar por fecha
         const now = new Date();
         const futureMatches = PARTIDOS.filter(
           (partido) => new Date(partido.fecha) > now
@@ -62,7 +82,7 @@ export default function Home() {
             jornada: proximoPartido.jornada,
           });
         } else {
-          setNextMatch(null); // No hay partidos próximos
+          setNextMatch(null);
         }
       } catch (error) {
         console.error("Error cargando próximo partido:", error);
@@ -75,22 +95,19 @@ export default function Home() {
     loadNextMatch();
   }, [user?.homeField]);
 
-  // Pantalla de carga
   if (state.isLoading || isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+        <ActivityIndicator size="large" color={MODERN_COLORS.primary} />
         <Text style={styles.loadingText}>Cargando...</Text>
       </View>
     );
   }
 
-  // Si no está autenticado, no mostrar nada
   if (!state.isAuthenticated || !user) {
     return null;
   }
 
-  // 🔥 OBTENER SALUDO SEGÚN LA HORA
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return "Buenos días";
@@ -100,188 +117,161 @@ export default function Home() {
 
   return (
     <View style={styles.container}>
-      {/* 🔥 HEADER MÁS EQUILIBRADO */}
-      <LinearGradient
-        colors={["#3b82f6", "#1d4ed8"]}
-        style={styles.headerGradient}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
-        <View style={styles.header}>
-          <View style={styles.headerContent}>
-            <View style={styles.userSection}>
-              <Text style={styles.greeting}>{getGreeting()},</Text>
-              <Text style={styles.userName}>{user.name}</Text>
-              <Text style={styles.teamName}>🛡️ {user.teamName}</Text>
-              <Text style={styles.teamField}>🏟 {user.homeField}</Text>
-            </View>
+      {/* 🎨 HEADER MINIMALISTA SIN GRADIENTE */}
+      <View style={styles.header}>
+        <View style={styles.headerTop}>
+          <View style={styles.userInfo}>
+            <Text style={styles.greeting}>{getGreeting()}</Text>
+            <Text style={styles.userName}>{user.name} 👋</Text>
+          </View>
 
-            <TouchableOpacity onPress={logout} style={styles.logoutButton}>
-              <Ionicons name="log-out-outline" size={22} color="#fff" />
-            </TouchableOpacity>
+          <TouchableOpacity onPress={logout} style={styles.logoutButton}>
+            <Ionicons
+              name="log-out-outline"
+              size={20}
+              color={MODERN_COLORS.textGray}
+            />
+          </TouchableOpacity>
+        </View>
+
+        {/* 🎨 INFO DEL EQUIPO EN TARJETA SEPARADA */}
+        <View style={styles.teamCard}>
+          <View style={styles.teamIcon}>
+            <Text style={styles.teamEmoji}>⚽</Text>
+          </View>
+          <View style={styles.teamInfo}>
+            <Text style={styles.teamName}>{user.teamName}</Text>
+            <Text style={styles.teamField}>🏟 {user.homeField}</Text>
           </View>
         </View>
-      </LinearGradient>
+      </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* 🔥 PRÓXIMO PARTIDO CON GRADIENTE MODERNO */}
+        {/* 🎨 PRÓXIMO PARTIDO - DISEÑO CARD MODERNO */}
         {nextMatch && (
           <View style={styles.nextMatchSection}>
             <TouchableOpacity
               style={styles.nextMatchCard}
               onPress={() => router.push(`/partidos/${nextMatch.id}`)}
+              activeOpacity={0.95}
             >
-              <LinearGradient
-                colors={["#ef4444", "#dc2626"]}
-                style={styles.matchGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-              >
+              <View style={styles.matchContent}>
                 <View style={styles.matchHeader}>
                   <View style={styles.matchBadge}>
-                    <Text style={styles.matchBadgeText}>PRÓXIMO</Text>
+                    <Text style={styles.matchBadgeText}>Próximo Partido</Text>
                   </View>
                   <Text style={styles.matchDate}>{nextMatch.date}</Text>
                 </View>
+
                 <Text style={styles.matchTitle}>vs {nextMatch.opponent}</Text>
-                <View style={styles.matchDetails}>
-                  <Text style={styles.matchDetail}>{nextMatch.time}</Text>
-                  <Text style={styles.matchDetail}>
-                    📍 {nextMatch.location}
-                  </Text>
+
+                <View style={styles.matchDetailsRow}>
+                  <View style={styles.matchDetailItem}>
+                    <Ionicons
+                      name="time-outline"
+                      size={16}
+                      color={MODERN_COLORS.textGray}
+                    />
+                    <Text style={styles.matchDetailText}>{nextMatch.time}</Text>
+                  </View>
+                  <View style={styles.matchDetailItem}>
+                    <Ionicons
+                      name="location-outline"
+                      size={16}
+                      color={MODERN_COLORS.textGray}
+                    />
+                    <Text style={styles.matchDetailText}>
+                      {nextMatch.location}
+                    </Text>
+                  </View>
                 </View>
-              </LinearGradient>
+              </View>
+
+              {/* Decoración lateral */}
+              <View style={styles.matchDecoration} />
             </TouchableOpacity>
           </View>
         )}
 
-        {/* 🔥 TARJETAS VERTICALES DE GESTIÓN */}
+        {/* 🎨 GRID MODERNO 2x2 CON MEJOR DISEÑO */}
         <View style={styles.mainSection}>
-          <Text style={styles.sectionTitle}>Gestión del Equipo</Text>
+          <Text style={styles.sectionTitle}>Panel de Control</Text>
 
-          <View style={styles.verticalContainer}>
+          <View style={styles.gridContainer}>
             {/* JUGADORES */}
             <TouchableOpacity
-              style={styles.verticalCard}
+              style={[styles.gridCard, styles.playersCard]}
               onPress={() => router.push("/jugadores")}
-              activeOpacity={0.8}
+              activeOpacity={0.9}
             >
-              <LinearGradient
-                colors={["#3b82f6", "#2563eb"]}
-                style={styles.verticalCardGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-              >
-                <View style={styles.verticalCardIcon}>
-                  <PersonIcon size={32} color="#fff" />
+              <View style={styles.cardHeader}>
+                <View style={[styles.cardIcon, styles.playersIcon]}>
+                  <PersonIcon size={24} color={MODERN_COLORS.primary} />
                 </View>
-                <View style={styles.verticalCardContent}>
-                  <Text style={styles.verticalCardTitle}>Jugadores</Text>
-                  <Text style={styles.verticalCardSubtitle}>
-                    Gestionar plantilla del equipo
-                  </Text>
-                </View>
-                <View style={styles.verticalCardArrow}>
-                  <Ionicons
-                    name="chevron-forward"
-                    size={20}
-                    color="rgba(255,255,255,0.8)"
-                  />
-                </View>
-              </LinearGradient>
+                <Ionicons
+                  name="chevron-forward"
+                  size={18}
+                  color={MODERN_COLORS.textLight}
+                />
+              </View>
+              <Text style={styles.cardTitle}>Jugadores</Text>
             </TouchableOpacity>
 
             {/* STAFF */}
             <TouchableOpacity
-              style={styles.verticalCard}
+              style={[styles.gridCard, styles.staffCard]}
               onPress={() => router.push("/staff")}
-              activeOpacity={0.8}
+              activeOpacity={0.9}
             >
-              <LinearGradient
-                colors={["#f59e0b", "#d97706"]}
-                style={styles.verticalCardGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-              >
-                <View style={styles.verticalCardIcon}>
-                  <UserFriendsIcon size={32} color="#fff" />
+              <View style={styles.cardHeader}>
+                <View style={[styles.cardIcon, styles.staffIcon]}>
+                  <UserFriendsIcon size={24} color={MODERN_COLORS.secondary} />
                 </View>
-                <View style={styles.verticalCardContent}>
-                  <Text style={styles.verticalCardTitle}>Staff</Text>
-                  <Text style={styles.verticalCardSubtitle}>
-                    Cuerpo técnico y entrenadores
-                  </Text>
-                </View>
-                <View style={styles.verticalCardArrow}>
-                  <Ionicons
-                    name="chevron-forward"
-                    size={20}
-                    color="rgba(255,255,255,0.8)"
-                  />
-                </View>
-              </LinearGradient>
+                <Ionicons
+                  name="chevron-forward"
+                  size={18}
+                  color={MODERN_COLORS.textLight}
+                />
+              </View>
+              <Text style={styles.cardTitle}>Staff</Text>
             </TouchableOpacity>
 
             {/* PARTIDOS */}
             <TouchableOpacity
-              style={styles.verticalCard}
+              style={[styles.gridCard, styles.matchesCard]}
               onPress={() => router.push("/partidos")}
-              activeOpacity={0.8}
+              activeOpacity={0.9}
             >
-              <LinearGradient
-                colors={["#10b981", "#059669"]}
-                style={styles.verticalCardGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-              >
-                <View style={styles.verticalCardIcon}>
-                  <CalendarIcon size={32} color="#fff" />
+              <View style={styles.cardHeader}>
+                <View style={[styles.cardIcon, styles.matchesIcon]}>
+                  <CalendarIcon size={24} color={MODERN_COLORS.accent} />
                 </View>
-                <View style={styles.verticalCardContent}>
-                  <Text style={styles.verticalCardTitle}>Partidos</Text>
-                  <Text style={styles.verticalCardSubtitle}>
-                    Calendario y resultados
-                  </Text>
-                </View>
-                <View style={styles.verticalCardArrow}>
-                  <Ionicons
-                    name="chevron-forward"
-                    size={20}
-                    color="rgba(255,255,255,0.8)"
-                  />
-                </View>
-              </LinearGradient>
+                <Ionicons
+                  name="chevron-forward"
+                  size={18}
+                  color={MODERN_COLORS.textLight}
+                />
+              </View>
+              <Text style={styles.cardTitle}>Partidos</Text>
             </TouchableOpacity>
 
             {/* CONVOCATORIAS */}
             <TouchableOpacity
-              style={styles.verticalCard}
+              style={[styles.gridCard, styles.callupCard]}
               onPress={() => router.push("/convocatorias")}
-              activeOpacity={0.8}
+              activeOpacity={0.9}
             >
-              <LinearGradient
-                colors={["#6366f1", "#4f46e5"]}
-                style={styles.verticalCardGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-              >
-                <View style={styles.verticalCardIcon}>
-                  <EnvelopeIcon size={32} color="#fff" />
+              <View style={styles.cardHeader}>
+                <View style={[styles.cardIcon, styles.callupIcon]}>
+                  <EnvelopeIcon size={24} color={MODERN_COLORS.danger} />
                 </View>
-                <View style={styles.verticalCardContent}>
-                  <Text style={styles.verticalCardTitle}>Convocatorias</Text>
-                  <Text style={styles.verticalCardSubtitle}>
-                    Llamar jugadores para partidos
-                  </Text>
-                </View>
-                <View style={styles.verticalCardArrow}>
-                  <Ionicons
-                    name="chevron-forward"
-                    size={20}
-                    color="rgba(255,255,255,0.8)"
-                  />
-                </View>
-              </LinearGradient>
+                <Ionicons
+                  name="chevron-forward"
+                  size={18}
+                  color={MODERN_COLORS.textLight}
+                />
+              </View>
+              <Text style={styles.cardTitle}>Convocatorias</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -295,211 +285,274 @@ export default function Home() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f1f5f9",
+    backgroundColor: MODERN_COLORS.background,
   },
+
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#f1f5f9",
+    backgroundColor: MODERN_COLORS.background,
   },
+
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: "#64748b",
+    color: MODERN_COLORS.textGray,
+    fontWeight: "500",
   },
 
-  // 🔥 HEADER CON MÁS PERSONALIDAD
-  headerGradient: {
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
-  },
+  // 🎨 HEADER COMPLETAMENTE NUEVO - MINIMALISTA
   header: {
-    padding: 24,
-    paddingBottom: 32,
+    backgroundColor: MODERN_COLORS.surface,
+    paddingTop: 30,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: MODERN_COLORS.border,
   },
-  headerContent: {
+
+  headerTop: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-  },
-  userSection: {
-    flex: 1,
-  },
-  greeting: {
-    fontSize: 16,
-    color: "rgba(255,255,255,0.9)",
-    marginBottom: 4,
-    fontWeight: "500",
-  },
-  userName: {
-    fontSize: 26,
-    fontWeight: "700",
-    color: "#fff",
     marginBottom: 16,
   },
 
-  // 🔥 INFO SIMPLE Y DIRECTA
-  teamName: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "rgba(255,255,255,0.9)",
-    marginBottom: 4,
+  userInfo: {
+    flex: 1,
   },
-  teamField: {
-    fontSize: 14,
-    color: "rgba(255,255,255,0.8)",
+
+  greeting: {
+    fontSize: 16,
+    color: MODERN_COLORS.textGray,
+    marginBottom: 4,
     fontWeight: "500",
   },
 
+  userName: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: MODERN_COLORS.textDark,
+    letterSpacing: -0.3,
+  },
+
   logoutButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "rgba(255,255,255,0.15)",
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: MODERN_COLORS.surfaceGray,
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
   },
 
-  // 🔥 CONTENIDO
+  // 🎨 TARJETA DE EQUIPO SEPARADA
+  teamCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: MODERN_COLORS.surfaceGray,
+    padding: 16,
+    borderRadius: 16,
+  },
+
+  teamIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: MODERN_COLORS.surface,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+
+  teamEmoji: {
+    fontSize: 24,
+  },
+
+  teamInfo: {
+    flex: 1,
+  },
+
+  teamName: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: MODERN_COLORS.textDark,
+    marginBottom: 2,
+  },
+
+  teamField: {
+    fontSize: 14,
+    color: MODERN_COLORS.textGray,
+    fontWeight: "500",
+  },
+
+  // CONTENIDO
   content: {
     flex: 1,
-    marginTop: -6,
   },
 
-  // 🔥 PRÓXIMO PARTIDO MÁS LLAMATIVO
+  // 🎨 PRÓXIMO PARTIDO - DISEÑO CARD LIMPIO
   nextMatchSection: {
     padding: 20,
   },
+
   nextMatchCard: {
+    backgroundColor: MODERN_COLORS.surface,
     borderRadius: 20,
     overflow: "hidden",
-    shadowColor: "#ef4444",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-  matchGradient: {
-    padding: 24,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 6,
+    borderWidth: 1,
+    borderColor: MODERN_COLORS.border,
     position: "relative",
   },
+
+  matchContent: {
+    padding: 20,
+  },
+
   matchHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 16,
   },
+
   matchBadge: {
-    backgroundColor: "rgba(255,255,255,0.2)",
-    paddingHorizontal: 14,
+    backgroundColor: MODERN_COLORS.primary,
+    paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
   },
+
   matchBadgeText: {
-    color: "#fff",
+    color: MODERN_COLORS.textWhite,
     fontSize: 12,
-    fontWeight: "800",
+    fontWeight: "600",
+    textTransform: "uppercase",
     letterSpacing: 0.5,
   },
+
   matchDate: {
-    color: "#fff",
-    fontSize: 18,
+    color: MODERN_COLORS.textDark,
+    fontSize: 16,
     fontWeight: "700",
   },
+
   matchTitle: {
     fontSize: 24,
     fontWeight: "800",
-    color: "#fff",
-    marginBottom: 12,
+    color: MODERN_COLORS.textDark,
+    marginBottom: 16,
+    letterSpacing: -0.5,
   },
-  matchDetails: {
+
+  matchDetailsRow: {
     flexDirection: "row",
-    gap: 20,
-    marginBottom: 8,
-  },
-  matchDetail: {
-    color: "rgba(255,255,255,0.95)",
-    fontSize: 15,
-    fontWeight: "600",
+    gap: 24,
   },
 
-  // 🔥 SECCIÓN PRINCIPAL
-  mainSection: {
-    padding: 20,
-    paddingTop: 8,
-  },
-  sectionTitle: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: "#0f172a",
-    marginBottom: 20,
-  },
-
-  // 🔥 CONTENEDOR VERTICAL PARA TARJETAS
-  verticalContainer: {
-    gap: 16,
-  },
-
-  // 🔥 TARJETAS VERTICALES NUEVAS
-  verticalCard: {
-    borderRadius: 16,
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-
-  verticalCardGradient: {
+  matchDetailItem: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 20,
-    minHeight: 80,
+    gap: 6,
   },
 
-  verticalCardIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 16,
-  },
-
-  verticalCardContent: {
-    flex: 1,
-  },
-
-  verticalCardTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#fff",
-    marginBottom: 4,
-  },
-
-  verticalCardSubtitle: {
+  matchDetailText: {
+    color: MODERN_COLORS.textGray,
     fontSize: 14,
-    color: "rgba(255,255,255,0.85)",
     fontWeight: "500",
   },
 
-  verticalCardArrow: {
-    width: 32,
-    height: 32,
+  matchDecoration: {
+    position: "absolute",
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 4,
+    backgroundColor: MODERN_COLORS.primary,
+  },
+
+  // 🎨 GRID 2x2 MODERNO
+  mainSection: {
+    padding: 20,
+    paddingTop: 0,
+  },
+
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: MODERN_COLORS.textDark,
+    marginBottom: 16,
+    letterSpacing: -0.3,
+  },
+
+  gridContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 16,
+  },
+
+  gridCard: {
+    width: "47%",
+    backgroundColor: MODERN_COLORS.surface,
     borderRadius: 16,
-    backgroundColor: "rgba(255,255,255,0.1)",
+    padding: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: MODERN_COLORS.border,
+    minHeight: 120,
+  },
+
+  cardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 16,
+  },
+
+  cardIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
+  },
+
+  playersIcon: {
+    backgroundColor: "rgba(37, 99, 235, 0.1)",
+  },
+
+  staffIcon: {
+    backgroundColor: "rgba(16, 185, 129, 0.1)",
+  },
+
+  matchesIcon: {
+    backgroundColor: "rgba(245, 158, 11, 0.1)",
+  },
+
+  callupIcon: {
+    backgroundColor: "rgba(239, 68, 68, 0.1)",
+  },
+
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: MODERN_COLORS.textDark,
+    marginBottom: 4,
+  },
+
+  cardSubtitle: {
+    fontSize: 13,
+    color: MODERN_COLORS.textGray,
+    fontWeight: "500",
   },
 
   bottomSpacer: {
