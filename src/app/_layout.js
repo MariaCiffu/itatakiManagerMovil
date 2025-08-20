@@ -22,18 +22,30 @@ function AuthNavigator() {
     // No hacer nada mientras está cargando
     if (state.isLoading) return;
 
-    const inAuthGroup = segments[0] === "auth";
+    // 🔥 FILTRAR RUTAS DEL SISTEMA
+    const filteredSegments = segments.filter(
+      (segment) =>
+        !segment.startsWith("_") && // Filtrar _sitemap, _layout, etc.
+        segment !== "" &&
+        segment !== "index"
+    );
+
+    const inAuthGroup = filteredSegments[0] === "auth";
 
     if (!state.isAuthenticated) {
       // Usuario NO autenticado
-      if (!inAuthGroup) {
-        console.log("🔵 Redirigiendo a login...");
+      if (!inAuthGroup && filteredSegments.length > 0) {
+        console.log("🔵 Usuario no autenticado, redirigiendo a login...");
+        router.replace("/auth/login");
+      } else if (filteredSegments.length === 0) {
+        // Está en root pero no autenticado
+        console.log("🔵 En root sin autenticar, redirigiendo a login...");
         router.replace("/auth/login");
       }
     } else {
       // Usuario SÍ autenticado
       if (inAuthGroup) {
-        console.log("🔵 Redirigiendo a home...");
+        console.log("🔵 Usuario autenticado en auth, redirigiendo a home...");
         router.replace("/");
       }
     }

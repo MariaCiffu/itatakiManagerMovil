@@ -130,7 +130,7 @@ export function AuthProvider({ children }) {
             email: "coach@test.com",
             teamName: "Real Madrid CF",
             category: "Infantil",
-            homeField: "Santiago Bernabéu - Campo 1",
+            homeField: "Santiago Bernabéu",
             role: "coach",
           },
         },
