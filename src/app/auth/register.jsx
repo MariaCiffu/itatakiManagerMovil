@@ -7,12 +7,14 @@ import {
   Alert,
   StyleSheet,
   Platform,
+  Image,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Picker } from "@react-native-picker/picker";
 import { Ionicons } from "@expo/vector-icons";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
+import * as ImagePicker from "expo-image-picker";
 import { useAuth } from "../../context/authContext";
 import { COLORS } from "../../constants/colors";
 
@@ -128,6 +130,104 @@ const InputField = ({
   </View>
 );
 
+// 🔥 COMPONENTE SELECTOR DE FOTO
+const PhotoSelector = ({ profilePhoto, onSelectPhoto }) => {
+  const selectPhoto = async () => {
+    try {
+      // Solicitar permisos
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (status !== "granted") {
+        Alert.alert(
+          "Permisos requeridos",
+          "Necesitamos acceso a tu galería para seleccionar una foto.",
+          [{ text: "OK" }]
+        );
+        return;
+      }
+
+      // Mostrar opciones
+      Alert.alert(
+        "Seleccionar foto",
+        "Elige cómo quieres agregar tu foto de perfil",
+        [
+          { text: "Cancelar", style: "cancel" },
+          { text: "Galería", onPress: () => pickFromGallery() },
+          { text: "Cámara", onPress: () => pickFromCamera() },
+        ]
+      );
+    } catch (error) {
+      console.error("Error selecting photo:", error);
+    }
+  };
+
+  const pickFromGallery = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled) {
+        onSelectPhoto(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error("Error picking from gallery:", error);
+      Alert.alert("Error", "No se pudo seleccionar la imagen");
+    }
+  };
+
+  const pickFromCamera = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+
+      if (status !== "granted") {
+        Alert.alert(
+          "Permisos requeridos",
+          "Necesitamos acceso a tu cámara para tomar una foto.",
+          [{ text: "OK" }]
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled) {
+        onSelectPhoto(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error("Error picking from camera:", error);
+      Alert.alert("Error", "No se pudo tomar la foto");
+    }
+  };
+
+  return (
+    <View style={styles.photoSection}>
+      <Text style={styles.photoLabel}>Foto de Perfil (Opcional)</Text>
+      <TouchableOpacity style={styles.photoContainer} onPress={selectPhoto}>
+        {profilePhoto ? (
+          <Image source={{ uri: profilePhoto }} style={styles.profileImage} />
+        ) : (
+          <View style={styles.photoPlaceholder}>
+            <Ionicons name="camera" size={32} color="#9ca3af" />
+          </View>
+        )}
+        <View style={styles.photoOverlay}>
+          <Ionicons name="camera" size={20} color="#fff" />
+        </View>
+      </TouchableOpacity>
+      <Text style={styles.photoHint}>Toca para agregar una foto</Text>
+    </View>
+  );
+};
+
 export default function RegisterScreen() {
   const router = useRouter();
   const { register, state } = useAuth();
@@ -141,6 +241,7 @@ export default function RegisterScreen() {
     teamName: "",
     category: "",
     homeField: "",
+    profilePhoto: null, // 🆕 Nueva foto de perfil
   });
 
   // 🔥 ESTADO DE ERRORES INDIVIDUALES
@@ -215,6 +316,11 @@ export default function RegisterScreen() {
     }
   };
 
+  // 🆕 ACTUALIZAR FOTO DE PERFIL
+  const updateProfilePhoto = (uri) => {
+    setFormData((prev) => ({ ...prev, profilePhoto: uri }));
+  };
+
   // 🔥 MARCAR CAMPO COMO TOCADO
   const handleBlur = (field) => {
     setTouched((prev) => ({ ...prev, [field]: true }));
@@ -237,7 +343,15 @@ export default function RegisterScreen() {
   // 🔥 REGISTRO FINAL
   const handleRegister = async () => {
     // Marcar todos los campos como tocados
-    const allFields = Object.keys(formData);
+    const allFields = [
+      "name",
+      "email",
+      "password",
+      "confirmPassword",
+      "teamName",
+      "category",
+      "homeField",
+    ];
     const allTouched = {};
     allFields.forEach((field) => (allTouched[field] = true));
     setTouched(allTouched);
@@ -256,6 +370,7 @@ export default function RegisterScreen() {
         teamName: formData.teamName.trim(),
         category: formData.category,
         homeField: formData.homeField.trim(),
+        profilePhoto: formData.profilePhoto, // 🆕 Incluir foto
       });
 
       Alert.alert(
@@ -346,9 +461,6 @@ export default function RegisterScreen() {
             {/* 🔥 HEADER LIMPIO SIN BOTÓN DE ATRÁS */}
             <View style={styles.header}>
               <Text style={styles.welcomeText}>Crear cuenta</Text>
-              <Text style={styles.subtitle}>
-                Gestiona tu equipo de fútbol con ItatakiManager
-              </Text>
             </View>
 
             {/* 🔥 INDICADOR DE PROGRESO */}
@@ -361,6 +473,12 @@ export default function RegisterScreen() {
                   <Text style={styles.sectionTitle}>
                     👤 Información Personal
                   </Text>
+
+                  {/* 🆕 SELECTOR DE FOTO */}
+                  <PhotoSelector
+                    profilePhoto={formData.profilePhoto}
+                    onSelectPhoto={updateProfilePhoto}
+                  />
 
                   <InputField
                     label="Nombre Completo"
@@ -424,12 +542,6 @@ export default function RegisterScreen() {
                       style={styles.buttonGradient}
                     >
                       <Text style={styles.buttonText}>Siguiente</Text>
-                      <Ionicons
-                        name="arrow-forward"
-                        size={20}
-                        color="#fff"
-                        style={styles.buttonIcon}
-                      />
                     </LinearGradient>
                   </TouchableOpacity>
                 </View>
@@ -503,11 +615,6 @@ export default function RegisterScreen() {
                       onPress={prevStep}
                     >
                       <View style={styles.prevButtonContent}>
-                        <Ionicons
-                          name="arrow-back"
-                          size={20}
-                          color={COLORS.primary}
-                        />
                         <Text style={styles.prevButtonText}>Anterior</Text>
                       </View>
                     </TouchableOpacity>
@@ -607,15 +714,15 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 24,
-    paddingTop: 40, // 🔥 Reducido de 60 a 40
+    paddingTop: 40,
     zIndex: 1,
   },
 
   // 🔥 HEADER LIMPIO SIN BOTÓN
   header: {
     alignItems: "center",
-    marginBottom: 28, // 🔥 Reducido de 32 a 28
-    paddingTop: 8, // 🔥 Reducido de 20 a 8
+    marginBottom: 28,
+    paddingTop: 8,
   },
   welcomeText: {
     fontSize: 28,
@@ -630,6 +737,59 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     textAlign: "center",
     maxWidth: 300,
+  },
+
+  // 🆕 ESTILOS DE FOTO DE PERFIL
+  photoSection: {
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  photoLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#374151",
+    marginBottom: 12,
+  },
+  photoContainer: {
+    position: "relative",
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    marginBottom: 8,
+  },
+  photoPlaceholder: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 50,
+    backgroundColor: "#f3f4f6",
+    borderWidth: 2,
+    borderColor: "#e5e7eb",
+    borderStyle: "dashed",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  profileImage: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 50,
+  },
+  photoOverlay: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: COLORS.primary,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 3,
+    borderColor: "#fff",
+  },
+  photoHint: {
+    fontSize: 12,
+    color: "#9ca3af",
+    textAlign: "center",
   },
 
   // 🔥 INDICADOR DE PROGRESO COMPACTO
