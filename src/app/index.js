@@ -5,9 +5,9 @@ import {
   Text,
   ScrollView,
   ActivityIndicator,
+  Image,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import {
@@ -18,29 +18,7 @@ import {
 } from "../components/Icons";
 import { useAuth } from "../context/authContext";
 import { PARTIDOS } from "../data/partidosData";
-
-// 🎨 NUEVA PALETA MÁS MODERNA Y LIMPIA
-const MODERN_COLORS = {
-  primary: "#2563eb", // Azul vibrante pero profesional
-  primaryDark: "#1d4ed8", // Azul más oscuro
-  secondary: "#10b981", // Verde moderno
-  accent: "#f59e0b", // Amarillo/naranja elegante
-  danger: "#ef4444", // Rojo moderno
-
-  // Fondos neutros modernos
-  background: "#fafafa", // Gris muy claro, casi blanco
-  surface: "#ffffff", // Blanco puro
-  surfaceGray: "#f5f5f5", // Gris clarísimo
-
-  // Textos con mejor contraste
-  textDark: "#0f172a", // Negro muy oscuro
-  textGray: "#64748b", // Gris medio
-  textLight: "#94a3b8", // Gris claro
-  textWhite: "#ffffff", // Blanco
-
-  // Bordes
-  border: "#e2e8f0", // Gris border
-};
+import { MODERN_COLORS } from "../constants/modernColors";
 
 export default function Home() {
   const router = useRouter();
@@ -115,35 +93,58 @@ export default function Home() {
     return "Buenas noches";
   };
 
+  // 🆕 Función para navegar al perfil
+  const navigateToProfile = () => {
+    router.push("/profile/profile");
+  };
+
   return (
     <View style={styles.container}>
-      {/* 🎨 HEADER MINIMALISTA SIN GRADIENTE */}
+      {/* 🎨 HEADER MINIMALISTA */}
       <View style={styles.header}>
         <View style={styles.headerTop}>
-          <View style={styles.userInfo}>
-            <Text style={styles.greeting}>{getGreeting()}</Text>
-            <Text style={styles.userName}>{user.name} 👋</Text>
-          </View>
-
-          <TouchableOpacity onPress={logout} style={styles.logoutButton}>
-            <Ionicons
-              name="log-out-outline"
-              size={20}
-              color={MODERN_COLORS.textGray}
-            />
+          <TouchableOpacity style={styles.userInfo} activeOpacity={0.7}>
+            <Text style={styles.greeting}>{getGreeting()},</Text>
+            <View style={styles.userNameRow}>
+              <Text style={styles.userName}>{user.name} 👋</Text>
+            </View>
           </TouchableOpacity>
+
+          <View style={styles.headerActions}>
+            <TouchableOpacity onPress={logout} style={styles.logoutButton}>
+              <Ionicons
+                name="log-out-outline"
+                size={20}
+                color={MODERN_COLORS.textGray}
+              />
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* 🎨 INFO DEL EQUIPO EN TARJETA SEPARADA */}
-        <View style={styles.teamCard}>
+        {/* 🎨 INFO DEL EQUIPO EN TARJETA SEPARADA Y CLICKEABLE */}
+        <TouchableOpacity
+          style={styles.teamCard}
+          onPress={navigateToProfile}
+          activeOpacity={0.8}
+        >
           <View style={styles.teamIcon}>
-            <Text style={styles.teamEmoji}>⚽</Text>
+            <Image
+              source={{ uri: user.profilePhoto }}
+              style={styles.profileImage}
+            />
           </View>
           <View style={styles.teamInfo}>
             <Text style={styles.teamName}>{user.teamName}</Text>
-            <Text style={styles.teamField}>🏟 {user.homeField}</Text>
+            <Text style={styles.teamField}>{user.homeField}</Text>
           </View>
-        </View>
+          <View style={styles.teamChevron}>
+            <Ionicons
+              name="chevron-forward"
+              size={16}
+              color={MODERN_COLORS.textLight}
+            />
+          </View>
+        </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -161,11 +162,6 @@ export default function Home() {
                     <Text style={styles.matchBadgeText}>Próximo Partido</Text>
                   </View>
                   <Text style={styles.matchDate}>{nextMatch.date}</Text>
-                </View>
-
-                <Text style={styles.matchTitle}>vs {nextMatch.opponent}</Text>
-
-                <View style={styles.matchDetailsRow}>
                   <View style={styles.matchDetailItem}>
                     <Ionicons
                       name="time-outline"
@@ -174,6 +170,11 @@ export default function Home() {
                     />
                     <Text style={styles.matchDetailText}>{nextMatch.time}</Text>
                   </View>
+                </View>
+
+                <Text style={styles.matchTitle}>vs {nextMatch.opponent}</Text>
+
+                <View style={styles.matchDetailsRow}>
                   <View style={styles.matchDetailItem}>
                     <Ionicons
                       name="location-outline"
@@ -319,8 +320,10 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
 
+  // 🆕 ESTILOS MEJORADOS PARA USERINFO CLICKEABLE
   userInfo: {
     flex: 1,
+    paddingRight: 12,
   },
 
   greeting: {
@@ -330,11 +333,60 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
 
+  userNameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
   userName: {
     fontSize: 24,
     fontWeight: "700",
     color: MODERN_COLORS.textDark,
     letterSpacing: -0.3,
+    marginRight: 8,
+  },
+
+  chevronIcon: {
+    opacity: 0.6,
+  },
+
+  // 🎨 NUEVOS ESTILOS PARA HEADER ACTIONS
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+
+  profileButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+
+  profileImage: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 12,
+  },
+
+  profileAvatar: {
+    width: "100%",
+    height: "100%",
+    backgroundColor: MODERN_COLORS.primary,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  profileAvatarText: {
+    color: MODERN_COLORS.textWhite,
+    fontSize: 16,
+    fontWeight: "700",
   },
 
   logoutButton: {
@@ -346,13 +398,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 
-  // 🎨 TARJETA DE EQUIPO SEPARADA
+  // 🎨 TARJETA DE EQUIPO SEPARADA Y CLICKEABLE
   teamCard: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: MODERN_COLORS.surfaceGray,
     padding: 16,
     borderRadius: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
 
   teamIcon: {
@@ -384,6 +441,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: MODERN_COLORS.textGray,
     fontWeight: "500",
+  },
+
+  // 🆕 CHEVRON PARA LA TARJETA DEL EQUIPO
+  teamChevron: {
+    marginLeft: 8,
+    opacity: 0.6,
   },
 
   // CONTENIDO
@@ -547,12 +610,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: MODERN_COLORS.textDark,
     marginBottom: 4,
-  },
-
-  cardSubtitle: {
-    fontSize: 13,
-    color: MODERN_COLORS.textGray,
-    fontWeight: "500",
   },
 
   bottomSpacer: {

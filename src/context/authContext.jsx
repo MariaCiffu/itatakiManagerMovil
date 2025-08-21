@@ -98,7 +98,7 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // 🔥 LOGIN SIMPLIFICADO - SOLO MODO MOCK
+  // 🔥 LOGIN SIMPLIFICADO - SOLO MODO MOCK CON FOTOS
   const login = async (email, password) => {
     dispatch({ type: "LOADING_START" });
 
@@ -106,7 +106,7 @@ export function AuthProvider({ children }) {
       // Simular delay de red
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      // 🔥 USUARIOS DE PRUEBA
+      // 🔥 USUARIOS DE PRUEBA CON FOTOS
       const testUsers = [
         {
           email: "admin@test.com",
@@ -119,6 +119,8 @@ export function AuthProvider({ children }) {
             category: "Juvenil A",
             homeField: "Camp Nou - Campo 2",
             role: "admin",
+            profilePhoto:
+              "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face", // 🆕 Foto de ejemplo
           },
         },
         {
@@ -132,6 +134,8 @@ export function AuthProvider({ children }) {
             category: "Infantil",
             homeField: "Centro Deportivo Municipal Las Cruces",
             role: "coach",
+            profilePhoto:
+              "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face", // 🆕 Foto de ejemplo
           },
         },
       ];
@@ -171,7 +175,7 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // 🔥 REGISTRO SIMPLIFICADO
+  // 🔥 REGISTRO SIMPLIFICADO CON FOTO
   const register = async (userData) => {
     dispatch({ type: "LOADING_START" });
 
@@ -179,6 +183,7 @@ export function AuthProvider({ children }) {
       // Simular delay de red
       await new Promise((resolve) => setTimeout(resolve, 1500));
 
+      // 🆕 Incluir foto de perfil en el nuevo usuario
       const newUser = {
         id: Date.now().toString(),
         name: userData.name,
@@ -187,6 +192,7 @@ export function AuthProvider({ children }) {
         category: userData.category,
         homeField: userData.homeField,
         role: "coach",
+        profilePhoto: userData.profilePhoto || null, // 🆕 Agregar foto
       };
 
       const tokens = {
@@ -225,11 +231,12 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // 🔥 ACTUALIZAR PERFIL
+  // 🔥 ACTUALIZAR PERFIL CON FOTO
   const updateProfile = async (data) => {
     if (!state.user) return;
 
     try {
+      // 🆕 Incluir todos los datos, incluyendo la foto
       const updatedUser = { ...state.user, ...data };
 
       // Actualizar storage
@@ -239,6 +246,25 @@ export function AuthProvider({ children }) {
       );
 
       dispatch({ type: "UPDATE_PROFILE", payload: data });
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  // 🆕 FUNCIÓN AUXILIAR PARA ACTUALIZAR SOLO LA FOTO
+  const updateProfilePhoto = async (photoUri) => {
+    if (!state.user) return;
+
+    try {
+      const updatedUser = { ...state.user, profilePhoto: photoUri };
+
+      // Actualizar storage
+      await AsyncStorage.setItem(
+        STORAGE_KEYS.USER_DATA,
+        JSON.stringify(updatedUser)
+      );
+
+      dispatch({ type: "UPDATE_PROFILE", payload: { profilePhoto: photoUri } });
     } catch (error) {
       throw error;
     }
@@ -257,6 +283,7 @@ export function AuthProvider({ children }) {
         register,
         logout,
         updateProfile,
+        updateProfilePhoto, // 🆕 Nueva función para fotos
         clearError,
       }}
     >
