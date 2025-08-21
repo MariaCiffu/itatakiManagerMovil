@@ -12,14 +12,13 @@ import {
 import { useRouter } from "expo-router";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useFocusEffect } from "@react-navigation/native";
-import { COLORS } from "../../constants/colors";
+import { Ionicons } from "@expo/vector-icons";
+import { MODERN_COLORS } from "../../constants/modernColors";
 import {
   getAllJugadores,
   deleteJugador,
 } from "../../services/jugadoresService";
-import { useSwipeableManager } from "../../hooks/useSwipeableManager"; // Import the hook
-import { Search, Plus } from "react-native-feather";
-import BackButton from "../../components/BackButton";
+import { useSwipeableManager } from "../../hooks/useSwipeableManager";
 import PlayerCard from "../../components/jugadores/PlayerCard";
 
 export default function Jugadores() {
@@ -29,10 +28,10 @@ export default function Jugadores() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
 
-  // Instantiate the hook
+  // 🔧 Hook corregido para gestión de swipeables
   const { handleSwipeableOpen, closeCurrentSwipeable } = useSwipeableManager();
 
-  // Función optimizada para cargar jugadores
+  // 🔥 FUNCIÓN OPTIMIZADA PARA CARGAR JUGADORES
   const loadPlayers = useCallback(async () => {
     try {
       const data = await getAllJugadores();
@@ -44,23 +43,19 @@ export default function Jugadores() {
       setIsLoading(false);
       Alert.alert("Error", "No se pudieron cargar los jugadores");
     }
-  }, []); // loadPlayers has no dependencies on hook functions
+  }, []);
 
-  // Usar useFocusEffect para recargar los datos cuando la pantalla vuelve a estar en foco
   useFocusEffect(
     useCallback(() => {
       loadPlayers();
-      // Al entrar en foco, cerrar cualquier swipeable que pudiera haber quedado abierto
-      // de otra pantalla o por alguna razón no controlada.
-      closeCurrentSwipeable(); 
+      closeCurrentSwipeable();
       return () => {
-        // Limpieza si es necesaria, por ejemplo, cerrar al salir del foco
         closeCurrentSwipeable();
       };
-    }, [loadPlayers, closeCurrentSwipeable]) // Added closeCurrentSwipeable
+    }, [loadPlayers, closeCurrentSwipeable])
   );
 
-  // Filtrado de jugadores
+  // 🔥 FILTRADO MEJORADO
   useEffect(() => {
     if (searchQuery.trim() === "") {
       setFilteredPlayers(players);
@@ -68,114 +63,142 @@ export default function Jugadores() {
       const filtered = players.filter(
         (player) =>
           player.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (player.number && player.number.toString().includes(searchQuery))
+          (player.number && player.number.toString().includes(searchQuery)) ||
+          (player.position &&
+            player.position.toLowerCase().includes(searchQuery.toLowerCase()))
       );
       setFilteredPlayers(filtered);
     }
   }, [searchQuery, players]);
 
-  // Función optimizada para añadir jugador
   const handleAddPlayer = useCallback(() => {
     closeCurrentSwipeable();
     router.push("/jugadores/add-player");
   }, [closeCurrentSwipeable, router]);
 
-  // Función optimizada para manejar el press en un jugador
-  const handlePlayerPress = useCallback((player) => {
-    closeCurrentSwipeable();
-    router.push({
-      pathname: `/jugadores/${player.id}`,
-      params: { id: player.id },
-    });
-  }, [closeCurrentSwipeable, router]);
+  const handlePlayerPress = useCallback(
+    (player) => {
+      closeCurrentSwipeable();
+      router.push({
+        pathname: `/jugadores/${player.id}`,
+        params: { id: player.id },
+      });
+    },
+    [closeCurrentSwipeable, router]
+  );
 
-  // Función optimizada para eliminar jugador
-  const handleDeletePlayer = useCallback((playerId) => {
-    Alert.alert(
-      "Eliminar jugador",
-      "¿Estás seguro de que quieres eliminar este jugador?",
-      [
-        {
-          text: "Cancelar",
-          style: "cancel",
-          onPress: closeCurrentSwipeable, // Use hook's function
-        },
-        {
-          text: "Eliminar",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              const result = await deleteJugador(playerId);
-              if (result.success) {
-                setPlayers((prevPlayers) =>
-                  prevPlayers.filter((player) => player.id !== playerId)
-                );
-                closeCurrentSwipeable(); // Ensure closed if the deleted item was open
-                Alert.alert("Éxito", "Jugador eliminado correctamente");
-              } else {
-                Alert.alert(
-                  "Error",
-                  result.message || "No se pudo eliminar el jugador"
-                );
-              }
-            } catch (error) {
-              console.error("Error al eliminar jugador:", error);
-              Alert.alert("Error", "Ocurrió un error al eliminar el jugador");
-            }
+  const handleDeletePlayer = useCallback(
+    (playerId) => {
+      Alert.alert(
+        "Eliminar jugador",
+        "¿Estás seguro de que quieres eliminar este jugador?",
+        [
+          {
+            text: "Cancelar",
+            style: "cancel",
+            onPress: closeCurrentSwipeable,
           },
-        },
-      ]
-    );
-  }, [closeCurrentSwipeable, players]); // Updated dependency
+          {
+            text: "Eliminar",
+            style: "destructive",
+            onPress: async () => {
+              try {
+                const result = await deleteJugador(playerId);
+                if (result.success) {
+                  setPlayers((prevPlayers) =>
+                    prevPlayers.filter((player) => player.id !== playerId)
+                  );
+                  closeCurrentSwipeable();
+                  Alert.alert("Éxito", "Jugador eliminado correctamente");
+                } else {
+                  Alert.alert(
+                    "Error",
+                    result.message || "No se pudo eliminar el jugador"
+                  );
+                }
+              } catch (error) {
+                console.error("Error al eliminar jugador:", error);
+                Alert.alert("Error", "Ocurrió un error al eliminar el jugador");
+              }
+            },
+          },
+        ]
+      );
+    },
+    [closeCurrentSwipeable]
+  );
 
-  // Renderizado optimizado de elementos
-  const renderPlayer = useCallback(({ item }) => {
-    return (
-      <PlayerCard
-        player={item}
-        onPress={() => handlePlayerPress(item)}
-        onDelete={() => handleDeletePlayer(item.id)}
-        // Pass the hook's function to PlayerCard
-        // PlayerCard will need to call this with its swipeable ref when it opens
-        onSwipeableOpenManager={handleSwipeableOpen}
-      />
-    );
-  }, [handlePlayerPress, handleDeletePlayer, handleSwipeableOpen]); // Add handleSwipeableOpen to dependencies
+  const renderPlayer = useCallback(
+    ({ item }) => {
+      return (
+        <PlayerCard
+          player={item}
+          onPress={() => handlePlayerPress(item)}
+          onDelete={() => handleDeletePlayer(item.id)}
+          onSwipeableOpenManager={handleSwipeableOpen}
+        />
+      );
+    },
+    [handlePlayerPress, handleDeletePlayer, handleSwipeableOpen]
+  );
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <View style={styles.container}>
+        {/* 🎨 HEADER MODERNO */}
         <View style={styles.header}>
-          <BackButton />
-          <Text style={styles.title}>Jugadores</Text>
+          <TouchableOpacity
+            onPress={() => router.push("/")}
+            style={styles.backButton}
+          >
+            <Ionicons
+              name="chevron-back"
+              size={24}
+              color={MODERN_COLORS.textDark}
+            />
+          </TouchableOpacity>
+
+          <View style={styles.headerCenter}>
+            <Text style={styles.title}>Jugadores</Text>
+          </View>
+
+          {/* Espacio vacío para centrar el título */}
           <View style={{ width: 40 }} />
         </View>
 
+        {/* 🎨 BÚSQUEDA MEJORADA */}
         <View style={styles.searchContainer}>
           <View style={styles.searchInputContainer}>
-          <Search width={20} height={20} color={COLORS.textSecondary} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Buscar jugador..."
-            placeholderTextColor={COLORS.textSecondary}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            onFocus={closeCurrentSwipeable} // Use hook's function
-          />
+            <Ionicons
+              name="search-outline"
+              size={20}
+              color={MODERN_COLORS.textGray}
+            />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Buscar por nombre, dorsal o posición"
+              placeholderTextColor={MODERN_COLORS.textLight}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              onFocus={closeCurrentSwipeable}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery("")}>
+                <Ionicons
+                  name="close-circle"
+                  size={20}
+                  color={MODERN_COLORS.textGray}
+                />
+              </TouchableOpacity>
+            )}
           </View>
-
-          <TouchableOpacity
-          style={[styles.addButton, { backgroundColor: COLORS.primary }]}
-          onPress={handleAddPlayer}
-          activeOpacity={0.7}
-        >
-          <Plus size={20} color="#fff" />
-        </TouchableOpacity>
         </View>
 
+        {/* 🎨 LISTA DE JUGADORES */}
         {isLoading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={COLORS.primary} />
+            <ActivityIndicator size="large" color={MODERN_COLORS.primary} />
+            <Text style={styles.loadingText}>Cargando jugadores...</Text>
           </View>
         ) : (
           <FlatList
@@ -184,18 +207,47 @@ export default function Jugadores() {
             renderItem={renderPlayer}
             contentContainerStyle={styles.playersList}
             showsVerticalScrollIndicator={false}
-            onScrollBeginDrag={closeCurrentSwipeable} // Use hook's function
-            onTouchStart={closeCurrentSwipeable} // Use hook's function
+            onScrollBeginDrag={closeCurrentSwipeable}
+            onTouchStart={closeCurrentSwipeable}
             removeClippedSubviews={true}
             maxToRenderPerBatch={10}
             windowSize={10}
             initialNumToRender={10}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>No hay jugadores</Text>
+                <Ionicons
+                  name="people-outline"
+                  size={64}
+                  color={MODERN_COLORS.textLight}
+                />
+                <Text style={styles.emptyTitle}>No hay jugadores</Text>
+                <Text style={styles.emptySubtitle}>
+                  {searchQuery
+                    ? "No se encontraron resultados"
+                    : "Añade tu primer jugador"}
+                </Text>
+                {!searchQuery && (
+                  <TouchableOpacity
+                    style={styles.emptyButton}
+                    onPress={handleAddPlayer}
+                  >
+                    <Text style={styles.emptyButtonText}>Añadir jugador</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             }
           />
+        )}
+
+        {/* 🎨 BOTÓN FLOTANTE MEJORADO */}
+        {!isLoading && players.length > 0 && (
+          <TouchableOpacity
+            style={styles.fab}
+            onPress={handleAddPlayer}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="add" size={28} color={MODERN_COLORS.textWhite} />
+          </TouchableOpacity>
         )}
       </View>
     </GestureHandlerRootView>
@@ -205,69 +257,138 @@ export default function Jugadores() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
-    padding: 16,
+    backgroundColor: MODERN_COLORS.background,
   },
+
+  // 🎨 HEADER MODERNO
   header: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 20,
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingTop: 30,
+    paddingBottom: 20,
+    backgroundColor: MODERN_COLORS.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: MODERN_COLORS.border,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: COLORS.text,
+
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: MODERN_COLORS.surfaceGray,
+    justifyContent: "center",
+    alignItems: "center",
   },
-  searchContainer: {
-     flexDirection: "row",
-    marginBottom: 16,
-    gap: 12,
-  },
-  searchInputContainer: {
+
+  headerCenter: {
     flex: 1,
+    alignItems: "center",
+  },
+
+  title: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: MODERN_COLORS.textDark,
+    letterSpacing: -0.3,
+  },
+
+  // 🎨 BÚSQUEDA
+  searchContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+
+  searchInputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: COLORS.card,
-    borderRadius: 10,
-    paddingHorizontal: 12,
+    backgroundColor: MODERN_COLORS.surfaceGray,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: COLORS.cardBorder,
+    borderColor: MODERN_COLORS.border,
+    paddingHorizontal: 16,
+    height: 48,
+    gap: 12,
   },
+
   searchInput: {
     flex: 1,
-    color: COLORS.text,
-    paddingVertical: 10,
-    marginLeft: 8,
+    fontSize: 16,
+    color: MODERN_COLORS.textDark,
+    fontWeight: "500",
   },
+
+  // LISTA
   playersList: {
-    paddingBottom: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 100, // Espacio para el FAB
   },
+
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    gap: 16,
   },
+
+  loadingText: {
+    fontSize: 16,
+    color: MODERN_COLORS.textGray,
+    fontWeight: "500",
+  },
+
+  // ESTADO VACÍO MEJORADO
   emptyContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingTop: 50,
+    paddingVertical: 60,
+    gap: 12,
   },
-  emptyText: {
+
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: "600",
+    color: MODERN_COLORS.textDark,
+    marginTop: 16,
+  },
+
+  emptySubtitle: {
     fontSize: 16,
-    color: COLORS.textSecondary,
+    color: MODERN_COLORS.textGray,
+    textAlign: "center",
+    marginBottom: 24,
   },
-  addButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+
+  emptyButton: {
+    backgroundColor: MODERN_COLORS.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+
+  emptyButtonText: {
+    color: MODERN_COLORS.textWhite,
+    fontSize: 16,
+    fontWeight: "600",
+  },
+
+  // 🎨 FAB MEJORADO
+  fab: {
+    position: "absolute",
+    bottom: 24,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: MODERN_COLORS.primary,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: COLORS.primary,
+    elevation: 8,
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
   },
 });

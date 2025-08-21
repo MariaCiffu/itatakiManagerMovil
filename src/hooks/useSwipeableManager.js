@@ -1,29 +1,46 @@
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback } from "react";
 
 export function useSwipeableManager() {
   const openSwipeableRef = useRef(null);
 
   // Callback a ser llamado cuando un Swipeable se abre
-  // Se encarga de cerrar el swipeable previamente abierto si es diferente al actual
-  const handleSwipeableOpen = useCallback((swipeableInstance) => {
-    if (openSwipeableRef.current && openSwipeableRef.current !== swipeableInstance) {
-      openSwipeableRef.current.close();
+  // Recibe la referencia del swipeable (ref object, no la instancia directa)
+  const handleSwipeableOpen = useCallback((swipeableRef) => {
+    // Cerrar el swipeable anterior si existe y es diferente
+    if (
+      openSwipeableRef.current &&
+      openSwipeableRef.current !== swipeableRef.current
+    ) {
+      try {
+        openSwipeableRef.current.close();
+      } catch (error) {
+        console.warn("Error closing previous swipeable:", error);
+      }
     }
-    openSwipeableRef.current = swipeableInstance;
+
+    // Guardar la referencia actual del swipeable (la instancia, no el ref)
+    openSwipeableRef.current = swipeableRef.current;
   }, []);
 
   // Callback para cerrar explícitamente el swipeable actualmente abierto
   const closeCurrentSwipeable = useCallback(() => {
     if (openSwipeableRef.current) {
-      openSwipeableRef.current.close();
-      openSwipeableRef.current = null; // Resetear la referencia después de cerrar
+      try {
+        // Verificar que el método close existe antes de llamarlo
+        if (typeof openSwipeableRef.current.close === "function") {
+          openSwipeableRef.current.close();
+        }
+      } catch (error) {
+        console.warn("Error closing swipeable:", error);
+      } finally {
+        // Resetear la referencia después de cerrar
+        openSwipeableRef.current = null;
+      }
     }
   }, []);
 
   return {
     handleSwipeableOpen,
     closeCurrentSwipeable,
-    // No es necesario exponer openSwipeableRef directamente si el hook maneja todo.
-    // La pantalla pasará handleSwipeableOpen a cada PlayerCard.
   };
 }
