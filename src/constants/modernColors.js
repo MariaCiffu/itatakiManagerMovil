@@ -7,6 +7,7 @@ export const MODERN_COLORS = {
   secondary: "#10b981", // Verde moderno
   accent: "#f59e0b", // Amarillo/naranja elegante
   danger: "#ef4444", // Rojo moderno
+  success: "#1BCC6B",
 
   // Fondos neutros modernos
   background: "#fafafa", // Gris muy claro, casi blanco

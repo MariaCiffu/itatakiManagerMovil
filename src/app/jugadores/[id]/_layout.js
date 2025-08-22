@@ -1,4 +1,4 @@
-// app/jugadores/[id]/_layout.js
+// app/jugadores/[id]/_layout.js - SIN CONTEXTO
 import { useState, useCallback } from "react";
 import {
   View,
@@ -10,7 +10,6 @@ import {
 } from "react-native";
 import { Tabs, useLocalSearchParams, useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
-import { PlayerContext } from "../../../context/PlayerContext";
 import { LinearGradient } from "expo-linear-gradient";
 import {
   BarChartIcon,
@@ -72,10 +71,7 @@ export default function PlayerLayout() {
     router.push({
       pathname: "/jugadores/edit-player",
       params: {
-        playerData: JSON.stringify({
-          ...player,
-          id: player.id,
-        }),
+        playerData: JSON.stringify(player), // ← Pasar todos los datos
       },
     });
   }, [player, router]);
@@ -105,130 +101,128 @@ export default function PlayerLayout() {
   }
 
   return (
-    <PlayerContext.Provider value={player}>
-      <View style={{ flex: 1, backgroundColor: MODERN_COLORS.background }}>
-        {/* Header con diseño moderno */}
-        <View style={styles.headerContainer}>
-          <LinearGradient
-            colors={[MODERN_COLORS.surface, MODERN_COLORS.surfaceGray]}
-            style={styles.headerGradient}
-          />
+    <View style={{ flex: 1, backgroundColor: MODERN_COLORS.background }}>
+      {/* Header con diseño moderno */}
+      <View style={styles.headerContainer}>
+        <LinearGradient
+          colors={[MODERN_COLORS.surface, MODERN_COLORS.surfaceGray]}
+          style={styles.headerGradient}
+        />
 
-          <View
-            style={[
-              styles.decorativeCircle1,
-              { backgroundColor: `${MODERN_COLORS.primary}10` },
-            ]}
-          />
-          <View
-            style={[
-              styles.decorativeCircle2,
-              { backgroundColor: `${MODERN_COLORS.secondary}10` },
-            ]}
-          />
+        <View
+          style={[
+            styles.decorativeCircle1,
+            { backgroundColor: `${MODERN_COLORS.primary}10` },
+          ]}
+        />
+        <View
+          style={[
+            styles.decorativeCircle2,
+            { backgroundColor: `${MODERN_COLORS.secondary}10` },
+          ]}
+        />
 
-          {/* Contenido del header */}
-          <View style={styles.headerContent}>
-            {/* Botón de retroceso dentro de la fila */}
-            <TouchableOpacity
-              style={styles.backButtonInline}
-              onPress={() => router.back()}
-              activeOpacity={0.7}
-            >
-              <Ionicons
-                name="chevron-back"
-                size={22}
-                color={MODERN_COLORS.primary}
-              />
-            </TouchableOpacity>
+        {/* Contenido del header */}
+        <View style={styles.headerContent}>
+          {/* Botón de retroceso dentro de la fila */}
+          <TouchableOpacity
+            style={styles.backButtonInline}
+            onPress={() => router.back()}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name="chevron-back"
+              size={22}
+              color={MODERN_COLORS.primary}
+            />
+          </TouchableOpacity>
 
-            {/* Avatar */}
-            <View style={styles.avatarContainer}>
-              <View
-                style={[
-                  styles.avatarGlow,
-                  { backgroundColor: MODERN_COLORS.primary },
-                ]}
-              />
-              <View style={styles.avatarWrapper}>
-                {player.image ? (
-                  <Image source={{ uri: player.image }} style={styles.avatar} />
-                ) : (
-                  <View style={styles.avatarPlaceholder}>
-                    <PersonIcon size={40} color={MODERN_COLORS.primary} />
-                  </View>
-                )}
-              </View>
-              <View
-                style={[
-                  styles.playerNumber,
-                  { backgroundColor: MODERN_COLORS.primary },
-                ]}
-              >
-                <Text style={styles.playerNumberText}>
-                  {player.number || "?"}
-                </Text>
-              </View>
-            </View>
-
-            {/* Información del jugador */}
-            <View style={styles.playerInfo}>
-              <Text style={styles.playerName}>
-                {player.name || "Nombre no disponible"}
-              </Text>
-              <Text style={styles.playerPosition}>
-                {player.position || "Posición no disponible"}
-              </Text>
-            </View>
-
-            {/* Botón de editar */}
-            <TouchableOpacity
+          {/* Avatar */}
+          <View style={styles.avatarContainer}>
+            <View
               style={[
-                styles.editButton,
+                styles.avatarGlow,
                 { backgroundColor: MODERN_COLORS.primary },
               ]}
-              onPress={handleEdit}
-              activeOpacity={0.8}
+            />
+            <View style={styles.avatarWrapper}>
+              {player.image ? (
+                <Image source={{ uri: player.image }} style={styles.avatar} />
+              ) : (
+                <View style={styles.avatarPlaceholder}>
+                  <PersonIcon size={40} color={MODERN_COLORS.primary} />
+                </View>
+              )}
+            </View>
+            <View
+              style={[
+                styles.playerNumber,
+                { backgroundColor: MODERN_COLORS.primary },
+              ]}
             >
-              <EditIcon size={16} color={MODERN_COLORS.textWhite} />
-            </TouchableOpacity>
+              <Text style={styles.playerNumberText}>
+                {player.number || "?"}
+              </Text>
+            </View>
           </View>
+
+          {/* Información del jugador */}
+          <View style={styles.playerInfo}>
+            <Text style={styles.playerName}>
+              {player.name || "Nombre no disponible"}
+            </Text>
+            <Text style={styles.playerPosition}>
+              {player.position || "Posición no disponible"}
+            </Text>
+          </View>
+
+          {/* Botón de editar */}
+          <TouchableOpacity
+            style={[
+              styles.editButton,
+              { backgroundColor: MODERN_COLORS.primary },
+            ]}
+            onPress={handleEdit}
+            activeOpacity={0.8}
+          >
+            <EditIcon size={16} color={MODERN_COLORS.textWhite} />
+          </TouchableOpacity>
         </View>
-
-        {/* Tabs */}
-        <Tabs
-          screenOptions={{
-            tabBarActiveTintColor: MODERN_COLORS.primary,
-            tabBarInactiveTintColor: MODERN_COLORS.textGray,
-            tabBarStyle: styles.tabBar,
-            headerShown: false,
-          }}
-        >
-          <Tabs.Screen
-            name="datos"
-            options={{
-              title: "Datos",
-              tabBarIcon: ({ color }) => <PersonIcon color={color} />,
-            }}
-          />
-
-          <Tabs.Screen
-            name="multas"
-            options={{
-              title: "Multas",
-              tabBarIcon: ({ color }) => <CoinsIcon color={color} />,
-            }}
-          />
-          <Tabs.Screen
-            name="estadisticas"
-            options={{
-              title: "Estadísticas",
-              tabBarIcon: ({ color }) => <BarChartIcon color={color} />,
-            }}
-          />
-        </Tabs>
       </View>
-    </PlayerContext.Provider>
+
+      {/* Tabs */}
+      <Tabs
+        screenOptions={{
+          tabBarActiveTintColor: MODERN_COLORS.primary,
+          tabBarInactiveTintColor: MODERN_COLORS.textGray,
+          tabBarStyle: styles.tabBar,
+          headerShown: false,
+        }}
+      >
+        <Tabs.Screen
+          name="datos"
+          options={{
+            title: "Datos",
+            tabBarIcon: ({ color }) => <PersonIcon color={color} />,
+          }}
+        />
+
+        <Tabs.Screen
+          name="multas"
+          options={{
+            title: "Multas",
+            tabBarIcon: ({ color }) => <CoinsIcon color={color} />,
+          }}
+        />
+        <Tabs.Screen
+          name="estadisticas"
+          options={{
+            title: "Estadísticas",
+            tabBarIcon: ({ color }) => <BarChartIcon color={color} />,
+          }}
+        />
+      </Tabs>
+    </View>
   );
 }
 

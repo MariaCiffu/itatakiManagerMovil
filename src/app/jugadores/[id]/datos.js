@@ -1,4 +1,4 @@
-// app/jugadores/[id]/datos.js - CORREGIDO PARA FIREBASE CON ESTILOS MODERNOS
+// app/jugadores/[id]/datos.js - SIN CONTEXTO, CON FIREBASE
 import {
   View,
   Text,
@@ -7,8 +7,9 @@ import {
   Linking,
   ScrollView,
 } from "react-native";
-import { useContext, useCallback } from "react";
-import { PlayerContext } from "../../../context/PlayerContext";
+import { useState, useCallback, useEffect } from "react";
+import { useLocalSearchParams, useGlobalSearchParams } from "expo-router";
+import { getJugadorById } from "../../../services/playersService";
 import {
   CalendarIcon,
   PhoneIcon,
@@ -16,11 +17,43 @@ import {
   UserFriendsIcon,
   FootIcon,
 } from "../../../components/Icons";
-import { MODERN_COLORS } from "../../../constants/modernColors"; // ← Cambiado aquí
+import { MODERN_COLORS } from "../../../constants/modernColors";
 import WhatsAppButton from "../../../components/WhatsAppButton";
 
 export default function DatosPersonales() {
-  const player = useContext(PlayerContext);
+  const params = useGlobalSearchParams(); // 🆕 USAR GLOBAL PARAMS
+  const playerId = params.id; // 🆕 OBTENER ID DEL GLOBAL PARAMS
+  const [player, setPlayer] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  // 🔥 CARGAR DATOS DESDE FIREBASE
+  useEffect(() => {
+    const loadPlayer = async () => {
+      if (!playerId) {
+        console.log("❌ No hay ID en datos.js:", playerId);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        console.log("🔥 Cargando datos del jugador en datos.js:", playerId);
+        const playerData = await getJugadorById(playerId);
+
+        if (playerData) {
+          console.log("✅ Datos cargados en datos.js:", playerData.name);
+          setPlayer(playerData);
+        } else {
+          console.log("❌ Jugador no encontrado en datos.js");
+        }
+      } catch (error) {
+        console.error("❌ Error cargando jugador en datos.js:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadPlayer();
+  }, [playerId]); // 🆕 DEPENDER DE playerId
 
   // Función optimizada para realizar llamadas
   const handleCall = useCallback((phoneNumber) => {
@@ -31,16 +64,25 @@ export default function DatosPersonales() {
 
   // Función optimizada para enviar emails
   const handleEmail = useCallback(() => {
-    if (player.email) {
+    if (player?.email) {
       Linking.openURL(`mailto:${player.email}`);
     }
   }, [player?.email]);
 
-  // 🔄 MOSTRAR LOADING SI NO HAY DATOS
-  if (!player || !player.id) {
+  // 📄 MOSTRAR LOADING
+  if (loading) {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
         <Text style={styles.loadingText}>Cargando datos del jugador...</Text>
+      </View>
+    );
+  }
+
+  // 📄 MOSTRAR ERROR SI NO HAY DATOS
+  if (!player) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <Text style={styles.errorText}>No se pudieron cargar los datos</Text>
       </View>
     );
   }
@@ -195,13 +237,18 @@ const styles = StyleSheet.create({
     padding: 16,
   },
 
-  // 🔄 ESTILOS DE LOADING
+  // 📄 ESTILOS DE LOADING
   loadingContainer: {
     justifyContent: "center",
     alignItems: "center",
   },
   loadingText: {
     color: MODERN_COLORS.textGray,
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  errorText: {
+    color: MODERN_COLORS.danger,
     fontSize: 16,
     fontWeight: "500",
   },

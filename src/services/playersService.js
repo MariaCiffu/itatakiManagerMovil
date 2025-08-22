@@ -300,7 +300,7 @@ export const addMultaToJugador = async (playerId, multaData) => {
       ...multaData,
       playerId: playerId,
       teamId: teamId,
-      paid: false,
+      paid: multaData.paid,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };

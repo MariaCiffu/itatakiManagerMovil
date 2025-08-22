@@ -1,4 +1,4 @@
-// app/jugadores/edit-player.js - Mejoras
+// app/jugadores/edit-player.js - CON CONTEXT
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -10,6 +10,8 @@ import {
   Image,
   Alert,
   Modal,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
@@ -29,14 +31,16 @@ import {
   TimesIcon,
   ChevronDownIcon,
 } from "../../components/Icons";
-import { COLORS } from "../../constants/colors";
+import { MODERN_COLORS } from "../../constants/modernColors";
 import { POSICIONES } from "../../constants/positions";
-import { updateJugador } from "../../services/jugadoresService";
+import { updateJugador } from "../../services/playersService";
 
 export default function EditPlayer() {
   const router = useRouter();
-  const { playerData } = useLocalSearchParams();
+  const { playerData } = useLocalSearchParams(); // 🔄 VOLVER A playerData
+
   const [player, setPlayer] = useState({
+    id: "",
     name: "",
     number: "",
     position: "",
@@ -48,6 +52,7 @@ export default function EditPlayer() {
     emergencyContact: "",
     emergencyPhone: "",
   });
+  const [isLoading, setIsLoading] = useState(true);
 
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showPositionModal, setShowPositionModal] = useState(false);
@@ -55,25 +60,81 @@ export default function EditPlayer() {
 
   useEffect(() => {
     if (playerData) {
-      const parsedData = JSON.parse(playerData);
-      setPlayer({
-        ...player,
-        ...parsedData,
-      });
+      try {
+        const parsedData = JSON.parse(playerData);
+        console.log("🔍 Datos del jugador desde URL PARAMS:", parsedData);
+        console.log("🖼️ Imagen recibida:", parsedData.image);
+
+        // 🆕 CORREGIR CODIFICACIÓN DE URL SI ES NECESARIO
+        let imageUrl = parsedData.image || "";
+        if (imageUrl && imageUrl.startsWith("file://")) {
+          // Verificar si necesita recodificación
+          if (
+            imageUrl.includes("%40anonymous%2F") &&
+            !imageUrl.includes("%2540anonymous%252F")
+          ) {
+            console.log("🔧 Corrigiendo codificación de URL...");
+            console.log("🔧 URL original:", imageUrl);
+
+            // Recodificar correctamente
+            imageUrl = imageUrl.replace(
+              "%40anonymous%2F",
+              "%2540anonymous%252F"
+            );
+
+            console.log("🔧 URL corregida:", imageUrl);
+          }
+        }
+
+        setPlayer({
+          id: parsedData.id || parsedData.playerId || "",
+          name: parsedData.name || "",
+          number: parsedData.number || "",
+          position: parsedData.position || "",
+          birthdate: parsedData.birthdate || "",
+          foot: parsedData.foot || "Derecho",
+          phone: parsedData.phone || "",
+          image: imageUrl, // ← Usar imagen corregida
+          email: parsedData.email || "",
+          emergencyContact: parsedData.emergencyContact || "",
+          emergencyPhone: parsedData.emergencyPhone || "",
+        });
+
+        setIsLoading(false);
+      } catch (error) {
+        console.error("❌ Error parseando playerData:", error);
+        Alert.alert("Error", "No se pudieron cargar los datos del jugador");
+        setIsLoading(false);
+      }
+    } else {
+      console.log("❌ No se recibieron datos del jugador");
+      setIsLoading(false);
     }
   }, [playerData]);
 
+  if (isLoading) {
+    return (
+      <View
+        style={[
+          styles.container,
+          { justifyContent: "center", alignItems: "center" },
+        ]}
+      >
+        <Text style={{ color: MODERN_COLORS.textGray, fontSize: 16 }}>
+          Cargando datos del jugador...
+        </Text>
+      </View>
+    );
+  }
+
   const handleChange = (field, value) => {
     if (field === "number") {
-      // Convertir a número entero si es posible
       const numValue = parseInt(value, 10);
-      // Si es un número válido, úsalo; de lo contrario, usa un string vacío o 0
       setPlayer({ ...player, [field]: isNaN(numValue) ? "" : numValue });
     } else {
       setPlayer({ ...player, [field]: value });
     }
 
-    // Limpiar error cuando se modifica el campo
     if (formErrors[field]) {
       setFormErrors({ ...formErrors, [field]: null });
     }
@@ -124,7 +185,6 @@ export default function EditPlayer() {
 
   const handleSave = async () => {
     if (!validateForm()) {
-      // Mostrar alerta con el primer error
       const firstError = Object.values(formErrors)[0];
       Alert.alert(
         "Campos incompletos",
@@ -133,8 +193,28 @@ export default function EditPlayer() {
       return;
     }
 
+    if (!player.id) {
+      Alert.alert("Error", "No se encontró el ID del jugador");
+      return;
+    }
+
     try {
-      const result = await updateJugador(player);
+      console.log("📄 Actualizando jugador:", player.id);
+
+      const result = await updateJugador(player.id, {
+        name: player.name,
+        number: parseInt(player.number, 10),
+        position: player.position,
+        birthdate: player.birthdate,
+        foot: player.foot,
+        phone: player.phone,
+        image: player.image,
+        email: player.email,
+        emergencyContact: player.emergencyContact,
+        emergencyPhone: player.emergencyPhone,
+      });
+
+      console.log("📱 Resultado actualización:", result);
 
       if (result.success) {
         Alert.alert(
@@ -154,7 +234,7 @@ export default function EditPlayer() {
         );
       }
     } catch (error) {
-      console.error("Error al actualizar jugador:", error);
+      console.error("❌ Error al actualizar jugador:", error);
       Alert.alert("Error", "Ocurrió un error al guardar los cambios");
     }
   };
@@ -172,6 +252,7 @@ export default function EditPlayer() {
             quality: 0.5,
           });
           if (!result.canceled) {
+            console.log("🖼️ Nueva imagen seleccionada:", result.assets[0].uri);
             handleChange("image", result.assets[0].uri);
           }
         },
@@ -190,6 +271,7 @@ export default function EditPlayer() {
             quality: 0.5,
           });
           if (!result.canceled) {
+            console.log("📷 Nueva imagen desde cámara:", result.assets[0].uri);
             handleChange("image", result.assets[0].uri);
           }
         },
@@ -198,430 +280,679 @@ export default function EditPlayer() {
   };
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-          activeOpacity={0.7}
-        >
-          <ArrowLeftIcon size={24} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.title}>Editar jugador</Text>
-        <View style={styles.placeholder} />
-      </View>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+    >
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* HEADER */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButton}
+            activeOpacity={0.7}
+          >
+            <ArrowLeftIcon size={24} color={MODERN_COLORS.textDark} />
+          </TouchableOpacity>
 
-      <View style={styles.avatarContainer}>
-        <TouchableOpacity onPress={selectImage} activeOpacity={0.8}>
-          {player.image ? (
-            <Image source={{ uri: player.image }} style={styles.avatar} />
-          ) : (
+          <Text style={styles.title}>Editar jugador</Text>
+
+          <View style={{ width: 40 }} />
+        </View>
+
+        {/* AVATAR SECTION - IGUAL QUE ADD-PLAYER */}
+        <View style={styles.avatarSection}>
+          <TouchableOpacity
+            style={styles.avatarContainer}
+            onPress={selectImage}
+            activeOpacity={0.8}
+          >
+            {player.image ? (
+              <Image source={{ uri: player.image }} style={styles.avatar} />
+            ) : (
+              <View style={styles.avatarPlaceholder}>
+                <CameraIcon size={40} color={MODERN_COLORS.primary} />
+              </View>
+            )}
             <View
               style={[
-                styles.avatarPlaceholder,
-                { borderColor: COLORS.primary },
+                styles.editBadge,
+                { backgroundColor: MODERN_COLORS.primary },
               ]}
             >
-              <CameraIcon size={40} color={COLORS.primary} />
+              <CameraIcon size={16} color={MODERN_COLORS.textWhite} />
             </View>
-          )}
-          <View style={[styles.editBadge, { backgroundColor: COLORS.primary }]}>
-            <Text style={styles.editBadgeText}>+</Text>
+          </TouchableOpacity>
+          <Text style={styles.avatarLabel}>
+            {player.image ? "Toca para cambiar foto" : "Toca para añadir foto"}
+          </Text>
+        </View>
+
+        {/* FORM SECTIONS */}
+        <View style={styles.formSection}>
+          <Text style={styles.sectionTitle}>Información básica</Text>
+
+          {/* Nombre */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Nombre completo *</Text>
+            <View
+              style={[
+                styles.inputContainer,
+                formErrors.name && styles.inputError,
+              ]}
+            >
+              <UserFriendsIcon
+                size={20}
+                color={
+                  formErrors.name
+                    ? MODERN_COLORS.danger
+                    : MODERN_COLORS.textGray
+                }
+                style={styles.inputIcon}
+              />
+              <TextInput
+                style={styles.textInput}
+                value={player.name}
+                onChangeText={(text) => handleChange("name", text)}
+                placeholder="Nombre del jugador"
+                placeholderTextColor={MODERN_COLORS.textLight}
+              />
+            </View>
+            {formErrors.name && (
+              <Text style={styles.errorText}>{formErrors.name}</Text>
+            )}
           </View>
-        </TouchableOpacity>
-      </View>
 
-      <View style={styles.form}>
-        <Text style={styles.sectionTitle}>Información básica</Text>
+          {/* Dorsal */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Dorsal *</Text>
+            <View
+              style={[
+                styles.inputContainer,
+                formErrors.number && styles.inputError,
+              ]}
+            >
+              <ShirtIcon
+                size={20}
+                color={
+                  formErrors.number
+                    ? MODERN_COLORS.danger
+                    : MODERN_COLORS.textGray
+                }
+                style={styles.inputIcon}
+              />
+              <TextInput
+                style={styles.textInput}
+                value={player.number?.toString()}
+                onChangeText={(text) => handleChange("number", text)}
+                placeholder="Número del dorsal"
+                placeholderTextColor={MODERN_COLORS.textLight}
+                keyboardType="numeric"
+              />
+            </View>
+            {formErrors.number && (
+              <Text style={styles.errorText}>{formErrors.number}</Text>
+            )}
+          </View>
 
-        {/* Nombre */}
-        <View
-          style={[
-            styles.inputContainer,
-            formErrors.name ? styles.inputError : null,
-          ]}
-        >
-          <UserFriendsIcon
-            size={20}
-            color={formErrors.name ? COLORS.danger : COLORS.primary}
-          />
-          <TextInput
-            placeholder="Nombre completo *"
-            placeholderTextColor={COLORS.textSecondary}
-            value={player.name}
-            onChangeText={(text) => handleChange("name", text)}
-            style={styles.input}
-          />
+          {/* Posición */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Posición *</Text>
+            <TouchableOpacity
+              style={[
+                styles.inputContainer,
+                formErrors.position && styles.inputError,
+              ]}
+              onPress={() => setShowPositionModal(true)}
+              activeOpacity={0.7}
+            >
+              <RunningIcon
+                size={20}
+                color={
+                  formErrors.position
+                    ? MODERN_COLORS.danger
+                    : MODERN_COLORS.textGray
+                }
+                style={styles.inputIcon}
+              />
+              <Text
+                style={[
+                  player.position ? styles.textInput : styles.placeholderText,
+                  styles.fullWidthInput,
+                ]}
+              >
+                {player.position || "Seleccionar posición"}
+              </Text>
+              <ChevronDownIcon size={16} color={MODERN_COLORS.textGray} />
+            </TouchableOpacity>
+            {formErrors.position && (
+              <Text style={styles.errorText}>{formErrors.position}</Text>
+            )}
+          </View>
+
+          {/* Fecha de nacimiento */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Fecha de nacimiento</Text>
+            <TouchableOpacity
+              onPress={() => setShowDatePicker(true)}
+              style={styles.inputContainer}
+              activeOpacity={0.7}
+            >
+              <CalendarIcon
+                size={20}
+                color={MODERN_COLORS.textGray}
+                style={styles.inputIcon}
+              />
+              <Text
+                style={[
+                  player.birthdate ? styles.textInput : styles.placeholderText,
+                  styles.fullWidthInput,
+                ]}
+              >
+                {player.birthdate || "Seleccionar fecha"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+          {showDatePicker && (
+            <DateTimePicker
+              value={new Date()}
+              mode="date"
+              display="spinner"
+              onChange={handleDateChange}
+            />
+          )}
+
+          {/* Pie dominante */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Pie dominante *</Text>
+            <View style={styles.footContainer}>
+              {["Derecho", "Izquierdo"].map((foot) => (
+                <TouchableOpacity
+                  key={foot}
+                  style={[
+                    styles.footOption,
+                    player.foot === foot && styles.footOptionActive,
+                    formErrors.foot && styles.inputError,
+                  ]}
+                  onPress={() => handleFootChange(foot)}
+                >
+                  <View
+                    style={[
+                      styles.radio,
+                      player.foot === foot && styles.radioActive,
+                    ]}
+                  >
+                    {player.foot === foot && <View style={styles.radioDot} />}
+                  </View>
+                  <Text
+                    style={[
+                      styles.footText,
+                      player.foot === foot && styles.footTextActive,
+                    ]}
+                  >
+                    {foot}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            {formErrors.foot && (
+              <Text style={styles.errorText}>{formErrors.foot}</Text>
+            )}
+          </View>
         </View>
 
-        {/* Dorsal */}
-        <View
-          style={[
-            styles.inputContainer,
-            formErrors.number ? styles.inputError : null,
-          ]}
-        >
-          <ShirtIcon
-            size={20}
-            color={formErrors.number ? COLORS.danger : COLORS.primary}
-          />
-          <TextInput
-            placeholder="Dorsal *"
-            placeholderTextColor={COLORS.textSecondary}
-            value={player.number?.toString()}
-            onChangeText={(text) => handleChange("number", text)}
-            style={styles.input}
-            keyboardType="numeric"
-          />
+        {/* Sección de contacto */}
+        <View style={styles.formSection}>
+          <Text style={styles.sectionTitle}>Contacto</Text>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Teléfono</Text>
+            <View style={styles.inputContainer}>
+              <PhoneIcon
+                size={20}
+                color={MODERN_COLORS.textGray}
+                style={styles.inputIcon}
+              />
+              <TextInput
+                style={styles.textInput}
+                value={player.phone}
+                onChangeText={(text) => handleChange("phone", text)}
+                placeholder="Número de teléfono"
+                placeholderTextColor={MODERN_COLORS.textLight}
+                keyboardType="phone-pad"
+              />
+            </View>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Email</Text>
+            <View style={styles.inputContainer}>
+              <EnvelopeIcon
+                size={20}
+                color={MODERN_COLORS.textGray}
+                style={styles.inputIcon}
+              />
+              <TextInput
+                style={styles.textInput}
+                value={player.email}
+                onChangeText={(text) => handleChange("email", text)}
+                placeholder="correo@ejemplo.com"
+                placeholderTextColor={MODERN_COLORS.textLight}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </View>
+          </View>
         </View>
 
-        {/* Posición (Selector) */}
-        <TouchableOpacity
-          style={[
-            styles.inputContainer,
-            formErrors.position ? styles.inputError : null,
-          ]}
-          onPress={() => setShowPositionModal(true)}
-          activeOpacity={0.7}
-        >
-          <RunningIcon
-            size={20}
-            color={formErrors.position ? COLORS.danger : COLORS.primary}
-          />
-          <Text
-            style={[
-              player.position ? styles.input : styles.inputPlaceholder,
-              styles.fullWidthInput,
-            ]}
-          >
-            {player.position || "Posición *"}
-          </Text>
-          <ChevronDownIcon size={16} color={COLORS.textSecondary} />
-        </TouchableOpacity>
+        {/* Contacto de emergencia */}
+        <View style={styles.formSection}>
+          <Text style={styles.sectionTitle}>Contacto de emergencia</Text>
 
-        {/* Fecha de nacimiento */}
-        <TouchableOpacity
-          onPress={() => setShowDatePicker(true)}
-          style={styles.inputContainer}
-          activeOpacity={0.7}
-        >
-          <CalendarIcon size={20} color={COLORS.primary} />
-          <Text
-            style={[
-              player.date ? styles.input : styles.inputPlaceholder,
-              styles.fullWidthInput,
-            ]}
-          >
-            {player.birthdate || "Fecha de nacimiento"}
-          </Text>
-        </TouchableOpacity>
-        {showDatePicker && (
-          <DateTimePicker
-            value={new Date()}
-            mode="date"
-            display="spinner"
-            onChange={handleDateChange}
-          />
-        )}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Nombre de contacto</Text>
+            <View style={styles.inputContainer}>
+              <UserFriendsIcon
+                size={20}
+                color={MODERN_COLORS.textGray}
+                style={styles.inputIcon}
+              />
+              <TextInput
+                style={styles.textInput}
+                value={player.emergencyContact}
+                onChangeText={(text) => handleChange("emergencyContact", text)}
+                placeholder="Nombre del contacto"
+                placeholderTextColor={MODERN_COLORS.textLight}
+              />
+            </View>
+          </View>
 
-        {/* Pie dominante */}
-        <ToggleSwitch
-          label="Pie dominante"
-          options={["Derecho", "Izquierdo"]}
-          selectedValue={player.foot}
-          onValueChange={handleFootChange}
-          primaryColor={COLORS.primary}
-        />
-
-        <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Contacto</Text>
-
-        {/* Teléfono */}
-        <View style={styles.inputContainer}>
-          <PhoneIcon size={20} color={COLORS.primary} />
-          <TextInput
-            placeholder="Teléfono"
-            placeholderTextColor={COLORS.textSecondary}
-            value={player.phone}
-            onChangeText={(text) => handleChange("phone", text)}
-            style={styles.input}
-            keyboardType="phone-pad"
-          />
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Teléfono de contacto</Text>
+            <View style={styles.inputContainer}>
+              <PhoneIcon
+                size={20}
+                color={MODERN_COLORS.textGray}
+                style={styles.inputIcon}
+              />
+              <TextInput
+                style={styles.textInput}
+                value={player.emergencyPhone}
+                onChangeText={(text) => handleChange("emergencyPhone", text)}
+                placeholder="Teléfono de emergencia"
+                placeholderTextColor={MODERN_COLORS.textLight}
+                keyboardType="phone-pad"
+              />
+            </View>
+          </View>
         </View>
 
-        {/* Email */}
-        <View style={styles.inputContainer}>
-          <EnvelopeIcon size={20} color={COLORS.primary} />
-          <TextInput
-            placeholder="Correo electrónico"
-            placeholderTextColor={COLORS.textSecondary}
-            value={player.email}
-            onChangeText={(text) => handleChange("email", text)}
-            style={styles.input}
-            keyboardType="email-address"
-          />
-        </View>
-
-        <Text style={[styles.sectionTitle, { marginTop: 24 }]}>
-          Contacto de emergencia
-        </Text>
-
-        {/* Nombre de contacto */}
-        <View style={styles.inputContainer}>
-          <UserFriendsIcon size={20} color={COLORS.primary} />
-          <TextInput
-            placeholder="Nombre de contacto"
-            placeholderTextColor={COLORS.textSecondary}
-            value={player.emergencyContact}
-            onChangeText={(text) => handleChange("emergencyContact", text)}
-            style={styles.input}
-          />
-        </View>
-
-        {/* Teléfono de contacto */}
-        <View style={styles.inputContainer}>
-          <PhoneIcon size={20} color={COLORS.primary} />
-          <TextInput
-            placeholder="Teléfono de contacto"
-            placeholderTextColor={COLORS.textSecondary}
-            value={player.emergencyPhone}
-            onChangeText={(text) => handleChange("emergencyPhone", text)}
-            style={styles.input}
-            keyboardType="phone-pad"
-          />
-        </View>
-
-        {/* Botón guardar */}
-        <TouchableOpacity onPress={handleSave} activeOpacity={0.8}>
-          <LinearGradient
-            colors={[COLORS.primary, COLORS.primaryDark]}
+        {/* BOTÓN GUARDAR */}
+        <View style={styles.saveSection}>
+          <TouchableOpacity
             style={styles.saveButton}
+            onPress={handleSave}
+            activeOpacity={0.8}
           >
-            <CheckIcon size={20} color="#fff" />
-            <Text style={styles.saveButtonText}>Guardar cambios</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-      </View>
+            <LinearGradient
+              colors={[MODERN_COLORS.primary, MODERN_COLORS.primaryDark]}
+              style={styles.buttonGradient}
+            >
+              <CheckIcon size={20} color={MODERN_COLORS.textWhite} />
+              <Text style={styles.saveButtonText}>Guardar cambios</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
 
-      {/* Modal para seleccionar posición */}
+      {/* Modal de posiciones */}
       <Modal
         visible={showPositionModal}
         transparent={true}
-        animationType="fade"
+        animationType="slide"
         onRequestClose={() => setShowPositionModal(false)}
       >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowPositionModal(false)}
-        >
+        <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Seleccionar posición</Text>
-                <TouchableOpacity
-                  onPress={() => setShowPositionModal(false)}
-                  activeOpacity={0.7}
-                >
-                  <TimesIcon size={20} color={COLORS.textSecondary} />
-                </TouchableOpacity>
-              </View>
-
-              <ScrollView style={styles.positionList}>
-                {POSICIONES.map((posicion, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={styles.positionItem}
-                    onPress={() => selectPosition(posicion)}
-                    activeOpacity={0.7}
-                  >
-                    <Text
-                      style={[
-                        styles.positionText,
-                        posicion === player.position
-                          ? { color: COLORS.primary, fontWeight: "bold" }
-                          : null,
-                      ]}
-                    >
-                      {posicion}
-                    </Text>
-                    {posicion === player.position && (
-                      <CheckIcon size={16} color={COLORS.primary} />
-                    )}
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Seleccionar posición</Text>
+              <TouchableOpacity
+                onPress={() => setShowPositionModal(false)}
+                style={styles.modalCloseButton}
+              >
+                <TimesIcon size={24} color={MODERN_COLORS.textDark} />
+              </TouchableOpacity>
             </View>
+
+            <ScrollView style={styles.positionList}>
+              {POSICIONES.map((posicion) => (
+                <TouchableOpacity
+                  key={posicion}
+                  style={styles.positionItem}
+                  onPress={() => selectPosition(posicion)}
+                >
+                  <Text
+                    style={[
+                      styles.positionText,
+                      posicion === player.position && styles.positionTextActive,
+                    ]}
+                  >
+                    {posicion}
+                  </Text>
+                  {posicion === player.position && (
+                    <CheckIcon size={20} color={MODERN_COLORS.primary} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
           </View>
-        </TouchableOpacity>
+        </View>
       </Modal>
-    </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
-    padding: 16,
+    backgroundColor: MODERN_COLORS.background,
   },
+
+  content: {
+    flex: 1,
+  },
+
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 24,
+    paddingHorizontal: 20,
+    paddingTop: 50,
+    paddingBottom: 16,
+    backgroundColor: MODERN_COLORS.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: MODERN_COLORS.border,
   },
+
   backButton: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    borderRadius: 12,
+    backgroundColor: MODERN_COLORS.surfaceGray,
     justifyContent: "center",
     alignItems: "center",
   },
-  placeholder: {
-    width: 40,
-  },
+
   title: {
-    fontSize: 24,
-    color: COLORS.text,
-    fontWeight: "bold",
-    textAlign: "center",
+    fontSize: 18,
+    fontWeight: "700",
+    color: MODERN_COLORS.textDark,
+    letterSpacing: -0.3,
   },
-  avatarContainer: {
+
+  avatarSection: {
     alignItems: "center",
-    marginBottom: 24,
+    paddingVertical: 32,
+    backgroundColor: MODERN_COLORS.surface,
+    marginBottom: 8,
+  },
+
+  avatarContainer: {
     position: "relative",
+    marginBottom: 12,
   },
+
   avatar: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    borderWidth: 2,
-    borderColor: COLORS.primary,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
   },
+
   avatarPlaceholder: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: COLORS.card,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: MODERN_COLORS.surfaceGray,
+    borderWidth: 2,
+    borderColor: MODERN_COLORS.border,
+    borderStyle: "dashed",
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 2,
   },
+
   editBadge: {
     position: "absolute",
     bottom: 0,
     right: 0,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: MODERN_COLORS.primary,
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 2,
-    borderColor: COLORS.background,
+    borderWidth: 3,
+    borderColor: MODERN_COLORS.surface,
   },
-  editBadgeText: {
-    color: "#fff",
-    fontSize: 20,
-    fontWeight: "bold",
+
+  avatarLabel: {
+    fontSize: 14,
+    color: MODERN_COLORS.textGray,
+    fontWeight: "500",
   },
+
+  debugText: {
+    fontSize: 10,
+    color: MODERN_COLORS.textLight,
+    marginTop: 4,
+    textAlign: "center",
+  },
+
+  formSection: {
+    backgroundColor: MODERN_COLORS.surface,
+    padding: 20,
+    marginBottom: 8,
+  },
+
   sectionTitle: {
-    fontSize: 18,
-    color: COLORS.text,
-    fontWeight: "bold",
-    marginBottom: 12,
+    fontSize: 16,
+    fontWeight: "700",
+    color: MODERN_COLORS.textDark,
+    marginBottom: 20,
+    letterSpacing: -0.2,
   },
-  form: {
-    gap: 12,
-    paddingBottom: 24,
+
+  inputGroup: {
+    marginBottom: 20,
   },
+
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: MODERN_COLORS.textDark,
+    marginBottom: 8,
+  },
+
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: COLORS.card,
-    padding: 14,
-    borderRadius: 10,
+    backgroundColor: MODERN_COLORS.surfaceGray,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: COLORS.cardBorder,
-    marginBottom: 12,
+    borderColor: MODERN_COLORS.border,
+    paddingHorizontal: 16,
+    height: 52,
+  },
+
+  inputError: {
+    borderColor: MODERN_COLORS.danger,
+    backgroundColor: "#fef2f2",
+  },
+
+  inputIcon: {
+    marginRight: 12,
+  },
+
+  textInput: {
+    flex: 1,
+    fontSize: 16,
+    color: MODERN_COLORS.textDark,
+    fontWeight: "500",
+  },
+
+  placeholderText: {
+    color: MODERN_COLORS.textLight,
+  },
+
+  fullWidthInput: {
+    width: "100%",
+  },
+
+  errorText: {
+    fontSize: 12,
+    color: MODERN_COLORS.danger,
+    marginTop: 4,
+    marginLeft: 4,
+  },
+
+  footContainer: {
+    flexDirection: "row",
+    gap: 16,
+  },
+
+  footOption: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: MODERN_COLORS.surfaceGray,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: MODERN_COLORS.border,
+    padding: 16,
     gap: 12,
   },
-  inputError: {
-    borderColor: COLORS.danger,
-    borderWidth: 1,
+
+  footOptionActive: {
+    borderColor: MODERN_COLORS.primary,
+    backgroundColor: `${MODERN_COLORS.primary}10`,
   },
-  input: {
-    flex: 1,
-    color: COLORS.text,
-    fontSize: 16,
+
+  radio: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 2,
+    borderColor: MODERN_COLORS.border,
+    justifyContent: "center",
+    alignItems: "center",
   },
-  inputPlaceholder: {
-    flex: 1,
-    color: COLORS.textSecondary,
-    fontSize: 16,
+
+  radioActive: {
+    borderColor: MODERN_COLORS.primary,
   },
-  fullWidthInput: {
-    width: "100%", // Asegura que el texto ocupe todo el ancho disponible
+
+  radioDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: MODERN_COLORS.primary,
   },
+
+  footText: {
+    fontSize: 14,
+    color: MODERN_COLORS.textGray,
+    fontWeight: "500",
+  },
+
+  footTextActive: {
+    color: MODERN_COLORS.primary,
+    fontWeight: "600",
+  },
+
+  saveSection: {
+    backgroundColor: MODERN_COLORS.surface,
+    padding: 20,
+  },
+
   saveButton: {
-    borderRadius: 10,
-    paddingVertical: 14,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 8,
-    marginTop: 24,
-  },
-  saveButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  // Modal de posiciones
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.7)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  modalContainer: {
-    width: "80%",
-    maxHeight: "70%",
-    borderRadius: 16,
+    borderRadius: 12,
     overflow: "hidden",
   },
-  modalContent: {
-    backgroundColor: COLORS.card,
-    borderRadius: 16,
-    padding: 16,
+
+  buttonGradient: {
+    paddingVertical: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
   },
+
+  saveButtonText: {
+    color: MODERN_COLORS.textWhite,
+    fontSize: 16,
+    fontWeight: "600",
+  },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
+  },
+
+  modalContainer: {
+    backgroundColor: MODERN_COLORS.surface,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: "70%",
+  },
+
   modalHeader: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 16,
-    paddingBottom: 16,
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
+    borderBottomColor: MODERN_COLORS.border,
   },
+
   modalTitle: {
-    color: COLORS.text,
     fontSize: 18,
-    fontWeight: "bold",
+    fontWeight: "700",
+    color: MODERN_COLORS.textDark,
   },
+
+  modalCloseButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: MODERN_COLORS.surfaceGray,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
   positionList: {
-    maxHeight: 300,
+    maxHeight: 400,
   },
+
   positionItem: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 12,
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
+    borderBottomColor: MODERN_COLORS.border,
   },
+
   positionText: {
-    color: COLORS.text,
     fontSize: 16,
+    color: MODERN_COLORS.textDark,
+    fontWeight: "500",
+  },
+
+  positionTextActive: {
+    color: MODERN_COLORS.primary,
+    fontWeight: "600",
   },
 });

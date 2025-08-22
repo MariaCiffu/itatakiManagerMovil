@@ -116,7 +116,7 @@ export default function PlayerCard({
         {/* Estado y estadísticas */}
         <View style={styles.playerStats}>
           {/* Multas */}
-          {player.multas && player.multas.length > 0 ? (
+          {player.multas && player.multas.length > 0 && (
             <View style={styles.finesContainer}>
               {pendingCount > 0 ? (
                 <>
@@ -156,19 +156,6 @@ export default function PlayerCard({
                   </Text>
                 </View>
               )}
-            </View>
-          ) : (
-            <View style={styles.statusOk}>
-              <Ionicons
-                name="checkmark-circle"
-                size={16}
-                color={MODERN_COLORS.success}
-              />
-              <Text
-                style={[styles.statusText, { color: MODERN_COLORS.success }]}
-              >
-                Sin multas
-              </Text>
             </View>
           )}
 
