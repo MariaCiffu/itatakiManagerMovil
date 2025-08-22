@@ -17,6 +17,7 @@ import {
   UserFriendsIcon,
   FootIcon,
 } from "../../../components/Icons";
+import { Ionicons } from "@expo/vector-icons";
 import { MODERN_COLORS } from "../../../constants/modernColors";
 import WhatsAppButton from "../../../components/WhatsAppButton";
 
@@ -95,7 +96,7 @@ export default function DatosPersonales() {
         {/* Fecha de nacimiento */}
         <View style={styles.dataRow}>
           <View style={[styles.iconContainer, { backgroundColor: "#FF5252" }]}>
-            <CalendarIcon size={24} color="#fff" />
+            <Ionicons name="calendar-outline" size={24} color="#fff" />
           </View>
           <View style={styles.dataInfo}>
             <Text style={styles.dataLabel}>Fecha de nacimiento</Text>
@@ -121,7 +122,7 @@ export default function DatosPersonales() {
         {/* Teléfono con botón de llamada */}
         <View style={styles.dataRow}>
           <View style={[styles.iconContainer, { backgroundColor: "#2196F3" }]}>
-            <PhoneIcon size={24} color="#fff" />
+            <Ionicons name="call-outline" size={24} color="#fff" />
           </View>
           <View style={styles.dataInfo}>
             <Text style={styles.dataLabel}>Móvil</Text>
@@ -138,7 +139,7 @@ export default function DatosPersonales() {
                 onPress={() => handleCall(player.phone)}
                 activeOpacity={0.8}
               >
-                <PhoneIcon size={16} color="#fff" />
+                <Ionicons name="call-outline" size={16} color="#fff" />
               </TouchableOpacity>
             )}
 
@@ -155,7 +156,7 @@ export default function DatosPersonales() {
         {/* Correo con botón de email */}
         <View style={styles.dataRow}>
           <View style={[styles.iconContainer, { backgroundColor: "#4CAF50" }]}>
-            <EnvelopeIcon size={24} color="#fff" />
+            <Ionicons name="mail-outline" size={24} color="#fff" />
           </View>
           <View style={styles.dataInfo}>
             <Text style={styles.dataLabel}>Correo</Text>
@@ -182,7 +183,7 @@ export default function DatosPersonales() {
         {/* Contacto de emergencia */}
         <View style={styles.dataRow}>
           <View style={[styles.iconContainer, { backgroundColor: "#9C27B0" }]}>
-            <UserFriendsIcon size={24} color="#fff" />
+            <Ionicons name="person-outline" size={24} color="#fff" />
           </View>
           <View style={styles.dataInfo}>
             <Text style={styles.dataLabel}>Nombre contacto</Text>
@@ -195,7 +196,7 @@ export default function DatosPersonales() {
         {/* Teléfono de contacto */}
         <View style={styles.dataRow}>
           <View style={[styles.iconContainer, { backgroundColor: "#673AB7" }]}>
-            <PhoneIcon size={24} color="#fff" />
+            <Ionicons name="call-outline" size={24} color="#fff" />
           </View>
           <View style={styles.dataInfo}>
             <Text style={styles.dataLabel}>Móvil contacto</Text>
@@ -212,7 +213,7 @@ export default function DatosPersonales() {
                 onPress={() => handleCall(player.emergencyPhone)}
                 activeOpacity={0.8}
               >
-                <PhoneIcon size={16} color="#fff" />
+                <Ionicons name="call-outline" size={16} color="#fff" />
               </TouchableOpacity>
             )}
 
