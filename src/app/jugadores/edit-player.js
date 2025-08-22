@@ -1,5 +1,4 @@
-// app/jugadores/edit-player.js - CON CONTEXT
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -20,12 +19,6 @@ import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import {
   ArrowLeftIcon,
-  UserFriendsIcon,
-  ShirtIcon,
-  RunningIcon,
-  CalendarIcon,
-  PhoneIcon,
-  EnvelopeIcon,
   CameraIcon,
   CheckIcon,
   TimesIcon,
