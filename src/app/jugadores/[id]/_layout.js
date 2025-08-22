@@ -1,4 +1,4 @@
-// app/jugadores/[id]/layout.js
+// app/jugadores/[id]/_layout.js
 import { useState, useCallback } from "react";
 import {
   View,
@@ -18,121 +18,188 @@ import {
   PersonIcon,
   EditIcon,
 } from "../../../components/Icons";
-import { COLORS } from "../../../constants/colors";
-import { getJugadorById } from "../../../services/jugadoresService";
-import BackButton from "../../../components/BackButton";
+import { MODERN_COLORS } from "../../../constants/modernColors";
+import { getJugadorById } from "../../../services/playersService";
+import { Ionicons } from "@expo/vector-icons";
 
 export default function PlayerLayout() {
   const { id } = useLocalSearchParams();
   const [player, setPlayer] = useState({});
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  // Cargar los datos del jugador cuando la pantalla obtiene el foco
+  // 🔥 CARGAR DATOS DEL JUGADOR DESDE FIREBASE
   useFocusEffect(
     useCallback(() => {
       const loadPlayer = async () => {
+        if (!id) {
+          console.log("❌ No se proporcionó ID del jugador");
+          return;
+        }
+
         try {
-          // Importante: Obtener datos frescos cada vez
+          setLoading(true);
+          console.log("📄 Cargando jugador desde Firebase:", id);
+
           const data = await getJugadorById(id);
 
           if (data) {
-            // Usar una función de actualización para garantizar un nuevo objeto
+            console.log("✅ Jugador cargado:", data.name);
             setPlayer(data);
-            console.log("Datos del jugador actualizados:", data);
           } else {
-            console.log("No se encontró el jugador con ID:", id);
+            console.log("❌ No se encontró el jugador con ID:", id);
+            setPlayer({});
           }
         } catch (error) {
-          console.error("Error al cargar jugador:", error);
+          console.error("❌ Error al cargar jugador:", error);
+          setPlayer({});
+        } finally {
+          setLoading(false);
         }
       };
 
-      if (id) {
-        loadPlayer();
-      }
-    }, [id]) // Solo depende del ID
+      loadPlayer();
+    }, [id])
   );
 
-  // Función optimizada para editar jugador
   const handleEdit = useCallback(() => {
-    // Navegar a la pantalla de edición con los datos del jugador
+    if (!player.id) {
+      console.log("❌ No se puede editar: falta ID del jugador");
+      return;
+    }
+
+    console.log("📝 Navegando a editar jugador:", player.id);
     router.push({
       pathname: "/jugadores/edit-player",
-      params: { playerData: JSON.stringify(player) },
+      params: {
+        playerData: JSON.stringify({
+          ...player,
+          id: player.id,
+        }),
+      },
     });
   }, [player, router]);
 
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <StatusBar
+          barStyle="dark-content"
+          backgroundColor={MODERN_COLORS.background}
+        />
+        <Text style={styles.loadingText}>Cargando jugador...</Text>
+      </View>
+    );
+  }
+
+  if (!player.id) {
+    return (
+      <View style={[styles.container, styles.errorContainer]}>
+        <StatusBar
+          barStyle="dark-content"
+          backgroundColor={MODERN_COLORS.background}
+        />
+        <Text style={styles.errorText}>Jugador no encontrado</Text>
+      </View>
+    );
+  }
+
   return (
     <PlayerContext.Provider value={player}>
-      <StatusBar barStyle="light-content" backgroundColor={COLORS.background} />
-      <View style={{ flex: 1, backgroundColor: COLORS.background }}>
+      <View style={{ flex: 1, backgroundColor: MODERN_COLORS.background }}>
         {/* Header con diseño moderno */}
         <View style={styles.headerContainer}>
-          {/* Fondo con gradiente sutil */}
           <LinearGradient
-            colors={["#1a1a1a", COLORS.background]}
+            colors={[MODERN_COLORS.surface, MODERN_COLORS.surfaceGray]}
             style={styles.headerGradient}
           />
 
-          {/* Elementos decorativos */}
           <View
             style={[
               styles.decorativeCircle1,
-              { backgroundColor: `${COLORS.primary}20` },
+              { backgroundColor: `${MODERN_COLORS.primary}10` },
             ]}
           />
           <View
             style={[
               styles.decorativeCircle2,
-              { backgroundColor: `${COLORS.info}20` },
+              { backgroundColor: `${MODERN_COLORS.secondary}10` },
             ]}
           />
 
-          {/* Botón de retroceso integrado */}
-          <BackButton style={styles.backButton} />
-
           {/* Contenido del header */}
           <View style={styles.headerContent}>
-            {/* Contenedor de la imagen con efecto de brillo */}
+            {/* Botón de retroceso dentro de la fila */}
+            <TouchableOpacity
+              style={styles.backButtonInline}
+              onPress={() => router.back()}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name="chevron-back"
+                size={22}
+                color={MODERN_COLORS.primary}
+              />
+            </TouchableOpacity>
+
+            {/* Avatar */}
             <View style={styles.avatarContainer}>
               <View
-                style={[styles.avatarGlow, { backgroundColor: COLORS.primary }]}
+                style={[
+                  styles.avatarGlow,
+                  { backgroundColor: MODERN_COLORS.primary },
+                ]}
               />
               <View style={styles.avatarWrapper}>
-                <Image source={{ uri: player.image }} style={styles.avatar} />
+                {player.image ? (
+                  <Image source={{ uri: player.image }} style={styles.avatar} />
+                ) : (
+                  <View style={styles.avatarPlaceholder}>
+                    <PersonIcon size={40} color={MODERN_COLORS.primary} />
+                  </View>
+                )}
               </View>
-              {/* Número del jugador */}
               <View
                 style={[
                   styles.playerNumber,
-                  { backgroundColor: COLORS.primary },
+                  { backgroundColor: MODERN_COLORS.primary },
                 ]}
               >
-                <Text style={styles.playerNumberText}>{player.number}</Text>
+                <Text style={styles.playerNumberText}>
+                  {player.number || "?"}
+                </Text>
               </View>
             </View>
 
             {/* Información del jugador */}
             <View style={styles.playerInfo}>
-              <Text style={styles.playerName}>{player.name}</Text>
-              <Text style={styles.playerPosition}>{player.position}</Text>
+              <Text style={styles.playerName}>
+                {player.name || "Nombre no disponible"}
+              </Text>
+              <Text style={styles.playerPosition}>
+                {player.position || "Posición no disponible"}
+              </Text>
             </View>
 
             {/* Botón de editar */}
             <TouchableOpacity
-              style={[styles.editButton, { backgroundColor: COLORS.primary }]}
+              style={[
+                styles.editButton,
+                { backgroundColor: MODERN_COLORS.primary },
+              ]}
               onPress={handleEdit}
+              activeOpacity={0.8}
             >
-              <EditIcon size={16} color="#fff" />
+              <EditIcon size={16} color={MODERN_COLORS.textWhite} />
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Tabs sin cabecera */}
+        {/* Tabs */}
         <Tabs
           screenOptions={{
-            tabBarActiveTintColor: COLORS.primary,
-            tabBarInactiveTintColor: "#666",
+            tabBarActiveTintColor: MODERN_COLORS.primary,
+            tabBarInactiveTintColor: MODERN_COLORS.textGray,
             tabBarStyle: styles.tabBar,
             headerShown: false,
           }}
@@ -166,13 +233,38 @@ export default function PlayerLayout() {
 }
 
 const styles = StyleSheet.create({
-  // Los estilos permanecen igual
+  container: {
+    flex: 1,
+    backgroundColor: MODERN_COLORS.background,
+  },
+
+  loadingContainer: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    color: MODERN_COLORS.textDark,
+    fontSize: 16,
+    fontWeight: "500",
+  },
+
+  errorContainer: {
+    justifyContent: "center",
+    alignItems: "center",
+    paddingTop: 100,
+  },
+  errorText: {
+    color: MODERN_COLORS.textGray,
+    fontSize: 18,
+    textAlign: "center",
+  },
+
   headerContainer: {
     position: "relative",
-    paddingTop: 50,
-    paddingBottom: 24,
+    paddingBottom: 20,
     overflow: "hidden",
   },
+
   headerGradient: {
     position: "absolute",
     left: 0,
@@ -187,7 +279,7 @@ const styles = StyleSheet.create({
     borderRadius: 75,
     top: -50,
     right: -30,
-    opacity: 0.3,
+    opacity: 0.6,
   },
   decorativeCircle2: {
     position: "absolute",
@@ -196,7 +288,7 @@ const styles = StyleSheet.create({
     borderRadius: 50,
     bottom: -20,
     left: -30,
-    opacity: 0.3,
+    opacity: 0.6,
   },
   headerContent: {
     flexDirection: "row",
@@ -205,6 +297,24 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     marginTop: 20,
   },
+
+  backButtonInline: {
+    marginRight: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: MODERN_COLORS.surface,
+    justifyContent: "center",
+    alignItems: "center",
+
+    // sombra ligera
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+
   avatarContainer: {
     position: "relative",
     marginRight: 16,
@@ -214,20 +324,28 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    opacity: 0.3,
+    opacity: 0.2,
     transform: [{ scale: 1.1 }],
   },
   avatarWrapper: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    borderWidth: 2,
-    borderColor: "rgba(255, 255, 255, 0.3)",
+    borderWidth: 3,
+    borderColor: MODERN_COLORS.primary,
     overflow: "hidden",
+    backgroundColor: MODERN_COLORS.surface,
   },
   avatar: {
     width: "100%",
     height: "100%",
+  },
+  avatarPlaceholder: {
+    width: "100%",
+    height: "100%",
+    backgroundColor: MODERN_COLORS.surfaceGray,
+    justifyContent: "center",
+    alignItems: "center",
   },
   playerNumber: {
     position: "absolute",
@@ -238,29 +356,28 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 2,
-    borderColor: COLORS.background,
+    borderWidth: 3,
+    borderColor: MODERN_COLORS.surface,
   },
   playerNumberText: {
-    color: "#fff",
+    color: MODERN_COLORS.textWhite,
     fontSize: 12,
     fontWeight: "bold",
   },
-  // Información del jugador
   playerInfo: {
     flex: 1,
   },
   playerName: {
-    color: "#fff",
+    color: MODERN_COLORS.textDark,
     fontSize: 22,
     fontWeight: "bold",
     marginBottom: 4,
   },
   playerPosition: {
-    color: "#aaa",
+    color: MODERN_COLORS.textGray,
     fontSize: 14,
+    fontWeight: "500",
   },
-  // Botón de editar
   editButton: {
     width: 36,
     height: 36,
@@ -268,27 +385,20 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginLeft: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 4,
   },
-  // Barra de pestañas
-  topBar: {
-    height: 56,
-    backgroundColor: COLORS.background,
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(255, 255, 255, 0.1)",
-  },
-  backButton: {
-    position: "absolute",
-    top: 16,
-    left: 16,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(0, 0, 0, 0.3)", // Fondo sutil para integrarse mejor
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 10,
+  tabBar: {
+    backgroundColor: MODERN_COLORS.surface,
+    borderTopColor: MODERN_COLORS.border,
+    borderTopWidth: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 8,
   },
 });
