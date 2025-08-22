@@ -3,24 +3,27 @@ import { Stack, useRouter, useSegments } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useEffect, useState } from "react";
-import { AuthProvider, useAuth } from "../context/authContext";
+// 🔥 CORREGIDO: Usar el hook en lugar del contexto
+import { useAuth } from "../hooks/useFirebase";
 import { COLORS } from "../constants/colors";
 
 // 🔥 COMPONENTE QUE MANEJA LA NAVEGACIÓN SEGÚN AUTENTICACIÓN
 function AuthNavigator() {
-  const { state } = useAuth();
+  // 🔥 CORREGIDO: Usar el hook directamente
+  const { isAuthenticated, loading, user } = useAuth();
   const router = useRouter();
   const segments = useSegments();
 
   useEffect(() => {
     console.log("🔵 AuthNavigator - Estado:", {
-      isLoading: state.isLoading,
-      isAuthenticated: state.isAuthenticated,
+      loading,
+      isAuthenticated,
+      hasUser: !!user,
       currentSegments: segments,
     });
 
     // No hacer nada mientras está cargando
-    if (state.isLoading) return;
+    if (loading) return;
 
     // 🔥 FILTRAR RUTAS DEL SISTEMA
     const filteredSegments = segments.filter(
@@ -32,7 +35,7 @@ function AuthNavigator() {
 
     const inAuthGroup = filteredSegments[0] === "auth";
 
-    if (!state.isAuthenticated) {
+    if (!isAuthenticated) {
       // Usuario NO autenticado
       if (!inAuthGroup && filteredSegments.length > 0) {
         console.log("🔵 Usuario no autenticado, redirigiendo a login...");
@@ -49,10 +52,10 @@ function AuthNavigator() {
         router.replace("/");
       }
     }
-  }, [state.isAuthenticated, state.isLoading, segments]);
+  }, [isAuthenticated, loading, segments, router, user]);
 
   // 🔥 PANTALLA DE CARGA
-  if (state.isLoading) {
+  if (loading) {
     return (
       <View
         style={{
@@ -68,9 +71,10 @@ function AuthNavigator() {
             marginTop: 16,
             fontSize: 16,
             color: "#64748b",
+            fontWeight: "500",
           }}
         >
-          Cargando...
+          Verificando autenticación...
         </Text>
       </View>
     );
@@ -103,26 +107,46 @@ export default function Layout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <AuthProvider>
-        {ready ? (
-          <View
+      {/* 🔥 CORREGIDO: Sin AuthProvider, solo el hook */}
+      {ready ? (
+        <View
+          style={{
+            flex: 1,
+            paddingTop: insets.top,
+            paddingBottom: insets.bottom,
+            backgroundColor: "#121212",
+          }}
+        >
+          <StatusBar
+            barStyle="light-content"
+            backgroundColor="#121212"
+            translucent={false}
+          />
+          {/* 🔥 AQUÍ ESTÁ LA MAGIA - AuthNavigator maneja todo */}
+          <AuthNavigator />
+        </View>
+      ) : (
+        <View
+          style={{
+            flex: 1,
+            justifyContent: "center",
+            alignItems: "center",
+            backgroundColor: "#f8fafc",
+          }}
+        >
+          <ActivityIndicator size="large" color={COLORS.primary} />
+          <Text
             style={{
-              flex: 1,
-              paddingTop: insets.top,
-              paddingBottom: insets.bottom,
-              backgroundColor: "#121212",
+              marginTop: 16,
+              fontSize: 16,
+              color: "#64748b",
+              fontWeight: "500",
             }}
           >
-            <StatusBar
-              barStyle="light-content"
-              backgroundColor="#121212"
-              translucent={false}
-            />
-            {/* 🔥 AQUÍ ESTÁ LA MAGIA - AuthNavigator maneja todo */}
-            <AuthNavigator />
-          </View>
-        ) : null}
-      </AuthProvider>
+            Iniciando aplicación...
+          </Text>
+        </View>
+      )}
     </GestureHandlerRootView>
   );
 }

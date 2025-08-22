@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   StyleSheet,
   View,
@@ -14,7 +14,9 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { COLORS } from "../../constants/colors";
-import { useAuth } from "../../context/authContext";
+import { loginUser } from "../../services/authService";
+// 🔥 CORREGIDO: Usar el hook correcto
+import { useAuth } from "../../hooks/useFirebase";
 
 // 🔥 VALIDACIONES CENTRALIZADAS
 const validators = {
@@ -79,7 +81,7 @@ const InputField = ({
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { login, state } = useAuth();
+  const { user, isAuthenticated, loading: authLoading } = useAuth();
 
   // 🔥 ESTADO DEL FORMULARIO
   const [formData, setFormData] = useState({
@@ -95,6 +97,17 @@ export default function LoginScreen() {
 
   // 🔥 ESTADO PARA MOSTRAR/OCULTAR CONTRASEÑA
   const [showPassword, setShowPassword] = useState(false);
+
+  // 🔥 ESTADO DE CARGA LOCAL
+  const [isLoading, setIsLoading] = useState(false);
+
+  // 🔥 REDIRECCIONAR SI YA ESTÁ AUTENTICADO
+  useEffect(() => {
+    if (!authLoading && isAuthenticated && user) {
+      console.log("✅ Usuario ya autenticado, redirigiendo...", user.name);
+      router.replace("/");
+    }
+  }, [authLoading, isAuthenticated, user, router]);
 
   // 🔥 VALIDAR CAMPO INDIVIDUAL
   const validateField = (field, value) => {
@@ -146,21 +159,51 @@ export default function LoginScreen() {
     return Object.keys(newErrors).length === 0;
   };
 
-  // 🔥 MANEJAR LOGIN
+  // 🔥 MANEJAR LOGIN CON FIREBASE
   const handleLogin = async () => {
     if (!validateForm()) {
+      console.log("❌ Formulario inválido");
       return;
     }
 
+    setIsLoading(true);
+    console.log("🔄 Iniciando proceso de login...");
+
     try {
-      await login(formData.email.toLowerCase().trim(), formData.password);
-      // 🔥 YA NO NECESITAS NAVEGACIÓN MANUAL - EL _layout SE ENCARGA
-      console.log("🟢 Login exitoso, el layout redirigirá automáticamente");
+      const result = await loginUser(
+        formData.email.toLowerCase().trim(),
+        formData.password
+      );
+
+      if (result.success) {
+        console.log("✅ Login exitoso");
+        // No necesitamos hacer nada más, el hook useAuth detectará el cambio
+        // y redirigirá automáticamente
+      } else {
+        console.log("❌ Login fallido:", result.message);
+        Alert.alert("Error", result.message);
+      }
     } catch (error) {
-      console.log("🔴 Error en handleLogin:", error);
-      Alert.alert("Error", error.message || "Credenciales incorrectas");
+      console.log("❌ Error en handleLogin:", error);
+      Alert.alert("Error", "Credenciales incorrectas");
+    } finally {
+      setIsLoading(false);
     }
   };
+
+  // Mostrar loading si auth está cargando
+  if (authLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.loadingText}>Verificando autenticación...</Text>
+      </View>
+    );
+  }
+
+  // No mostrar si ya está autenticado (evitar parpadeo)
+  if (isAuthenticated) {
+    return null;
+  }
 
   return (
     <View style={styles.container}>
@@ -230,19 +273,16 @@ export default function LoginScreen() {
               />
 
               <TouchableOpacity
-                style={[
-                  styles.loginButton,
-                  state.isLoading && styles.buttonDisabled,
-                ]}
+                style={[styles.loginButton, isLoading && styles.buttonDisabled]}
                 onPress={handleLogin}
-                disabled={state.isLoading}
+                disabled={isLoading}
               >
                 <LinearGradient
                   colors={[COLORS.primary, COLORS.primaryDark]}
                   style={styles.buttonGradient}
                 >
                   <Text style={styles.loginButtonText}>
-                    {state.isLoading ? "Iniciando sesión..." : "Iniciar Sesión"}
+                    {isLoading ? "Iniciando sesión..." : "Iniciar Sesión"}
                   </Text>
                 </LinearGradient>
               </TouchableOpacity>
@@ -322,6 +362,17 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     padding: 24,
     zIndex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f8fafc",
+  },
+  loadingText: {
+    fontSize: 16,
+    color: "#6b7280",
+    fontWeight: "500",
   },
   header: {
     alignItems: "center",

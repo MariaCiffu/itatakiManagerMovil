@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -15,8 +15,13 @@ import { Picker } from "@react-native-picker/picker";
 import { Ionicons } from "@expo/vector-icons";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import * as ImagePicker from "expo-image-picker";
-import { useAuth } from "../../context/authContext";
+// 🔥 CORREGIDO: Importar servicios de Firebase
+import { registerUser } from "../../services/authService";
+import { doc, setDoc, getDoc } from "firebase/firestore";
+import { db } from "../../config/firebase";
 import { COLORS } from "../../constants/colors";
+// 🔥 CORREGIDO: Usar el hook correcto
+import { useAuth } from "../../hooks/useFirebase";
 
 const categories = [
   "Prebenjamín",
@@ -28,6 +33,51 @@ const categories = [
   "Senior",
   "Veteranos",
 ];
+
+// 🔥 FUNCIÓN PARA CREAR/ACTUALIZAR EQUIPO
+const createOrUpdateTeam = async (teamData) => {
+  try {
+    const teamId = "acd-fatima"; // ID fijo de tu equipo
+    const teamRef = doc(db, "teams", teamId);
+
+    // Verificar si el equipo ya existe
+    const teamSnap = await getDoc(teamRef);
+
+    if (!teamSnap.exists()) {
+      // Crear nuevo equipo
+      await setDoc(teamRef, {
+        id: teamId,
+        name: teamData.name,
+        category: teamData.category,
+        homeField: teamData.homeField,
+        createdBy: teamData.createdBy,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        active: true,
+      });
+      console.log("Equipo creado exitosamente");
+    } else {
+      // Actualizar datos del equipo si es necesario
+      await setDoc(
+        teamRef,
+        {
+          ...teamSnap.data(),
+          name: teamData.name,
+          category: teamData.category,
+          homeField: teamData.homeField,
+          updatedAt: new Date(),
+        },
+        { merge: true }
+      );
+      console.log("Datos del equipo actualizados");
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error con el equipo:", error);
+    return { success: false, message: error.message };
+  }
+};
 
 // 🔥 VALIDACIONES CENTRALIZADAS
 const validators = {
@@ -134,7 +184,6 @@ const InputField = ({
 const PhotoSelector = ({ profilePhoto, onSelectPhoto }) => {
   const selectPhoto = async () => {
     try {
-      // Solicitar permisos
       const { status } =
         await ImagePicker.requestMediaLibraryPermissionsAsync();
 
@@ -147,7 +196,6 @@ const PhotoSelector = ({ profilePhoto, onSelectPhoto }) => {
         return;
       }
 
-      // Mostrar opciones
       Alert.alert(
         "Seleccionar foto",
         "Elige cómo quieres agregar tu foto de perfil",
@@ -230,7 +278,8 @@ const PhotoSelector = ({ profilePhoto, onSelectPhoto }) => {
 
 export default function RegisterScreen() {
   const router = useRouter();
-  const { register, state } = useAuth();
+  // 🔥 CORREGIDO: Usar el hook en lugar del contexto
+  const { isAuthenticated, loading: authLoading } = useAuth();
 
   // 🔥 ESTADO DEL FORMULARIO
   const [formData, setFormData] = useState({
@@ -241,7 +290,7 @@ export default function RegisterScreen() {
     teamName: "",
     category: "",
     homeField: "",
-    profilePhoto: null, // 🆕 Nueva foto de perfil
+    profilePhoto: null,
   });
 
   // 🔥 ESTADO DE ERRORES INDIVIDUALES
@@ -257,6 +306,17 @@ export default function RegisterScreen() {
   // 🔥 ESTADO DEL FORMULARIO PASO A PASO
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 2;
+
+  // 🔥 ESTADO DE CARGA
+  const [isLoading, setIsLoading] = useState(false);
+
+  // 🔥 REDIRIGIR SI YA ESTÁ AUTENTICADO
+  useEffect(() => {
+    if (!authLoading && isAuthenticated) {
+      console.log("✅ Usuario ya autenticado, redirigiendo...");
+      router.replace("/");
+    }
+  }, [authLoading, isAuthenticated, router]);
 
   // 🔥 VALIDAR CAMPO INDIVIDUAL
   const validateField = (field, value, allData = formData) => {
@@ -301,12 +361,10 @@ export default function RegisterScreen() {
   const updateFormData = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
 
-    // Limpiar error cuando el usuario empiece a escribir
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: null }));
     }
 
-    // Validación en tiempo real si el campo ya fue tocado
     if (touched[field]) {
       const error = validateField(field, value, {
         ...formData,
@@ -316,7 +374,7 @@ export default function RegisterScreen() {
     }
   };
 
-  // 🆕 ACTUALIZAR FOTO DE PERFIL
+  // 🔥 ACTUALIZAR FOTO DE PERFIL
   const updateProfilePhoto = (uri) => {
     setFormData((prev) => ({ ...prev, profilePhoto: uri }));
   };
@@ -340,7 +398,7 @@ export default function RegisterScreen() {
     setCurrentStep((prev) => Math.max(1, prev - 1));
   };
 
-  // 🔥 REGISTRO FINAL
+  // 🔥 REGISTRO FINAL CON FIREBASE
   const handleRegister = async () => {
     // Marcar todos los campos como tocados
     const allFields = [
@@ -362,30 +420,63 @@ export default function RegisterScreen() {
       return;
     }
 
+    setIsLoading(true);
+
     try {
-      await register({
-        name: formData.name.trim(),
+      // 1. 🔥 CREAR USUARIO EN FIREBASE (COMO COACH)
+      const userResult = await registerUser({
         email: formData.email.toLowerCase().trim(),
         password: formData.password,
+        name: formData.name.trim(),
+        role: "coach", // ← TODOS LOS REGISTROS SON ENTRENADORES (COACH)
+        teamId: "acd-fatima", // ← EQUIPO FIJO
         teamName: formData.teamName.trim(),
-        category: formData.category,
         homeField: formData.homeField.trim(),
-        profilePhoto: formData.profilePhoto, // 🆕 Incluir foto
+        category: formData.category,
+        profilePhoto: formData.profilePhoto,
       });
 
-      Alert.alert(
-        "¡Registro exitoso!",
-        "Tu cuenta ha sido creada correctamente",
-        [{ text: "OK", onPress: () => router.replace("/") }]
-      );
+      if (userResult.success) {
+        // 2. 🔥 CREAR/ACTUALIZAR DATOS DEL EQUIPO
+        await createOrUpdateTeam({
+          name: formData.teamName.trim(),
+          category: formData.category,
+          homeField: formData.homeField.trim(),
+          createdBy: userResult.user.uid,
+        });
+
+        Alert.alert(
+          "¡Registro exitoso!",
+          "Tu cuenta de entrenador ha sido creada correctamente",
+          [{ text: "OK", onPress: () => router.replace("/") }]
+        );
+      } else {
+        Alert.alert("Error", userResult.message);
+      }
     } catch (error) {
       console.error("Error en registro:", error);
       Alert.alert(
         "Error",
         error.message || "No se pudo crear la cuenta. Intenta de nuevo."
       );
+    } finally {
+      setIsLoading(false);
     }
   };
+
+  // 🔥 MOSTRAR LOADING SI AUTH ESTÁ CARGANDO
+  if (authLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.loadingText}>Verificando autenticación...</Text>
+      </View>
+    );
+  }
+
+  // 🔥 NO MOSTRAR SI YA ESTÁ AUTENTICADO
+  if (isAuthenticated) {
+    return null;
+  }
 
   // 🔥 INDICADOR DE PROGRESO COMPACTO
   const ProgressIndicator = () => (
@@ -622,19 +713,17 @@ export default function RegisterScreen() {
                     <TouchableOpacity
                       style={[
                         styles.registerButton,
-                        state.isLoading && styles.buttonDisabled,
+                        isLoading && styles.buttonDisabled,
                       ]}
                       onPress={handleRegister}
-                      disabled={state.isLoading}
+                      disabled={isLoading}
                     >
                       <LinearGradient
                         colors={[COLORS.primary, COLORS.primaryDark]}
                         style={styles.buttonGradient}
                       >
                         <Text style={styles.buttonText}>
-                          {state.isLoading
-                            ? "Creando cuenta..."
-                            : "Crear Cuenta"}
+                          {isLoading ? "Creando cuenta..." : "Crear Cuenta"}
                         </Text>
                       </LinearGradient>
                     </TouchableOpacity>
@@ -716,6 +805,19 @@ const styles = StyleSheet.create({
     padding: 24,
     paddingTop: 40,
     zIndex: 1,
+  },
+
+  // 🔥 LOADING CONTAINER
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f8fafc",
+  },
+  loadingText: {
+    fontSize: 16,
+    color: "#6b7280",
+    fontWeight: "500",
   },
 
   // 🔥 HEADER LIMPIO SIN BOTÓN

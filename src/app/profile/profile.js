@@ -11,11 +11,12 @@ import {
   Image,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { Picker } from "@react-native-picker/picker";
 import * as ImagePicker from "expo-image-picker";
-import { useAuth } from "../../context/authContext";
+import { useAuth } from "../../hooks/useFirebase";
+import { updateUserProfile } from "../../services/authService";
 import { MODERN_COLORS } from "../../constants/modernColors";
 
 const categories = [
@@ -31,34 +32,58 @@ const categories = [
 
 export default function Profile() {
   const router = useRouter();
-  const { state, updateProfile } = useAuth();
-  const { user } = state;
+  const { user } = useAuth();
 
   const [formData, setFormData] = useState({
-    name: user?.name || "",
-    email: user?.email || "",
-    teamName: user?.teamName || "",
-    category: user?.category || "",
-    homeField: user?.homeField || "",
-    profilePhoto: user?.profilePhoto || null,
-    // 🆕 Campos de contraseña
+    name: "",
+    email: "",
+    teamName: "",
+    category: "",
+    homeField: "",
+    profilePhoto: null,
     currentPassword: "",
     newPassword: "",
     confirmNewPassword: "",
   });
 
+  const [initialLoad, setInitialLoad] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  useEffect(() => {
+    if (user) {
+      const newFormData = {
+        name: user.name || "",
+        email: user.email || "",
+        teamName: user.teamName || "",
+        category: user.category || "",
+        homeField: user.homeField || "",
+        profilePhoto: user.profilePhoto || null,
+        currentPassword: "",
+        newPassword: "",
+        confirmNewPassword: "",
+      };
+
+      setFormData(newFormData);
+
+      if (initialLoad) {
+        setInitialLoad(false);
+        setHasChanges(false);
+      }
+    }
+  }, [user, initialLoad]);
+
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({
       ...prev,
       [field]: value,
     }));
-    setHasChanges(true);
+    if (!initialLoad) {
+      setHasChanges(true);
+    }
   };
 
   // FUNCIONES PARA MANEJAR FOTO
@@ -141,9 +166,7 @@ export default function Profile() {
     }
   };
 
-  // 🆕 VALIDACIÓN DE CONTRASEÑA
   const validatePassword = () => {
-    // Si no quiere cambiar contraseña, no validar
     if (
       !formData.newPassword &&
       !formData.currentPassword &&
@@ -152,7 +175,6 @@ export default function Profile() {
       return true;
     }
 
-    // Si quiere cambiar contraseña, validar todo
     if (!formData.currentPassword) {
       Alert.alert("Error", "Ingresa tu contraseña actual");
       return false;
@@ -195,40 +217,41 @@ export default function Profile() {
 
     setIsLoading(true);
     try {
-      // Preparar datos para actualizar (sin incluir contraseñas si no se cambian)
       const updateData = {
         name: formData.name,
-        email: formData.email,
         teamName: formData.teamName,
         category: formData.category,
         homeField: formData.homeField,
         profilePhoto: formData.profilePhoto,
       };
 
-      // Si hay cambio de contraseña, incluirlo
-      if (formData.newPassword) {
-        updateData.password = formData.newPassword;
+      const result = await updateUserProfile(user.uid, updateData);
+
+      if (result.success) {
+        setHasChanges(false);
+
+        // Limpiar campos de contraseña
+        setFormData((prev) => ({
+          ...prev,
+          currentPassword: "",
+          newPassword: "",
+          confirmNewPassword: "",
+        }));
+
+        Alert.alert("¡Éxito!", "Perfil actualizado correctamente", [
+          {
+            text: "OK",
+            onPress: () => {
+              // 🎯 SOLUCIÓN: usar replace en lugar de back
+              router.replace("/");
+            },
+          },
+        ]);
+      } else {
+        throw new Error(result.message || "Error actualizando perfil");
       }
-
-      await updateProfile(updateData);
-      setHasChanges(false);
-
-      // Limpiar campos de contraseña
-      setFormData((prev) => ({
-        ...prev,
-        currentPassword: "",
-        newPassword: "",
-        confirmNewPassword: "",
-      }));
-
-      Alert.alert("¡Éxito!", "Perfil actualizado correctamente", [
-        {
-          text: "OK",
-          onPress: () => router.back(),
-        },
-      ]);
     } catch (error) {
-      console.error("Error updating profile:", error);
+      console.error("❌ Error updating profile:", error);
       Alert.alert(
         "Error",
         "No se pudo actualizar el perfil. Inténtalo de nuevo.",
@@ -257,6 +280,19 @@ export default function Profile() {
       router.back();
     }
   };
+
+  if (!user) {
+    return (
+      <View
+        style={[
+          styles.container,
+          { justifyContent: "center", alignItems: "center" },
+        ]}
+      >
+        <Text style={styles.sectionTitle}>No hay datos de usuario</Text>
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
@@ -300,7 +336,7 @@ export default function Profile() {
                 />
               ) : (
                 <Text style={styles.avatarText}>
-                  {formData.name.charAt(0).toUpperCase()}
+                  {formData.name?.charAt(0)?.toUpperCase() || "U"}
                 </Text>
               )}
             </TouchableOpacity>
@@ -353,15 +389,16 @@ export default function Profile() {
                 style={styles.inputIcon}
               />
               <TextInput
-                style={styles.textInput}
+                style={[styles.textInput, { opacity: 0.6 }]}
                 value={formData.email}
-                onChangeText={(value) => handleInputChange("email", value)}
                 placeholder="tu@email.com"
                 placeholderTextColor={MODERN_COLORS.textLight}
                 keyboardType="email-address"
                 autoCapitalize="none"
+                editable={false}
               />
             </View>
+            <Text style={styles.helperText}>El email no se puede cambiar</Text>
           </View>
         </View>
 
@@ -438,9 +475,13 @@ export default function Profile() {
           </View>
         </View>
 
-        {/*SEGURIDAD - CAMBIO DE CONTRASEÑA */}
+        {/* SEGURIDAD - CAMBIO DE CONTRASEÑA */}
         <View style={styles.formSection}>
           <Text style={styles.sectionTitle}>Seguridad</Text>
+
+          <Text style={styles.sectionSubtitle}>
+            Deja estos campos vacíos si no quieres cambiar tu contraseña
+          </Text>
 
           {/* CONTRASEÑA ACTUAL */}
           <View style={styles.inputGroup}>
@@ -544,6 +585,8 @@ export default function Profile() {
             </View>
           </View>
         </View>
+
+        <View style={styles.bottomSpacer} />
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -555,7 +598,6 @@ const styles = StyleSheet.create({
     backgroundColor: MODERN_COLORS.background,
   },
 
-  // HEADER
   header: {
     backgroundColor: MODERN_COLORS.surface,
     paddingTop: 30,
@@ -600,12 +642,10 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  // CONTENT
   content: {
     flex: 1,
   },
 
-  // AVATAR
   avatarSection: {
     alignItems: "center",
     paddingVertical: 32,
@@ -660,7 +700,6 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
 
-  // FORM
   formSection: {
     backgroundColor: MODERN_COLORS.surface,
     padding: 20,
@@ -708,7 +747,13 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
 
-  // 🆕 ESTILO PARA EL PICKER CON ÍCONO
+  helperText: {
+    fontSize: 12,
+    color: MODERN_COLORS.textGray,
+    marginTop: 4,
+    fontStyle: "italic",
+  },
+
   pickerContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -727,35 +772,16 @@ const styles = StyleSheet.create({
     color: MODERN_COLORS.textDark,
   },
 
-  // 🆕 ESTILO PARA EL ÍCONO DEL OJO
+  sectionSubtitle: {
+    fontSize: 14,
+    color: MODERN_COLORS.textGray,
+    marginBottom: 16,
+    fontStyle: "italic",
+  },
+
   eyeIcon: {
     padding: 8,
     marginLeft: 8,
-  },
-
-  // DANGER ZONE
-  dangerSection: {
-    backgroundColor: MODERN_COLORS.surface,
-    padding: 20,
-    marginBottom: 8,
-  },
-
-  dangerButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(239, 68, 68, 0.1)",
-    borderWidth: 1,
-    borderColor: "rgba(239, 68, 68, 0.2)",
-    borderRadius: 12,
-    paddingVertical: 16,
-    gap: 8,
-  },
-
-  dangerButtonText: {
-    color: MODERN_COLORS.danger,
-    fontSize: 16,
-    fontWeight: "600",
   },
 
   bottomSpacer: {
