@@ -17,7 +17,7 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import * as ImagePicker from "expo-image-picker";
-import ToggleSwitch from "../../components/ToggleSwitch";
+import { Ionicons } from "@expo/vector-icons";
 import {
   ArrowLeftIcon,
   UserFriendsIcon,
@@ -342,7 +342,8 @@ export default function EditPlayer() {
                 formErrors.name && styles.inputError,
               ]}
             >
-              <UserFriendsIcon
+              <Ionicons
+                name="person-outline"
                 size={20}
                 color={
                   formErrors.name
@@ -373,7 +374,8 @@ export default function EditPlayer() {
                 formErrors.number && styles.inputError,
               ]}
             >
-              <ShirtIcon
+              <Ionicons
+                name="shirt-outline"
                 size={20}
                 color={
                   formErrors.number
@@ -407,7 +409,8 @@ export default function EditPlayer() {
               onPress={() => setShowPositionModal(true)}
               activeOpacity={0.7}
             >
-              <RunningIcon
+              <Ionicons
+                name="football-outline"
                 size={20}
                 color={
                   formErrors.position
@@ -439,9 +442,14 @@ export default function EditPlayer() {
               style={styles.inputContainer}
               activeOpacity={0.7}
             >
-              <CalendarIcon
+              <Ionicons
+                name="calendar-outline"
                 size={20}
-                color={MODERN_COLORS.textGray}
+                color={
+                  formErrors.birthdate
+                    ? MODERN_COLORS.danger
+                    : MODERN_COLORS.textGray
+                }
                 style={styles.inputIcon}
               />
               <Text
@@ -509,9 +517,14 @@ export default function EditPlayer() {
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Teléfono</Text>
             <View style={styles.inputContainer}>
-              <PhoneIcon
+              <Ionicons
+                name="call-outline"
                 size={20}
-                color={MODERN_COLORS.textGray}
+                color={
+                  formErrors.phone
+                    ? MODERN_COLORS.danger
+                    : MODERN_COLORS.textGray
+                }
                 style={styles.inputIcon}
               />
               <TextInput
@@ -528,7 +541,8 @@ export default function EditPlayer() {
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Email</Text>
             <View style={styles.inputContainer}>
-              <EnvelopeIcon
+              <Ionicons
+                name="mail-outline"
                 size={20}
                 color={MODERN_COLORS.textGray}
                 style={styles.inputIcon}
@@ -553,7 +567,8 @@ export default function EditPlayer() {
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Nombre de contacto</Text>
             <View style={styles.inputContainer}>
-              <UserFriendsIcon
+              <Ionicons
+                name="person-outline"
                 size={20}
                 color={MODERN_COLORS.textGray}
                 style={styles.inputIcon}
@@ -571,7 +586,8 @@ export default function EditPlayer() {
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Teléfono de contacto</Text>
             <View style={styles.inputContainer}>
-              <PhoneIcon
+              <Ionicons
+                name="call-outline"
                 size={20}
                 color={MODERN_COLORS.textGray}
                 style={styles.inputIcon}
@@ -668,8 +684,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    paddingTop: 50,
-    paddingBottom: 16,
+    paddingTop: 15,
+    paddingBottom: 15,
     backgroundColor: MODERN_COLORS.surface,
     borderBottomWidth: 1,
     borderBottomColor: MODERN_COLORS.border,
