@@ -127,7 +127,7 @@ export default function PlayerLayout() {
           {/* Botón de retroceso dentro de la fila */}
           <TouchableOpacity
             style={styles.backButtonInline}
-            onPress={() => router.back()}
+            onPress={() => router.push("/jugadores")}
             activeOpacity={0.7}
           >
             <Ionicons
