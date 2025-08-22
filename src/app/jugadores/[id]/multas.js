@@ -1,176 +1,352 @@
-"use client"
-
-import { useState, useCallback, useContext, useMemo } from "react"
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal, ActivityIndicator } from "react-native"
-import { LinearGradient } from "expo-linear-gradient"
-import { Plus, Edit, Trash2, X } from "react-native-feather"
-import { COLORS } from "../../../constants/colors"
-import { useRouter } from "expo-router"
-import { useFocusEffect } from "@react-navigation/native"
-import { PlayerContext } from "../../../context/PlayerContext"
-import { updateMultaStatus, deleteMulta } from "../../../services/jugadoresService"
-import MultaCard from "../../../components/jugadores/MultaCard"
-import { CheckIcon, ClockIcon } from "../../../components/Icons"
+import { useState, useCallback, useMemo, useEffect } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Alert,
+  Modal,
+  ActivityIndicator,
+} from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { useRouter, useGlobalSearchParams } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
+import { Ionicons } from "@expo/vector-icons";
+import {
+  getMultasJugador,
+  updateMultaStatus,
+  deleteMultaFromJugador,
+} from "../../../services/playersService";
+import { CheckIcon, ClockIcon, EditIcon } from "../../../components/Icons";
+import { MODERN_COLORS } from "../../../constants/modernColors";
 
 export default function Multas() {
-  const router = useRouter()
-  const [selectedMulta, setSelectedMulta] = useState(null)
-  const [showActionModal, setShowActionModal] = useState(false)
-  const player = useContext(PlayerContext)
-  const [multas, setMultas] = useState([])
-  const [isLoading, setIsLoading] = useState(false)
+  const router = useRouter();
+  const params = useGlobalSearchParams();
+  const playerId = params.id; // 🆕 OBTENER ID DEL GLOBAL PARAMS
 
-  // Las multas ya vienen del contexto del jugador, que se actualiza en _layout.js
+  const [selectedMulta, setSelectedMulta] = useState(null);
+  const [showActionModal, setShowActionModal] = useState(false);
+  const [multas, setMultas] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingMultas, setIsLoadingMultas] = useState(true);
+
+  // 🔥 CARGAR MULTAS DESDE FIREBASE
   useFocusEffect(
     useCallback(() => {
-      if (player && player.multas) {
-        setMultas(player.multas)
-      }
+      const loadMultas = async () => {
+        if (!playerId) {
+          console.log("❌ No hay ID de jugador para cargar multas");
+          setIsLoadingMultas(false);
+          return;
+        }
 
-      return () => {
-        // Limpieza si es necesaria
-      }
-    }, [player]),
-  )
+        try {
+          setIsLoadingMultas(true);
+          console.log("📄 Cargando multas desde Firebase:", playerId);
+
+          const multasData = await getMultasJugador(playerId);
+          console.log("✅ Multas cargadas:", multasData.length);
+
+          setMultas(multasData);
+        } catch (error) {
+          console.error("❌ Error cargando multas:", error);
+          setMultas([]);
+        } finally {
+          setIsLoadingMultas(false);
+        }
+      };
+
+      loadMultas();
+    }, [playerId])
+  );
 
   // Función optimizada para añadir multa
   const handleAddMulta = useCallback(() => {
+    if (!playerId) {
+      Alert.alert("Error", "No se pudo identificar el jugador");
+      return;
+    }
+
     router.push({
       pathname: "/jugadores/add-multa",
-      params: { jugadorId: player.id },
-    })
-  }, [player?.id, router])
+      params: { jugadorId: playerId },
+    });
+  }, [playerId, router]);
 
   // Función optimizada para manejar el press en una multa
   const handleMultaPress = useCallback((multa) => {
-    setSelectedMulta(multa)
-    setShowActionModal(true)
-  }, [])
+    setSelectedMulta(multa);
+    setShowActionModal(true);
+  }, []);
 
   // Función optimizada para editar multa
   const handleEditMulta = useCallback(() => {
-    setShowActionModal(false)
+    if (!selectedMulta || !playerId) {
+      Alert.alert("Error", "No se pudo identificar la multa o el jugador");
+      return;
+    }
+
+    setShowActionModal(false);
     router.push({
       pathname: `/jugadores/edit-multa`,
       params: {
         multaData: JSON.stringify(selectedMulta),
-        jugadorId: player.id,
+        jugadorId: playerId,
       },
-    })
-  }, [selectedMulta, player?.id, router])
+    });
+  }, [selectedMulta, playerId, router]);
 
-  // Función optimizada para cambiar estado de multa
+  // Cambiar estado de la multa
   const handleTogglePagado = useCallback(async () => {
-    setShowActionModal(false)
-    setIsLoading(true)
+    if (!selectedMulta || !selectedMulta.id) {
+      Alert.alert("Error", "No se pudo identificar la multa");
+      return;
+    }
+
+    setShowActionModal(false);
+    setIsLoading(true);
 
     try {
-      // Llamar al servicio para actualizar el estado
-      const result = await updateMultaStatus(player.id, selectedMulta.id, !selectedMulta.paid)
+      console.log("📄 Actualizando estado de multa:", selectedMulta.id);
 
-      setIsLoading(false)
+      const result = await updateMultaStatus(
+        selectedMulta.id,
+        !selectedMulta.paid
+      );
 
       if (result.success) {
-        // Actualizar el estado local solo si la API fue exitosa
-        setMultas(multas.map((m) => (m.id === selectedMulta.id ? { ...m, paid: !m.paid } : m)))
+        console.log("✅ Estado de multa actualizado");
+
+        // Actualizar el estado local
+        setMultas((prevMultas) =>
+          prevMultas.map((m) =>
+            m.id === selectedMulta.id ? { ...m, paid: !m.paid } : m
+          )
+        );
+
+        Alert.alert(
+          "Estado actualizado",
+          `Multa marcada como ${!selectedMulta.paid ? "pagada" : "pendiente"}`
+        );
       } else {
-        Alert.alert("Error", result.message || "No se pudo actualizar el estado de la multa")
+        Alert.alert(
+          "Error",
+          result.message || "No se pudo actualizar el estado de la multa"
+        );
       }
     } catch (error) {
-      setIsLoading(false)
-      console.error("Error al actualizar estado:", error)
-      Alert.alert("Error", "Ocurrió un error al actualizar el estado")
+      console.error("❌ Error al actualizar estado:", error);
+      Alert.alert("Error", "Ocurrió un error al actualizar el estado");
+    } finally {
+      setIsLoading(false);
     }
-  }, [player?.id, selectedMulta, multas])
+  }, [selectedMulta]);
 
-  // Función optimizada para eliminar multa
+  //ELIMINAR MULTA
   const handleDeleteMulta = useCallback(() => {
-    setShowActionModal(false)
+    if (!selectedMulta || !selectedMulta.id) {
+      Alert.alert("Error", "No se pudo identificar la multa");
+      return;
+    }
 
-    Alert.alert("Eliminar multa", "¿Estás seguro de que quieres eliminar esta multa?", [
-      {
-        text: "Cancelar",
-        style: "cancel",
-      },
-      {
-        text: "Eliminar",
-        onPress: async () => {
-          setIsLoading(true)
+    setShowActionModal(false);
 
-          try {
-            const result = await deleteMulta(player.id, selectedMulta.id)
-
-            setIsLoading(false)
-
-            if (result.success) {
-              setMultas(multas.filter((m) => m.id !== selectedMulta.id))
-              Alert.alert("Multa eliminada", "La multa ha sido eliminada correctamente")
-            } else {
-              Alert.alert("Error", result.message || "No se pudo eliminar la multa")
-            }
-          } catch (error) {
-            setIsLoading(false)
-            console.error("Error al eliminar multa:", error)
-            Alert.alert("Error", "Ocurrió un error al eliminar la multa")
-          }
+    Alert.alert(
+      "Eliminar multa",
+      "¿Estás seguro de que quieres eliminar esta multa?",
+      [
+        {
+          text: "Cancelar",
+          style: "cancel",
         },
-        style: "destructive",
-      },
-    ])
-  }, [player?.id, selectedMulta, multas])
+        {
+          text: "Eliminar",
+          onPress: async () => {
+            setIsLoading(true);
+
+            try {
+              console.log("🗑️ Eliminando multa:", selectedMulta.id);
+
+              const result = await deleteMultaFromJugador(selectedMulta.id);
+
+              if (result.success) {
+                console.log("✅ Multa eliminada");
+
+                // Actualizar el estado local
+                setMultas((prevMultas) =>
+                  prevMultas.filter((m) => m.id !== selectedMulta.id)
+                );
+
+                Alert.alert(
+                  "Multa eliminada",
+                  "La multa ha sido eliminada correctamente"
+                );
+              } else {
+                Alert.alert(
+                  "Error",
+                  result.message || "No se pudo eliminar la multa"
+                );
+              }
+            } catch (error) {
+              console.error("❌ Error al eliminar multa:", error);
+              Alert.alert("Error", "Ocurrió un error al eliminar la multa");
+            } finally {
+              setIsLoading(false);
+            }
+          },
+          style: "destructive",
+        },
+      ]
+    );
+  }, [selectedMulta]);
 
   // Cálculos optimizados con useMemo
   const { totalMultas, importeTotal, importePendiente } = useMemo(() => {
     return {
       totalMultas: multas.length,
-      importeTotal: multas.reduce((sum, multa) => sum + multa.amount, 0),
-      importePendiente: multas.filter((multa) => !multa.paid).reduce((sum, multa) => sum + multa.amount, 0)
+      importeTotal: multas.reduce((sum, multa) => sum + (multa.amount || 0), 0),
+      importePendiente: multas
+        .filter((multa) => !multa.paid)
+        .reduce((sum, multa) => sum + (multa.amount || 0), 0),
     };
-  }, [multas])
+  }, [multas]);
+
+  // 📄 MOSTRAR LOADING SI NO HAY ID
+  if (!playerId) {
+    return (
+      <View style={[styles.container, styles.loadingMainContainer]}>
+        <Text style={styles.loadingText}>
+          Cargando información del jugador...
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
       {isLoading && (
         <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
+          <ActivityIndicator size="large" color={MODERN_COLORS.primary} />
         </View>
       )}
 
       <View style={styles.headerContainer}>
-        <View style={[styles.headerIndicator, { backgroundColor: COLORS.primary }]} />
+        <View
+          style={[
+            styles.headerIndicator,
+            { backgroundColor: MODERN_COLORS.primary },
+          ]}
+        />
         <Text style={styles.title}>Multas</Text>
       </View>
 
-      <ScrollView
-        style={styles.multasList}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.multasListContent}
-      >
-        {multas.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyStateText}>No hay multas registradas</Text>
-          </View>
-        ) : (
-          multas.map((multa) => (
-            <MultaCard 
-              key={multa.id} 
-              multa={multa} 
-              onPress={handleMultaPress} 
-            />
-          ))
-        )}
-      </ScrollView>
+      {/* 📄 MOSTRAR LOADING MIENTRAS SE CARGAN LAS MULTAS */}
+      {isLoadingMultas ? (
+        <View style={styles.loadingMultasContainer}>
+          <ActivityIndicator size="large" color={MODERN_COLORS.primary} />
+          <Text style={styles.loadingText}>Cargando multas...</Text>
+        </View>
+      ) : (
+        <ScrollView
+          style={styles.multasList}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.multasListContent}
+        >
+          {multas.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyStateText}>
+                No hay multas registradas
+              </Text>
+              <Text style={styles.emptyStateSubtext}>
+                Las multas del jugador aparecerán aquí
+              </Text>
+            </View>
+          ) : (
+            multas.map((multa) => (
+              <TouchableOpacity
+                key={multa.id}
+                style={[
+                  styles.multaItem,
+                  {
+                    borderLeftWidth: 4,
+                    borderLeftColor: multa.paid
+                      ? MODERN_COLORS.success
+                      : MODERN_COLORS.danger,
+                  },
+                ]}
+                onPress={() => handleMultaPress(multa)}
+                activeOpacity={0.8}
+              >
+                <View style={styles.multaContent}>
+                  <View style={styles.multaHeader}>
+                    <Text style={styles.multaDate}>{multa.date}</Text>
+                    <View
+                      style={[
+                        styles.multaStatus,
+                        {
+                          backgroundColor: multa.paid
+                            ? MODERN_COLORS.success
+                            : MODERN_COLORS.danger,
+                          borderColor: multa.paid
+                            ? MODERN_COLORS.success
+                            : MODERN_COLORS.danger,
+                        },
+                      ]}
+                    >
+                      {multa.paid ? (
+                        <CheckIcon size={12} color={MODERN_COLORS.textWhite} />
+                      ) : (
+                        <ClockIcon size={12} color={MODERN_COLORS.textWhite} />
+                      )}
+                      <Text style={styles.multaStatusText}>
+                        {multa.paid ? "Pagado" : "Pendiente"}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={styles.multaReason} numberOfLines={2}>
+                    {multa.reason}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.multaAmount,
+                      {
+                        color: multa.paid
+                          ? MODERN_COLORS.success
+                          : MODERN_COLORS.primary,
+                      },
+                    ]}
+                  >
+                    {multa.amount}€
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))
+          )}
+        </ScrollView>
+      )}
 
       {/* Botón flotante para añadir nueva multa */}
-      <TouchableOpacity style={styles.addButton} activeOpacity={0.8} onPress={handleAddMulta}>
-        <LinearGradient colors={[COLORS.primary, COLORS.primaryDark]} style={styles.addButtonGradient}>
-          <Plus width={24} height={24} color="#FFF" />
+      <TouchableOpacity
+        style={styles.addButton}
+        activeOpacity={0.8}
+        onPress={handleAddMulta}
+      >
+        <LinearGradient
+          colors={[MODERN_COLORS.primary, MODERN_COLORS.primaryDark]}
+          style={styles.addButtonGradient}
+        >
+          <Ionicons name="add" size={24} color={MODERN_COLORS.textWhite} />
         </LinearGradient>
       </TouchableOpacity>
 
       {/* Resumen de multas */}
       <View style={styles.summaryContainer}>
-        <LinearGradient colors={[COLORS.card, "#252525"]} style={styles.summaryGradient}>
+        <LinearGradient
+          colors={[MODERN_COLORS.surface, MODERN_COLORS.surfaceGray]}
+          style={styles.summaryGradient}
+        >
           <View style={styles.summaryContent}>
             <View style={styles.summaryItem}>
               <Text style={styles.summaryLabel}>Total multas</Text>
@@ -184,7 +360,11 @@ export default function Multas() {
             <View style={styles.summaryDivider} />
             <View style={styles.summaryItem}>
               <Text style={styles.summaryLabel}>Pendiente</Text>
-              <Text style={[styles.summaryValue, { color: COLORS.danger }]}>{importePendiente}€</Text>
+              <Text
+                style={[styles.summaryValue, { color: MODERN_COLORS.danger }]}
+              >
+                {importePendiente}€
+              </Text>
             </View>
           </View>
         </LinearGradient>
@@ -197,53 +377,102 @@ export default function Multas() {
         animationType="fade"
         onRequestClose={() => setShowActionModal(false)}
       >
-        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowActionModal(false)}>
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowActionModal(false)}
+        >
           <View style={styles.modalContainer}>
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Opciones</Text>
                 <TouchableOpacity onPress={() => setShowActionModal(false)}>
-                  <X size={20} color={COLORS.textSecondary} />
+                  <Ionicons
+                    name="close"
+                    size={20}
+                    color={MODERN_COLORS.textGray}
+                  />
                 </TouchableOpacity>
               </View>
 
-              <TouchableOpacity style={styles.modalOption} onPress={handleEditMulta}>
-                <Edit size={20} color={COLORS.primary} />
+              <TouchableOpacity
+                style={styles.modalOption}
+                onPress={handleEditMulta}
+              >
+                <EditIcon size={20} color={MODERN_COLORS.primary} />
                 <Text style={styles.modalOptionText}>Editar multa</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.modalOption} onPress={handleTogglePagado}>
+              <TouchableOpacity
+                style={styles.modalOption}
+                onPress={handleTogglePagado}
+              >
                 {selectedMulta?.paid ? (
                   <>
-                    <ClockIcon size={20} color={COLORS.warning} />
-                    <Text style={styles.modalOptionText}>Marcar como pendiente</Text>
+                    <ClockIcon size={20} color={MODERN_COLORS.warning} />
+                    <Text style={styles.modalOptionText}>
+                      Marcar como pendiente
+                    </Text>
                   </>
                 ) : (
                   <>
-                    <CheckIcon size={20} color={COLORS.success} />
-                    <Text style={styles.modalOptionText}>Marcar como pagada</Text>
+                    <CheckIcon size={20} color={MODERN_COLORS.success} />
+                    <Text style={styles.modalOptionText}>
+                      Marcar como pagada
+                    </Text>
                   </>
                 )}
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.modalOption} onPress={handleDeleteMulta}>
-                <Trash2 size={20} color={COLORS.danger} />
-                <Text style={[styles.modalOptionText, { color: COLORS.danger }]}>Eliminar multa</Text>
+              <TouchableOpacity
+                style={styles.modalOption}
+                onPress={handleDeleteMulta}
+              >
+                <Ionicons name="trash" size={20} color={MODERN_COLORS.danger} />
+                <Text
+                  style={[
+                    styles.modalOptionText,
+                    { color: MODERN_COLORS.danger },
+                  ]}
+                >
+                  Eliminar multa
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
         </TouchableOpacity>
       </Modal>
     </View>
-  )
+  );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: MODERN_COLORS.background,
     padding: 16,
   },
+
+  // 📄 ESTILOS DE LOADING PRINCIPAL
+  loadingMainContainer: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    color: MODERN_COLORS.textGray,
+    fontSize: 16,
+    fontWeight: "500",
+    marginTop: 12,
+  },
+
+  // 📄 ESTILOS DE LOADING DE MULTAS
+  loadingMultasContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 40,
+  },
+
   loadingOverlay: {
     position: "absolute",
     top: 0,
@@ -255,6 +484,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     zIndex: 1000,
   },
+
   headerContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -268,8 +498,9 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 22,
-    color: COLORS.text,
+    color: MODERN_COLORS.textDark,
     fontWeight: "bold",
+    letterSpacing: -0.3,
   },
 
   // Lista de multas
@@ -283,17 +514,24 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingVertical: 40,
+    paddingVertical: 60,
   },
   emptyStateText: {
-    color: COLORS.textSecondary,
-    fontSize: 16,
+    color: MODERN_COLORS.textDark,
+    fontSize: 18,
+    fontWeight: "600",
+    marginBottom: 8,
+  },
+  emptyStateSubtext: {
+    color: MODERN_COLORS.textGray,
+    fontSize: 14,
+    textAlign: "center",
   },
 
   // Botón para añadir
   addButton: {
     position: "absolute",
-    bottom: 90, // Ajustado para dejar espacio para el resumen
+    bottom: 90,
     right: 16,
     width: 56,
     height: 56,
@@ -321,11 +559,11 @@ const styles = StyleSheet.create({
   },
   summaryGradient: {
     borderRadius: 16,
-    padding: 1, // Borde gradiente
+    padding: 1,
   },
   summaryContent: {
     flexDirection: "row",
-    backgroundColor: COLORS.card,
+    backgroundColor: MODERN_COLORS.surface,
     borderRadius: 15,
     padding: 16,
   },
@@ -335,16 +573,17 @@ const styles = StyleSheet.create({
   },
   summaryDivider: {
     width: 1,
-    backgroundColor: COLORS.divider,
+    backgroundColor: MODERN_COLORS.border,
     marginHorizontal: 8,
   },
   summaryLabel: {
-    color: COLORS.textSecondary,
+    color: MODERN_COLORS.textGray,
     fontSize: 12,
     marginBottom: 4,
+    fontWeight: "500",
   },
   summaryValue: {
-    color: COLORS.text,
+    color: MODERN_COLORS.textDark,
     fontSize: 18,
     fontWeight: "bold",
   },
@@ -362,7 +601,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   modalContent: {
-    backgroundColor: COLORS.card,
+    backgroundColor: MODERN_COLORS.surface,
     borderRadius: 16,
     padding: 16,
   },
@@ -373,10 +612,10 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
+    borderBottomColor: MODERN_COLORS.border,
   },
   modalTitle: {
-    color: COLORS.text,
+    color: MODERN_COLORS.textDark,
     fontSize: 18,
     fontWeight: "bold",
   },
@@ -385,11 +624,72 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
+    borderBottomColor: MODERN_COLORS.border,
   },
   modalOptionText: {
-    color: COLORS.text,
+    color: MODERN_COLORS.textDark,
     fontSize: 16,
     marginLeft: 12,
+    fontWeight: "500",
   },
-})
+
+  // 🆕 ESTILOS PARA MULTA ITEM (TEMPORAL)
+  multaItem: {
+    backgroundColor: MODERN_COLORS.surface,
+    borderRadius: 12,
+    marginBottom: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: MODERN_COLORS.border,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+
+  multaContent: {
+    gap: 8,
+  },
+
+  multaHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+
+  multaDate: {
+    color: MODERN_COLORS.textGray,
+    fontSize: 12,
+    fontWeight: "500",
+  },
+
+  multaStatus: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 4,
+  },
+
+  multaStatusText: {
+    color: MODERN_COLORS.textWhite,
+    fontSize: 10,
+    fontWeight: "600",
+    textTransform: "uppercase",
+  },
+
+  multaReason: {
+    color: MODERN_COLORS.textDark,
+    fontSize: 16,
+    fontWeight: "600",
+    lineHeight: 20,
+  },
+
+  multaAmount: {
+    color: MODERN_COLORS.primary,
+    fontSize: 18,
+    fontWeight: "700",
+  },
+});
