@@ -210,15 +210,6 @@ export default function AddMulta() {
                 formErrors.reason && styles.inputError,
               ]}
             >
-              <UserFriendsIcon
-                size={20}
-                color={
-                  formErrors.reason
-                    ? MODERN_COLORS.danger
-                    : MODERN_COLORS.textGray
-                }
-                style={styles.inputIcon}
-              />
               <TextInput
                 style={[styles.textInput, styles.textInputMultiline]}
                 value={multa.reason}
