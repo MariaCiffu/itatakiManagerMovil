@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
 
   headerContainer: {
     position: "relative",
-    paddingBottom: 20,
+    paddingBottom: 30,
     overflow: "hidden",
   },
 
@@ -400,5 +400,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 3,
     elevation: 8,
+    paddingTop: 5,
   },
 });
