@@ -14,10 +14,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { MODERN_COLORS } from "../../constants/modernColors";
-import {
-  getAllJugadores,
-  deleteJugador,
-} from "../../services/jugadoresService";
+import { getAllJugadores, deleteJugador } from "../../services/playersService";
 import { useSwipeableManager } from "../../hooks/useSwipeableManager";
 import PlayerCard from "../../components/jugadores/PlayerCard";
 

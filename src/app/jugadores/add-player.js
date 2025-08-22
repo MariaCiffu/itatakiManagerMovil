@@ -16,10 +16,9 @@ import { useRouter } from "expo-router";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
-import { Picker } from "@react-native-picker/picker";
 import { MODERN_COLORS } from "../../constants/modernColors";
 import { POSICIONES } from "../../constants/positions";
-import { addJugador } from "../../services/jugadoresService";
+import { addJugador } from "../../services/playersService";
 
 export default function AddPlayer() {
   const router = useRouter();

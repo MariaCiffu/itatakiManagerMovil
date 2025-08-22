@@ -1,3 +1,4 @@
+// app/jugadores/[id]/datos.js - CORREGIDO PARA FIREBASE CON ESTILOS MODERNOS
 import {
   View,
   Text,
@@ -15,7 +16,7 @@ import {
   UserFriendsIcon,
   FootIcon,
 } from "../../../components/Icons";
-import { COLORS } from "../../../constants/colors";
+import { MODERN_COLORS } from "../../../constants/modernColors"; // ← Cambiado aquí
 import WhatsAppButton from "../../../components/WhatsAppButton";
 
 export default function DatosPersonales() {
@@ -24,7 +25,7 @@ export default function DatosPersonales() {
   // Función optimizada para realizar llamadas
   const handleCall = useCallback((phoneNumber) => {
     if (phoneNumber) {
-      Linking.openURL(`tel:${phoneNumber}`)
+      Linking.openURL(`tel:${phoneNumber}`);
     }
   }, []);
 
@@ -34,6 +35,15 @@ export default function DatosPersonales() {
       Linking.openURL(`mailto:${player.email}`);
     }
   }, [player?.email]);
+
+  // 🔄 MOSTRAR LOADING SI NO HAY DATOS
+  if (!player || !player.id) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <Text style={styles.loadingText}>Cargando datos del jugador...</Text>
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -47,7 +57,9 @@ export default function DatosPersonales() {
           </View>
           <View style={styles.dataInfo}>
             <Text style={styles.dataLabel}>Fecha de nacimiento</Text>
-            <Text style={styles.dataValue}>{player.birthdate || "-"}</Text>
+            <Text style={styles.dataValue}>
+              {player.birthdate || "No especificada"}
+            </Text>
           </View>
         </View>
 
@@ -58,7 +70,9 @@ export default function DatosPersonales() {
           </View>
           <View style={styles.dataInfo}>
             <Text style={styles.dataLabel}>Pie dominante</Text>
-            <Text style={styles.dataValue}>{player.foot || "-"}</Text>
+            <Text style={styles.dataValue}>
+              {player.foot || "No especificado"}
+            </Text>
           </View>
         </View>
 
@@ -69,7 +83,9 @@ export default function DatosPersonales() {
           </View>
           <View style={styles.dataInfo}>
             <Text style={styles.dataLabel}>Móvil</Text>
-            <Text style={styles.dataValue}>{player.phone || "-"}</Text>
+            <Text style={styles.dataValue}>
+              {player.phone || "No especificado"}
+            </Text>
           </View>
 
           {/* Contenedor para los botones de acción */}
@@ -78,6 +94,7 @@ export default function DatosPersonales() {
               <TouchableOpacity
                 style={[styles.actionButton, { backgroundColor: "#2196F3" }]}
                 onPress={() => handleCall(player.phone)}
+                activeOpacity={0.8}
               >
                 <PhoneIcon size={16} color="#fff" />
               </TouchableOpacity>
@@ -100,17 +117,25 @@ export default function DatosPersonales() {
           </View>
           <View style={styles.dataInfo}>
             <Text style={styles.dataLabel}>Correo</Text>
-            <Text style={styles.dataValue}>{player.email || "-"}</Text>
+            <Text style={styles.dataValue}>
+              {player.email || "No especificado"}
+            </Text>
           </View>
           {player.email && (
             <TouchableOpacity
               style={[styles.actionButton, { backgroundColor: "#4CAF50" }]}
               onPress={handleEmail}
+              activeOpacity={0.8}
             >
               <EnvelopeIcon size={16} color="#fff" />
             </TouchableOpacity>
           )}
         </View>
+
+        {/* Sección de contacto de emergencia */}
+        <Text style={[styles.sectionTitle, { marginTop: 32 }]}>
+          Contacto de emergencia
+        </Text>
 
         {/* Contacto de emergencia */}
         <View style={styles.dataRow}>
@@ -120,7 +145,7 @@ export default function DatosPersonales() {
           <View style={styles.dataInfo}>
             <Text style={styles.dataLabel}>Nombre contacto</Text>
             <Text style={styles.dataValue}>
-              {player.emergencyContact || "-"}
+              {player.emergencyContact || "No especificado"}
             </Text>
           </View>
         </View>
@@ -132,7 +157,9 @@ export default function DatosPersonales() {
           </View>
           <View style={styles.dataInfo}>
             <Text style={styles.dataLabel}>Móvil contacto</Text>
-            <Text style={styles.dataValue}>{player.emergencyPhone || "-"}</Text>
+            <Text style={styles.dataValue}>
+              {player.emergencyPhone || "No especificado"}
+            </Text>
           </View>
 
           {/* Contenedor para los botones de acción */}
@@ -141,6 +168,7 @@ export default function DatosPersonales() {
               <TouchableOpacity
                 style={[styles.actionButton, { backgroundColor: "#673AB7" }]}
                 onPress={() => handleCall(player.emergencyPhone)}
+                activeOpacity={0.8}
               >
                 <PhoneIcon size={16} color="#fff" />
               </TouchableOpacity>
@@ -150,7 +178,7 @@ export default function DatosPersonales() {
             {player.emergencyPhone && (
               <WhatsAppButton
                 phone={player.emergencyPhone}
-                message={`Hola ${player.emergencyContact}, soy el entrenador.`}
+                message={`Hola ${player.emergencyContact || "contacto"}, soy el entrenador de ${player.name}.`}
               />
             )}
           </View>
@@ -161,33 +189,51 @@ export default function DatosPersonales() {
 }
 
 const styles = StyleSheet.create({
-  // Los estilos permanecen igual
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: MODERN_COLORS.background,
     padding: 16,
   },
+
+  // 🔄 ESTILOS DE LOADING
+  loadingContainer: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    color: MODERN_COLORS.textGray,
+    fontSize: 16,
+    fontWeight: "500",
+  },
+
   section: {
     marginBottom: 24,
   },
   sectionTitle: {
     fontSize: 18,
-    color: COLORS.text,
+    color: MODERN_COLORS.textDark,
     fontWeight: "bold",
     marginBottom: 16,
     borderLeftWidth: 3,
-    borderLeftColor: COLORS.primary,
+    borderLeftColor: MODERN_COLORS.primary,
     paddingLeft: 8,
   },
   dataRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: COLORS.card,
+    backgroundColor: MODERN_COLORS.surface,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: COLORS.cardBorder,
+    borderColor: MODERN_COLORS.border,
+
+    // 🆕 Sombra moderna
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
   },
   iconContainer: {
     width: 48,
@@ -201,14 +247,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   dataLabel: {
-    color: COLORS.textSecondary,
+    color: MODERN_COLORS.textGray,
     fontSize: 14,
     marginBottom: 4,
+    fontWeight: "500",
   },
   dataValue: {
-    color: COLORS.text,
+    color: MODERN_COLORS.textDark,
     fontSize: 16,
-    fontWeight: "500",
+    fontWeight: "600",
   },
   actionButton: {
     width: 36,
@@ -217,10 +264,17 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginLeft: 8,
+
+    // 🆕 Sombra para botones
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 3,
   },
   actionButtonsContainer: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12, // Aumentar el espacio entre botones
+    gap: 12,
   },
 });
