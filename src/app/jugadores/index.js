@@ -14,7 +14,10 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { MODERN_COLORS } from "../../constants/modernColors";
-import { getAllJugadores, deleteJugador } from "../../services/playersService";
+import {
+  getAllJugadoresWithMultas,
+  deleteJugador,
+} from "../../services/playersService";
 import { useSwipeableManager } from "../../hooks/useSwipeableManager";
 import PlayerCard from "../../components/jugadores/PlayerCard";
 
@@ -31,7 +34,7 @@ export default function Jugadores() {
   // 🔥 FUNCIÓN OPTIMIZADA PARA CARGAR JUGADORES
   const loadPlayers = useCallback(async () => {
     try {
-      const data = await getAllJugadores();
+      const data = await getAllJugadoresWithMultas();
       setPlayers(data);
       setFilteredPlayers(data);
       setIsLoading(false);

@@ -63,15 +63,10 @@ export default function PlayerCard({
     }
   };
 
-  // Calcular estadísticas del jugador
-  const pendingFines = player.multas
-    ? player.multas.filter((m) => !m.paid)
-    : [];
-  const totalPendingAmount = pendingFines.reduce(
-    (sum, multa) => sum + multa.amount,
-    0
-  );
-  const pendingCount = pendingFines.length;
+  // 🆕 Usar los nuevos datos que vienen del index.js modificado
+  const pendingCount = player.multasPendientes || 0;
+  const totalPendingAmount = player.totalDeuda || 0;
+  const totalMultas = player.totalMultas || 0;
 
   return (
     <Swipeable
@@ -115,47 +110,24 @@ export default function PlayerCard({
 
         {/* Estado y estadísticas */}
         <View style={styles.playerStats}>
-          {/* Multas */}
-          {player.multas && player.multas.length > 0 && (
+          {/* 🎯 Solo mostrar warning si tiene multas pendientes */}
+          {pendingCount > 0 && (
             <View style={styles.finesContainer}>
-              {pendingCount > 0 ? (
-                <>
-                  <View style={styles.finesBadge}>
-                    <Ionicons
-                      name="warning"
-                      size={14}
-                      color={MODERN_COLORS.danger}
-                    />
-                    <Text
-                      style={[
-                        styles.finesText,
-                        { color: MODERN_COLORS.danger },
-                      ]}
-                    >
-                      {totalPendingAmount}€
-                    </Text>
-                  </View>
-                  <Text style={styles.pendingText}>
-                    {pendingCount} pendiente{pendingCount > 1 ? "s" : ""}
-                  </Text>
-                </>
-              ) : (
-                <View style={styles.statusOk}>
-                  <Ionicons
-                    name="checkmark-circle"
-                    size={16}
-                    color={MODERN_COLORS.success}
-                  />
-                  <Text
-                    style={[
-                      styles.statusText,
-                      { color: MODERN_COLORS.success },
-                    ]}
-                  >
-                    Multas pagadas
-                  </Text>
-                </View>
-              )}
+              <View style={styles.finesBadge}>
+                <Ionicons
+                  name="warning"
+                  size={14}
+                  color={MODERN_COLORS.danger}
+                />
+                <Text
+                  style={[styles.finesText, { color: MODERN_COLORS.danger }]}
+                >
+                  {totalPendingAmount}€
+                </Text>
+              </View>
+              <Text style={styles.pendingText}>
+                {pendingCount} pendiente{pendingCount > 1 ? "s" : ""}
+              </Text>
             </View>
           )}
 

@@ -308,18 +308,7 @@ export default function Multas() {
                   <Text style={styles.multaReason} numberOfLines={2}>
                     {multa.reason}
                   </Text>
-                  <Text
-                    style={[
-                      styles.multaAmount,
-                      {
-                        color: multa.paid
-                          ? MODERN_COLORS.success
-                          : MODERN_COLORS.primary,
-                      },
-                    ]}
-                  >
-                    {multa.amount}€
-                  </Text>
+                  <Text style={[styles.multaAmount]}>{multa.amount}€</Text>
                 </View>
               </TouchableOpacity>
             ))

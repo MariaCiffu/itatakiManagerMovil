@@ -73,6 +73,57 @@ export const getAllJugadores = async () => {
   }
 };
 
+export const getAllJugadoresWithMultas = async () => {
+  try {
+    console.log("📄 Cargando jugadores con estadísticas de multas...");
+
+    // Obtener jugadores básicos
+    const players = await getAllJugadores();
+
+    // Cargar multas para cada jugador en paralelo
+    const playersWithMultas = await Promise.all(
+      players.map(async (player) => {
+        try {
+          const multas = await getMultasJugador(player.id);
+
+          // Calcular estadísticas
+          const multasPendientes = multas.filter((multa) => !multa.paid);
+          const totalDeuda = multasPendientes.reduce(
+            (sum, multa) => sum + (multa.amount || 0),
+            0
+          );
+
+          return {
+            ...player,
+            totalMultas: multas.length,
+            multasPendientes: multasPendientes.length,
+            totalDeuda: totalDeuda,
+          };
+        } catch (error) {
+          console.error(`❌ Error cargando multas para ${player.name}:`, error);
+
+          // Si hay error, devolver jugador sin estadísticas de multas
+          return {
+            ...player,
+            totalMultas: 0,
+            multasPendientes: 0,
+            totalDeuda: 0,
+          };
+        }
+      })
+    );
+
+    console.log(
+      "✅ Jugadores con multas procesados:",
+      playersWithMultas.length
+    );
+    return playersWithMultas;
+  } catch (error) {
+    console.error("❌ Error en getAllJugadoresWithMultas:", error);
+    return [];
+  }
+};
+
 export const getJugadorById = async (id) => {
   try {
     const playerRef = doc(db, COLLECTIONS.PLAYERS, id);
