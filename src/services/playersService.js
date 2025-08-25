@@ -348,6 +348,35 @@ export const updateMultaStatus = async (multaId, paid) => {
   }
 };
 
+// ACTUALIZAR MULTA COMPLETA
+export const updateMulta = async (multaId, updateData) => {
+  try {
+    console.log("🔄 Actualizando multa completa:", multaId);
+
+    const multaRef = doc(db, COLLECTIONS.MULTAS, multaId);
+
+    const dataToUpdate = {
+      ...updateData,
+      ...(updateData.amount && { amount: Number(updateData.amount) }),
+      updatedAt: serverTimestamp(),
+    };
+
+    await updateDoc(multaRef, dataToUpdate);
+
+    console.log("✅ Multa actualizada completamente");
+    return {
+      success: true,
+      message: "Multa actualizada correctamente",
+    };
+  } catch (error) {
+    console.error("❌ Error actualizando multa completa:", error);
+    return {
+      success: false,
+      message: "Error al actualizar la multa: " + error.message,
+    };
+  }
+};
+
 export const deleteMultaFromJugador = async (multaId) => {
   try {
     console.log("🗑️ Eliminando multa:", multaId);
