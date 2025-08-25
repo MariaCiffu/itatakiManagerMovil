@@ -11,27 +11,27 @@ import {
   Alert,
   Linking,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import * as ImagePicker from "expo-image-picker";
-import { Swipeable, GestureHandlerRootView } from "react-native-gesture-handler";
 import {
-  ArrowLeftIcon,
-  SearchIcon,
-  PlusUserIcon,
-  PhoneIcon,
-  EnvelopeIcon,
-  EditIcon,
-  UserFriendsIcon,
-  CheckIcon,
-} from "../../components/Icons";
-import { COLORS } from "../../constants/colors";
+  Swipeable,
+  GestureHandlerRootView,
+} from "react-native-gesture-handler";
+import { Ionicons } from "@expo/vector-icons";
+import { MODERN_COLORS } from "../../constants/modernColors";
 import WhatsAppButton from "../../components/WhatsAppButton";
-import BackButton from "../../components/BackButton";
-import { useFocusEffect } from '@react-navigation/native';
-import { getAllStaff, searchStaff, updateStaffMember, deleteStaffMember } from "../../services/staffService";
-import { Trash2 } from "react-native-feather";
+import { useFocusEffect } from "@react-navigation/native";
+import {
+  getAllStaff,
+  searchStaff,
+  updateStaffMember,
+  deleteStaffMember,
+} from "../../services/staffService";
 
 export default function StaffList() {
   const router = useRouter();
@@ -41,10 +41,11 @@ export default function StaffList() {
   const [searchQuery, setSearchQuery] = useState("");
   const [editingMember, setEditingMember] = useState(null);
   const [editedData, setEditedData] = useState({});
-  
+  const [editFormErrors, setEditFormErrors] = useState({});
+
   // Referencia para el swipeable actualmente abierto
   const openSwipeableRef = useRef(null);
-  
+
   // Mapa de referencias para todos los swipeables
   const swipeableRefs = useRef({});
 
@@ -58,20 +59,20 @@ export default function StaffList() {
           setStaff(data);
           setLoading(false);
         } catch (error) {
-          console.error('Error al cargar staff:', error);
+          console.error("Error al cargar staff:", error);
           setLoading(false);
           setError("No se pudo cargar el staff");
         }
       };
-      
+
       loadStaff();
-      
+
       return () => {
         // Limpieza si es necesaria
       };
     }, [])
   );
-  
+
   // Función para buscar miembros del staff
   const handleSearch = async (query) => {
     setSearchQuery(query);
@@ -80,7 +81,7 @@ export default function StaffList() {
       setStaff(data);
       return;
     }
-    
+
     setLoading(true);
     try {
       const results = await searchStaff(query);
@@ -101,38 +102,81 @@ export default function StaffList() {
     closeOpenSwipeable();
     setEditingMember(member.id);
     setEditedData({ ...member });
+    setEditFormErrors({}); // Limpiar errores previos
   };
 
   const handleCancelEdit = () => {
     setEditingMember(null);
     setEditedData({});
+    setEditFormErrors({}); // Limpiar errores
+  };
+
+  // Función para validar el formulario de edición
+  const validateEditForm = () => {
+    const errors = {};
+
+    // Validar nombre (obligatorio)
+    if (!editedData.name || !editedData.name.trim()) {
+      errors.name = "El nombre es obligatorio";
+    }
+
+    // Validar profesión/cargo (obligatorio)
+    if (!editedData.position || !editedData.position.trim()) {
+      errors.position = "El cargo es obligatorio";
+    }
+
+    // Validar teléfono (opcional, pero si se introduce debe ser válido)
+    if (editedData.phone && editedData.phone.trim()) {
+      const phoneRegex = /^[+]?[\s\d\-\(\)]{7,}$/; // Al menos 7 dígitos, permite espacios, guiones, paréntesis y +
+      if (!phoneRegex.test(editedData.phone.trim())) {
+        errors.phone = "Formato de teléfono no válido";
+      }
+    }
+
+    // Validar email (opcional, pero si se introduce debe ser válido)
+    if (editedData.email && editedData.email.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(editedData.email.trim())) {
+        errors.email = "Formato de email no válido";
+      }
+    }
+
+    setEditFormErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const handleSaveEdit = async () => {
-    // Validar campos obligatorios
-    if (!editedData.name || !editedData.position) {
-      Alert.alert(
-        "Campos incompletos",
-        "El nombre y el cargo son obligatorios"
-      );
+    // Validar el formulario
+    if (!validateEditForm()) {
+      const firstError = Object.values(editFormErrors)[0];
       return;
     }
 
     setLoading(true);
     try {
+      // Limpiar datos antes de enviar
+      const cleanedData = {
+        ...editedData,
+        name: editedData.name.trim(),
+        position: editedData.position.trim(),
+        phone: editedData.phone ? editedData.phone.trim() : "",
+        email: editedData.email ? editedData.email.trim() : "",
+      };
+
       // Llamar al servicio para actualizar
-      await updateStaffMember(editingMember, editedData);
-      
+      await updateStaffMember(editingMember, cleanedData);
+
       // Actualizar la lista local
       const updatedStaff = staff.map((member) =>
-        member.id === editingMember ? { ...member, ...editedData } : member
+        member.id === editingMember ? { ...member, ...cleanedData } : member
       );
       setStaff(updatedStaff);
-      
+
       // Limpiar el estado de edición
       setEditingMember(null);
       setEditedData({});
-      
+      setEditFormErrors({});
+
       // Mostrar confirmación
       Alert.alert(
         "Miembro actualizado",
@@ -151,6 +195,11 @@ export default function StaffList() {
 
   const handleChange = (field, value) => {
     setEditedData((prev) => ({ ...prev, [field]: value }));
+
+    // Limpiar error cuando se modifica el campo
+    if (editFormErrors[field]) {
+      setEditFormErrors((prev) => ({ ...prev, [field]: null }));
+    }
   };
 
   const selectImage = async (memberId) => {
@@ -190,7 +239,7 @@ export default function StaffList() {
       },
     ]);
   };
-  
+
   // Función para eliminar un miembro del staff
   const handleDeleteMember = (memberId) => {
     Alert.alert(
@@ -215,11 +264,16 @@ export default function StaffList() {
               const result = await deleteStaffMember(memberId);
               if (result.success) {
                 // Actualizar la lista local
-                setStaff((prevStaff) => prevStaff.filter((member) => member.id !== memberId));
+                setStaff((prevStaff) =>
+                  prevStaff.filter((member) => member.id !== memberId)
+                );
                 openSwipeableRef.current = null;
                 Alert.alert("Éxito", "Miembro eliminado correctamente");
               } else {
-                Alert.alert("Error", result.message || "No se pudo eliminar el miembro");
+                Alert.alert(
+                  "Error",
+                  result.message || "No se pudo eliminar el miembro"
+                );
               }
             } catch (error) {
               console.error("Error al eliminar miembro:", error);
@@ -230,7 +284,7 @@ export default function StaffList() {
       ]
     );
   };
-  
+
   // Función para cerrar todos los swipeables excepto el actual
   const closeOtherSwipeables = useCallback((currentRef) => {
     if (openSwipeableRef.current && openSwipeableRef.current !== currentRef) {
@@ -238,7 +292,7 @@ export default function StaffList() {
     }
     openSwipeableRef.current = currentRef;
   }, []);
-  
+
   // Función para cerrar el swipeable abierto
   const closeOpenSwipeable = useCallback(() => {
     if (openSwipeableRef.current) {
@@ -246,7 +300,7 @@ export default function StaffList() {
       openSwipeableRef.current = null;
     }
   }, []);
-  
+
   // Renderizar las acciones de deslizamiento (botón de eliminar)
   const renderRightActions = (memberId) => {
     return (
@@ -255,7 +309,7 @@ export default function StaffList() {
           style={styles.deleteAction}
           onPress={() => handleDeleteMember(memberId)}
         >
-          <Trash2 width={24} height={24} color="#fff" />
+          <Ionicons name="trash-outline" size={24} color="#fff" />
         </TouchableOpacity>
       </View>
     );
@@ -267,97 +321,172 @@ export default function StaffList() {
     if (isEditing) {
       return (
         <View style={styles.editCard}>
-          <LinearGradient
-            colors={[COLORS.primary, COLORS.primaryDark]}
-            style={styles.editCardGradient}
+          <ScrollView
+            style={styles.editCardContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
           >
-            <View style={styles.editCardContent}>
-              <View style={styles.editHeader}>
-                <Text style={styles.editTitle}>Editar miembro</Text>
-                <TouchableOpacity
-                  onPress={handleCancelEdit}
-                  style={styles.cancelButton}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.cancelButtonText}>Cancelar</Text>
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.editAvatarContainer}>
-                <TouchableOpacity onPress={() => selectImage(item.id)}>
-                  <Image
-                    source={{ uri: editedData.image }}
-                    style={styles.editAvatar}
-                  />
-                  <View style={styles.editAvatarBadge}>
-                    <Text style={styles.editAvatarBadgeText}>+</Text>
-                  </View>
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.editForm}>
-                <View style={styles.inputContainer}>
-                  <UserFriendsIcon size={20} color={COLORS.primary} />
-                  <TextInput
-                    placeholder="Nombre completo *"
-                    placeholderTextColor={COLORS.textSecondary}
-                    value={editedData.name}
-                    onChangeText={(text) => handleChange("name", text)}
-                    style={styles.input}
-                  />
-                </View>
-
-                <View style={styles.inputContainer}>
-                  <UserFriendsIcon size={20} color={COLORS.primary} />
-                  <TextInput
-                    placeholder="Cargo *"
-                    placeholderTextColor={COLORS.textSecondary}
-                    value={editedData.position}
-                    onChangeText={(text) => handleChange("position", text)}
-                    style={styles.input}
-                  />
-                </View>
-
-                <View style={styles.inputContainer}>
-                  <PhoneIcon size={20} color={COLORS.primary} />
-                  <TextInput
-                    placeholder="Teléfono"
-                    placeholderTextColor={COLORS.textSecondary}
-                    value={editedData.phone}
-                    onChangeText={(text) => handleChange("phone", text)}
-                    style={styles.input}
-                    keyboardType="phone-pad"
-                  />
-                </View>
-
-                <View style={styles.inputContainer}>
-                  <EnvelopeIcon size={20} color={COLORS.primary} />
-                  <TextInput
-                    placeholder="Correo electrónico"
-                    placeholderTextColor={COLORS.textSecondary}
-                    value={editedData.email}
-                    onChangeText={(text) => handleChange("email", text)}
-                    style={styles.input}
-                    keyboardType="email-address"
-                  />
-                </View>
-
-                <TouchableOpacity
-                  onPress={handleSaveEdit}
-                  style={styles.saveButton}
-                  activeOpacity={0.8}
-                >
-                  <LinearGradient
-                    colors={[COLORS.primary, COLORS.primaryDark]}
-                    style={styles.saveButtonGradient}
-                  >
-                    <CheckIcon size={20} color="#fff" />
-                    <Text style={styles.saveButtonText}>Guardar cambios</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              </View>
+            <View style={styles.editHeader}>
+              <Text style={styles.editTitle}>Editar miembro</Text>
+              <TouchableOpacity
+                onPress={handleCancelEdit}
+                style={styles.cancelButton}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name="close-outline"
+                  size={20}
+                  color={MODERN_COLORS.textGray}
+                />
+              </TouchableOpacity>
             </View>
-          </LinearGradient>
+
+            <View style={styles.editAvatarContainer}>
+              <TouchableOpacity
+                onPress={() => selectImage(item.id)}
+                activeOpacity={0.8}
+              >
+                <Image
+                  source={{
+                    uri:
+                      editedData.image ||
+                      "https://via.placeholder.com/100x100/6B7280/FFFFFF?text=👤",
+                  }}
+                  style={styles.editAvatar}
+                />
+                <View style={styles.editAvatarBadge}>
+                  <Ionicons name="camera" size={16} color="#fff" />
+                </View>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.editForm}>
+              <View
+                style={[
+                  styles.inputContainer,
+                  editFormErrors.name && styles.inputError,
+                ]}
+              >
+                <Ionicons
+                  name="person-outline"
+                  size={20}
+                  color={
+                    editFormErrors.name
+                      ? MODERN_COLORS.danger
+                      : MODERN_COLORS.primary
+                  }
+                />
+                <TextInput
+                  placeholder="Nombre completo *"
+                  placeholderTextColor={MODERN_COLORS.textLight}
+                  value={editedData.name}
+                  onChangeText={(text) => handleChange("name", text)}
+                  style={styles.input}
+                />
+              </View>
+              {editFormErrors.name && (
+                <Text style={styles.errorText}>{editFormErrors.name}</Text>
+              )}
+
+              <View
+                style={[
+                  styles.inputContainer,
+                  editFormErrors.position && styles.inputError,
+                ]}
+              >
+                <Ionicons
+                  name="briefcase-outline"
+                  size={20}
+                  color={
+                    editFormErrors.position
+                      ? MODERN_COLORS.danger
+                      : MODERN_COLORS.primary
+                  }
+                />
+                <TextInput
+                  placeholder="Cargo *"
+                  placeholderTextColor={MODERN_COLORS.textLight}
+                  value={editedData.position}
+                  onChangeText={(text) => handleChange("position", text)}
+                  style={styles.input}
+                />
+              </View>
+              {editFormErrors.position && (
+                <Text style={styles.errorText}>{editFormErrors.position}</Text>
+              )}
+
+              <View
+                style={[
+                  styles.inputContainer,
+                  editFormErrors.phone && styles.inputError,
+                ]}
+              >
+                <Ionicons
+                  name="call-outline"
+                  size={20}
+                  color={
+                    editFormErrors.phone
+                      ? MODERN_COLORS.danger
+                      : MODERN_COLORS.primary
+                  }
+                />
+                <TextInput
+                  placeholder="Teléfono"
+                  placeholderTextColor={MODERN_COLORS.textLight}
+                  value={editedData.phone}
+                  onChangeText={(text) => handleChange("phone", text)}
+                  style={styles.input}
+                  keyboardType="phone-pad"
+                />
+              </View>
+              {editFormErrors.phone && (
+                <Text style={styles.errorText}>{editFormErrors.phone}</Text>
+              )}
+
+              <View
+                style={[
+                  styles.inputContainer,
+                  editFormErrors.email && styles.inputError,
+                ]}
+              >
+                <Ionicons
+                  name="mail-outline"
+                  size={20}
+                  color={
+                    editFormErrors.email
+                      ? MODERN_COLORS.danger
+                      : MODERN_COLORS.primary
+                  }
+                />
+                <TextInput
+                  placeholder="Correo electrónico"
+                  placeholderTextColor={MODERN_COLORS.textLight}
+                  value={editedData.email}
+                  onChangeText={(text) => handleChange("email", text)}
+                  style={styles.input}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+              </View>
+              {editFormErrors.email && (
+                <Text style={styles.errorText}>{editFormErrors.email}</Text>
+              )}
+
+              <TouchableOpacity
+                onPress={handleSaveEdit}
+                style={styles.saveButton}
+                activeOpacity={0.8}
+              >
+                <LinearGradient
+                  colors={[MODERN_COLORS.primary, MODERN_COLORS.primaryDark]}
+                  style={styles.saveButtonGradient}
+                >
+                  <Ionicons name="checkmark" size={20} color="#fff" />
+                  <Text style={styles.saveButtonText}>Guardar cambios</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
         </View>
       );
     }
@@ -382,82 +511,115 @@ export default function StaffList() {
           useNativeAnimations={true}
         >
           <View style={styles.memberCard}>
-            <LinearGradient
-              colors={[COLORS.card, "#252525"]}
-              style={styles.cardGradient}
-            >
-              <View style={styles.memberContent}>
-                {/* Imagen del miembro */}
-                <Image source={{ uri: item.image }} style={styles.memberImage} />
+            <View style={styles.memberContent}>
+              {/* Imagen del miembro */}
+              <Image
+                source={{
+                  uri:
+                    item.image ||
+                    "https://via.placeholder.com/70x70/6B7280/FFFFFF?text=👤",
+                }}
+                style={styles.memberImage}
+              />
 
-                {/* Información del miembro */}
-                <View style={styles.memberInfo}>
-                  <Text style={styles.memberName}>{item.name}</Text>
-                  <Text style={styles.memberPosition}>{item.position}</Text>
+              {/* Información del miembro */}
+              <View style={styles.memberInfo}>
+                <Text style={styles.memberName}>{item.name}</Text>
+                <Text style={styles.memberPosition}>{item.position}</Text>
 
-                  {/* Contenedor de contacto */}
-                  <View style={styles.contactContainer}>
-                    {/* Teléfono */}
-                    <View style={styles.contactItem}>
-                      <PhoneIcon size={16} color={COLORS.primary} />
-                      <Text style={styles.contactText}>
-                        {item.phone || ""}
-                      </Text>
+                {/* Contenedor de contacto */}
+                <View style={styles.contactContainer}>
+                  {/* Teléfono */}
+                  {item.phone && (
+                    <View style={styles.contactRow}>
+                      <View style={styles.contactInfo}>
+                        <Ionicons
+                          name="call-outline"
+                          size={18}
+                          color={MODERN_COLORS.primary}
+                        />
+                        <Text
+                          style={styles.contactText}
+                          numberOfLines={1}
+                          ellipsizeMode="tail"
+                        >
+                          {item.phone}
+                        </Text>
+                      </View>
 
-                      {/* Botones de acción (ahora en la misma línea) */}
-                      {item.phone && (
-                        <View style={styles.actionButtonsContainer}>
-                          <TouchableOpacity
-                            style={[
-                              styles.actionButton,
-                              { backgroundColor: "#4CAF50" },
-                            ]}
-                            onPress={() => Linking.openURL(`tel:${item.phone}`)}
-                          >
-                            <PhoneIcon size={14} color="#fff" />
-                          </TouchableOpacity>
-
-                          {/* Botón de WhatsApp */}
-                          <WhatsAppButton phone={item.phone} />
-                        </View>
-                      )}
-                    </View>
-
-                    {/* Email */}
-                    <View style={styles.contactItem}>
-                      <EnvelopeIcon size={16} color={COLORS.primary} />
-                      <Text style={styles.contactText}>{item.email || ""}</Text>
-                      {item.email && (
+                      {/* Botones de teléfono y WhatsApp alineados a la derecha */}
+                      <View style={styles.rightButtonsContainer}>
                         <TouchableOpacity
                           style={[
                             styles.actionButton,
                             { backgroundColor: "#4CAF50" },
                           ]}
-                          onPress={() => Linking.openURL(`mailto:${item.email}`)}
+                          onPress={() => Linking.openURL(`tel:${item.phone}`)}
                         >
-                          <EnvelopeIcon size={16} color="#fff" />
+                          <Ionicons
+                            name="call-outline"
+                            size={18}
+                            color="#fff"
+                          />
                         </TouchableOpacity>
-                      )}
+
+                        <WhatsAppButton phone={item.phone} />
+                      </View>
                     </View>
-                  </View>
-                </View>
+                  )}
 
-                {/* Botones de acción en columna a la derecha */}
-                <View style={styles.actionsColumn}>
-                  {/* Botón de editar arriba */}
-                  <TouchableOpacity
-                    style={styles.editButton}
-                    onPress={() => handleEditMember(item)}
-                    activeOpacity={0.7}
-                  >
-                    <EditIcon size={16} color="#fff" />
-                  </TouchableOpacity>
+                  {/* Email */}
+                  {item.email && (
+                    <View style={styles.contactRow}>
+                      <View style={styles.contactInfo}>
+                        <Ionicons
+                          name="mail-outline"
+                          size={18}
+                          color={MODERN_COLORS.primary}
+                        />
+                        <Text
+                          style={styles.contactText}
+                          numberOfLines={1}
+                          ellipsizeMode="tail"
+                        >
+                          {item.email}
+                        </Text>
+                      </View>
 
-                  {/* Espacio entre botones */}
-                  <View style={{ height: 8 }} />
+                      {/* Botón de email alineado a la derecha */}
+                      <View style={styles.rightButtonsContainer}>
+                        <TouchableOpacity
+                          style={[
+                            styles.actionButton,
+                            { backgroundColor: "#2196F3" },
+                          ]}
+                          onPress={() =>
+                            Linking.openURL(`mailto:${item.email}`)
+                          }
+                        >
+                          <Ionicons
+                            name="mail-outline"
+                            size={18}
+                            color="#fff"
+                          />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  )}
                 </View>
               </View>
-            </LinearGradient>
+
+              {/* Botón de editar en la esquina superior derecha */}
+              <View style={styles.editButtonContainer}>
+                <TouchableOpacity
+                  style={styles.editButton}
+                  onPress={() => handleEditMember(item)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="create-outline" size={16} color="#fff" />
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
         </Swipeable>
       </View>
@@ -468,7 +630,8 @@ export default function StaffList() {
   if (loading && staff.length === 0) {
     return (
       <View style={[styles.container, styles.centered]}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+        <ActivityIndicator size="large" color={MODERN_COLORS.primary} />
+        <Text style={styles.loadingText}>Cargando staff...</Text>
       </View>
     );
   }
@@ -478,8 +641,8 @@ export default function StaffList() {
     return (
       <View style={[styles.container, styles.centered]}>
         <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity 
-          style={styles.retryButton} 
+        <TouchableOpacity
+          style={styles.retryButton}
           onPress={() => {
             setError(null);
             const loadStaff = async () => {
@@ -489,7 +652,7 @@ export default function StaffList() {
                 setStaff(data);
                 setLoading(false);
               } catch (error) {
-                console.error('Error al cargar staff:', error);
+                console.error("Error al cargar staff:", error);
                 setLoading(false);
                 setError("No se pudo cargar el staff");
               }
@@ -505,52 +668,108 @@ export default function StaffList() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <View style={styles.container} onTouchStart={closeOpenSwipeable}>
-        <View style={styles.header}>
-          <BackButton />
-          <Text style={styles.title}>Staff técnico</Text>
-          <View style={styles.placeholder} />
-        </View>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
+      >
+        <View style={styles.container}>
+          {/* HEADER MODERNO */}
+          <View style={styles.header}>
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={styles.backButton}
+            >
+              <Ionicons
+                name="chevron-back"
+                size={24}
+                color={MODERN_COLORS.textDark}
+              />
+            </TouchableOpacity>
 
-        <View style={styles.searchContainer}>
-          <View style={styles.searchInputContainer}>
-            <SearchIcon size={20} color={COLORS.textSecondary} />
-            <TextInput
-              placeholder="Buscar miembro..."
-              placeholderTextColor={COLORS.textSecondary}
-              style={styles.searchInput}
-              value={searchQuery}
-              onChangeText={handleSearch}
-              onFocus={closeOpenSwipeable}
-            />
+            <View style={styles.headerCenter}>
+              <Text style={styles.title}>Staff técnico</Text>
+            </View>
+
+            <View style={{ width: 40 }} />
           </View>
 
-          <TouchableOpacity
-            style={[styles.addButton, { backgroundColor: COLORS.primary }]}
-            onPress={handleAddMember}
-            activeOpacity={0.7}
-          >
-            <PlusUserIcon size={20} color="#fff" />
-          </TouchableOpacity>
-        </View>
-
-        <FlatList
-          data={staff}
-          renderItem={renderMember}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContainer}
-          showsVerticalScrollIndicator={false}
-          onScrollBeginDrag={closeOpenSwipeable}
-          removeClippedSubviews={true}
-          maxToRenderPerBatch={10}
-          windowSize={10}
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No se encontraron miembros</Text>
+          {/* BÚSQUEDA */}
+          <View style={styles.searchContainer}>
+            <View style={styles.searchInputContainer}>
+              <Ionicons
+                name="search-outline"
+                size={20}
+                color={MODERN_COLORS.textGray}
+              />
+              <TextInput
+                placeholder="Buscar miembro..."
+                placeholderTextColor={MODERN_COLORS.textLight}
+                style={styles.searchInput}
+                value={searchQuery}
+                onChangeText={handleSearch}
+                onFocus={closeOpenSwipeable}
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => handleSearch("")}>
+                  <Ionicons
+                    name="close-circle"
+                    size={20}
+                    color={MODERN_COLORS.textGray}
+                  />
+                </TouchableOpacity>
+              )}
             </View>
-          }
-        />
-      </View>
+          </View>
+
+          <FlatList
+            data={staff}
+            renderItem={renderMember}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.listContainer}
+            showsVerticalScrollIndicator={false}
+            onScrollBeginDrag={closeOpenSwipeable}
+            onTouchStart={closeOpenSwipeable}
+            removeClippedSubviews={true}
+            maxToRenderPerBatch={10}
+            windowSize={10}
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Ionicons
+                  name="people-outline"
+                  size={64}
+                  color={MODERN_COLORS.textLight}
+                />
+                <Text style={styles.emptyTitle}>No hay miembros</Text>
+                <Text style={styles.emptySubtitle}>
+                  {searchQuery
+                    ? "No se encontraron resultados"
+                    : "Añade el primer miembro del staff"}
+                </Text>
+                {!searchQuery && (
+                  <TouchableOpacity
+                    style={styles.emptyButton}
+                    onPress={handleAddMember}
+                  >
+                    <Text style={styles.emptyButtonText}>Añadir miembro</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            }
+          />
+
+          {/* BOTÓN FLOTANTE */}
+          {!loading && (
+            <TouchableOpacity
+              style={styles.fab}
+              onPress={handleAddMember}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="add" size={28} color="#fff" />
+            </TouchableOpacity>
+          )}
+        </View>
+      </KeyboardAvoidingView>
     </GestureHandlerRootView>
   );
 }
@@ -558,269 +777,304 @@ export default function StaffList() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
-    padding: 16,
+    backgroundColor: MODERN_COLORS.background,
   },
   centered: {
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 16,
   },
-  errorText: {
-    color: COLORS.danger,
+  loadingText: {
     fontSize: 16,
-    marginBottom: 16,
-    textAlign: 'center',
+    color: MODERN_COLORS.textGray,
+    fontWeight: "500",
   },
   retryButton: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: MODERN_COLORS.primary,
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,
   },
   retryButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
+    color: "#fff",
+    fontWeight: "bold",
   },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-  emptyText: {
-    color: COLORS.textSecondary,
-    fontSize: 16,
-  },
+
+  // HEADER MODERNO
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 24,
+    paddingHorizontal: 20,
+    paddingTop: 15,
+    paddingBottom: 15,
+    backgroundColor: MODERN_COLORS.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: MODERN_COLORS.border,
   },
   backButton: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    borderRadius: 12,
+    backgroundColor: MODERN_COLORS.surfaceGray,
     justifyContent: "center",
     alignItems: "center",
   },
-  placeholder: {
-    width: 40,
+  headerCenter: {
+    flex: 1,
+    alignItems: "center",
   },
   title: {
-    fontSize: 24,
-    color: COLORS.text,
-    fontWeight: "bold",
-    textAlign: "center",
+    fontSize: 20,
+    fontWeight: "700",
+    color: MODERN_COLORS.textDark,
+    letterSpacing: -0.3,
   },
+
+  // BÚSQUEDA
   searchContainer: {
-    flexDirection: "row",
-    marginBottom: 16,
-    gap: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
   },
   searchInputContainer: {
-    flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: COLORS.card,
-    borderRadius: 10,
-    paddingHorizontal: 12,
+    backgroundColor: MODERN_COLORS.surface,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: COLORS.cardBorder,
+    borderColor: MODERN_COLORS.border,
+    paddingHorizontal: 16,
+    height: 48,
+    gap: 12,
   },
   searchInput: {
     flex: 1,
-    color: COLORS.text,
-    paddingVertical: 10,
-    marginLeft: 8,
+    fontSize: 16,
+    color: MODERN_COLORS.textDark,
+    fontWeight: "500",
   },
-  addButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
-  },
+
+  // LISTA
   listContainer: {
-    paddingBottom: 16,
+    paddingHorizontal: 20,
+    paddingBottom: 120, // Más espacio para el FAB y teclado
   },
-  // Nuevo contenedor para la tarjeta con Swipeable
+
+  // MIEMBRO CARD
   memberCardContainer: {
-    marginBottom: 16,
-    borderRadius: 12,
+    marginBottom: 12,
+    borderRadius: 16,
     overflow: "hidden",
   },
   memberCard: {
-    borderRadius: 12,
-    overflow: "hidden",
-  },
-  cardGradient: {
-    borderRadius: 12,
-    padding: 1, // Borde gradiente
+    backgroundColor: MODERN_COLORS.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: MODERN_COLORS.border,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
   memberContent: {
     flexDirection: "row",
-    backgroundColor: COLORS.card,
-    borderRadius: 11,
     padding: 16,
+    position: "relative", // Para posicionar el botón de editar
   },
   memberImage: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    marginRight: 16,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    marginRight: 12,
     borderWidth: 2,
-    borderColor: COLORS.primary,
+    borderColor: MODERN_COLORS.primary,
   },
   memberInfo: {
     flex: 1,
     justifyContent: "center",
   },
   memberName: {
-    color: COLORS.text,
     fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 4,
+    fontWeight: "700",
+    color: MODERN_COLORS.textDark,
+    marginBottom: 2,
+    letterSpacing: -0.3,
   },
   memberPosition: {
-    color: COLORS.primary,
     fontSize: 14,
+    fontWeight: "500",
+    color: MODERN_COLORS.primary,
     marginBottom: 12,
   },
   contactContainer: {
-    gap: 8,
+    gap: 6,
   },
-  contactItem: {
+
+  contactRow: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 4,
+    minHeight: 36, // Altura mínima para dar más espacio
+  },
+
+  contactInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
     gap: 8,
-    marginBottom: 4,
+    marginRight: 12, // Separación entre texto y botones
+    minWidth: 0, // Permite que el texto se contraiga
   },
   contactText: {
-    color: COLORS.textSecondary,
-    fontSize: 14,
+    fontSize: 14, // Texto un poco más pequeño
+    color: MODERN_COLORS.textGray,
+    fontWeight: "500",
+    flex: 1, // Para que el texto ocupe el espacio disponible
+    numberOfLines: 1, // Una sola línea
+    flexShrink: 1, // Permite que se contraiga si es necesario
   },
-  // Estilos para la columna de acciones
-  actionsColumn: {
-    justifyContent: "flex-start",
+  rightButtonsContainer: {
+    flexDirection: "row",
+    gap: 8,
     alignItems: "center",
-    marginLeft: 12,
+    position: "absolute",
+    right: 0,
+  },
+  actionButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  editButtonContainer: {
+    position: "absolute",
+    top: 16,
+    right: 16,
   },
   editButton: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: COLORS.primary,
+    backgroundColor: MODERN_COLORS.primary,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: COLORS.primary,
+    shadowColor: MODERN_COLORS.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 3,
   },
-  contactButtons: {
-    alignItems: "center",
-    gap: 8,
-  },
-  phoneButton: {
-    backgroundColor: "#2196F3",
-  },
-  // Estilos para el modo de edición
+
+  // MODO EDICIÓN
   editCard: {
     marginBottom: 16,
-    borderRadius: 12,
-    overflow: "hidden",
-  },
-  editCardGradient: {
-    borderRadius: 12,
-    padding: 1, // Borde gradiente
+    borderRadius: 16,
+    backgroundColor: MODERN_COLORS.surface,
+    borderWidth: 1,
+    borderColor: MODERN_COLORS.border,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 5,
+    minHeight: 400, // Altura mínima para que se vea bien
   },
   editCardContent: {
-    backgroundColor: COLORS.card,
-    borderRadius: 11,
-    padding: 16,
+    padding: 20,
   },
   editHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: 20,
   },
   editTitle: {
-    color: COLORS.text,
     fontSize: 18,
-    fontWeight: "bold",
+    fontWeight: "700",
+    color: MODERN_COLORS.textDark,
+    letterSpacing: -0.3,
   },
   cancelButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
-  },
-  cancelButtonText: {
-    color: COLORS.text,
-    fontSize: 14,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: MODERN_COLORS.surfaceGray,
+    justifyContent: "center",
+    alignItems: "center",
   },
   editAvatarContainer: {
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: 20,
   },
   editAvatar: {
     width: 100,
     height: 100,
     borderRadius: 50,
     borderWidth: 2,
-    borderColor: COLORS.primary,
+    borderColor: MODERN_COLORS.primary,
   },
   editAvatarBadge: {
     position: "absolute",
     bottom: 0,
     right: 0,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: COLORS.primary,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: MODERN_COLORS.primary,
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 2,
-    borderColor: COLORS.card,
-  },
-  editAvatarBadgeText: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "bold",
+    borderWidth: 3,
+    borderColor: MODERN_COLORS.surface,
   },
   editForm: {
-    gap: 12,
+    gap: 16,
   },
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: COLORS.background,
-    padding: 14,
-    borderRadius: 10,
+    backgroundColor: MODERN_COLORS.surfaceGray,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: COLORS.cardBorder,
+    borderColor: MODERN_COLORS.border,
+    paddingHorizontal: 16,
+    height: 52,
     gap: 12,
   },
   input: {
     flex: 1,
-    color: COLORS.text,
     fontSize: 16,
+    color: MODERN_COLORS.textDark,
+    fontWeight: "500",
   },
+
+  inputError: {
+    borderColor: MODERN_COLORS.danger,
+    backgroundColor: `${MODERN_COLORS.danger}10`,
+  },
+
+  errorText: {
+    fontSize: 12,
+    color: MODERN_COLORS.danger,
+
+    marginLeft: 4,
+    fontWeight: "500",
+  },
+
   saveButton: {
     marginTop: 8,
+    borderRadius: 12,
+    overflow: "hidden",
   },
   saveButtonGradient: {
-    borderRadius: 10,
-    paddingVertical: 14,
+    paddingVertical: 16,
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
@@ -829,33 +1083,70 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: "#fff",
     fontSize: 16,
-    fontWeight: "bold",
+    fontWeight: "600",
   },
-  actionButtonsContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginLeft: "auto",
-  },
-  actionButton: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    justifyContent: "center",
-    alignItems: "center",
-    marginLeft: 8,
-  },
-  // Estilos para el swipeable y el botón de eliminar
+
+  // SWIPEABLE
   rightActionContainer: {
     width: 80,
     height: "100%",
   },
   deleteAction: {
-    backgroundColor: COLORS.danger,
+    backgroundColor: MODERN_COLORS.danger,
     justifyContent: "center",
     alignItems: "center",
     flex: 1,
-    borderTopRightRadius: 12,
-    borderBottomRightRadius: 12,
+    borderTopRightRadius: 16,
+    borderBottomRightRadius: 16,
+  },
+
+  // ESTADO VACÍO
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 60,
+    gap: 12,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: "600",
+    color: MODERN_COLORS.textDark,
+    marginTop: 16,
+  },
+  emptySubtitle: {
+    fontSize: 16,
+    color: MODERN_COLORS.textGray,
+    textAlign: "center",
+    marginBottom: 24,
+  },
+  emptyButton: {
+    backgroundColor: MODERN_COLORS.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  emptyButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+
+  // FAB
+  fab: {
+    position: "absolute",
+    bottom: 24,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: MODERN_COLORS.primary,
+    justifyContent: "center",
+    alignItems: "center",
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
   },
 });

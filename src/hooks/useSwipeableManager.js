@@ -1,41 +1,26 @@
+// hooks/useSwipeableManager.js
 import { useRef, useCallback } from "react";
 
-export function useSwipeableManager() {
-  const openSwipeableRef = useRef(null);
+export const useSwipeableManager = () => {
+  const currentSwipeableRef = useRef(null);
 
-  // Callback a ser llamado cuando un Swipeable se abre
-  // Recibe la referencia del swipeable (ref object, no la instancia directa)
   const handleSwipeableOpen = useCallback((swipeableRef) => {
-    // Cerrar el swipeable anterior si existe y es diferente
+    // Cerrar el swipeable anterior si existe
     if (
-      openSwipeableRef.current &&
-      openSwipeableRef.current !== swipeableRef.current
+      currentSwipeableRef.current &&
+      currentSwipeableRef.current !== swipeableRef
     ) {
-      try {
-        openSwipeableRef.current.close();
-      } catch (error) {
-        console.warn("Error closing previous swipeable:", error);
-      }
+      currentSwipeableRef.current.close();
     }
 
-    // Guardar la referencia actual del swipeable (la instancia, no el ref)
-    openSwipeableRef.current = swipeableRef.current;
+    // Guardar referencia al swipeable actual
+    currentSwipeableRef.current = swipeableRef;
   }, []);
 
-  // Callback para cerrar explícitamente el swipeable actualmente abierto
   const closeCurrentSwipeable = useCallback(() => {
-    if (openSwipeableRef.current) {
-      try {
-        // Verificar que el método close existe antes de llamarlo
-        if (typeof openSwipeableRef.current.close === "function") {
-          openSwipeableRef.current.close();
-        }
-      } catch (error) {
-        console.warn("Error closing swipeable:", error);
-      } finally {
-        // Resetear la referencia después de cerrar
-        openSwipeableRef.current = null;
-      }
+    if (currentSwipeableRef.current) {
+      currentSwipeableRef.current.close();
+      currentSwipeableRef.current = null;
     }
   }, []);
 
@@ -43,4 +28,4 @@ export function useSwipeableManager() {
     handleSwipeableOpen,
     closeCurrentSwipeable,
   };
-}
+};

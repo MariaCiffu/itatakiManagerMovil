@@ -33,6 +33,7 @@ export default app;
 export const COLLECTIONS = {
   PLAYERS: "players",
   MULTAS: "multas",
+  STAFF: "staff",
   TEAMS: "teams",
   USERS: "users",
 };
