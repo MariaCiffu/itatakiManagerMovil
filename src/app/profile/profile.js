@@ -86,84 +86,66 @@ export default function Profile() {
     }
   };
 
-  // FUNCIONES PARA MANEJAR FOTO
+  // 🔧 FUNCIÓN CORREGIDA PARA SELECCIONAR FOTO (igual que add-player)
   const selectPhoto = async () => {
-    try {
-      Alert.alert(
-        "Cambiar foto de perfil",
-        "Elige cómo quieres cambiar tu foto",
-        [
-          { text: "Cancelar", style: "cancel" },
-          {
-            text: "Eliminar foto",
-            onPress: () => handleInputChange("profilePhoto", null),
-            style: "destructive",
-          },
-          { text: "Galería", onPress: () => pickFromGallery() },
-          { text: "Cámara", onPress: () => pickFromCamera() },
-        ]
-      );
-    } catch (error) {
-      console.error("Error selecting photo:", error);
-    }
-  };
+    Alert.alert("Seleccionar imagen", "¿Cómo quieres subir la imagen?", [
+      { text: "Cancelar", style: "cancel" },
+      {
+        text: "Galería",
+        onPress: async () => {
+          const { status } =
+            await ImagePicker.requestMediaLibraryPermissionsAsync();
 
-  const pickFromGallery = async () => {
-    try {
-      const { status } =
-        await ImagePicker.requestMediaLibraryPermissionsAsync();
+          if (status !== "granted") {
+            Alert.alert(
+              "Permisos requeridos",
+              "Necesitamos acceso a tu galería."
+            );
+            return;
+          }
 
-      if (status !== "granted") {
-        Alert.alert(
-          "Permisos requeridos",
-          "Necesitamos acceso a tu galería para seleccionar una foto.",
-          [{ text: "OK" }]
-        );
-        return;
-      }
+          const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.8,
+          });
 
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.8,
-      });
+          if (!result.canceled) {
+            handleInputChange("profilePhoto", result.assets[0].uri);
+          }
+        },
+      },
+      {
+        text: "Cámara",
+        onPress: async () => {
+          const { status } = await ImagePicker.requestCameraPermissionsAsync();
 
-      if (!result.canceled) {
-        handleInputChange("profilePhoto", result.assets[0].uri);
-      }
-    } catch (error) {
-      console.error("Error picking from gallery:", error);
-      Alert.alert("Error", "No se pudo seleccionar la imagen");
-    }
-  };
+          if (status !== "granted") {
+            Alert.alert(
+              "Permisos requeridos",
+              "Necesitamos acceso a tu cámara."
+            );
+            return;
+          }
 
-  const pickFromCamera = async () => {
-    try {
-      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+          const result = await ImagePicker.launchCameraAsync({
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.8,
+          });
 
-      if (status !== "granted") {
-        Alert.alert(
-          "Permisos requeridos",
-          "Necesitamos acceso a tu cámara para tomar una foto.",
-          [{ text: "OK" }]
-        );
-        return;
-      }
-
-      const result = await ImagePicker.launchCameraAsync({
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.8,
-      });
-
-      if (!result.canceled) {
-        handleInputChange("profilePhoto", result.assets[0].uri);
-      }
-    } catch (error) {
-      console.error("Error picking from camera:", error);
-      Alert.alert("Error", "No se pudo tomar la foto");
-    }
+          if (!result.canceled) {
+            handleInputChange("profilePhoto", result.assets[0].uri);
+          }
+        },
+      },
+      {
+        text: "Eliminar foto",
+        onPress: () => handleInputChange("profilePhoto", null),
+        style: "destructive",
+      },
+    ]);
   };
 
   const validatePassword = () => {
