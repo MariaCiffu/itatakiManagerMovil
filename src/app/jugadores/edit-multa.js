@@ -257,11 +257,14 @@ export default function EditMulta() {
       {/* HEADER MODERNO */}
       <View style={styles.header}>
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={() => router.push(`/jugadores/${jugadorId}/multas`)}
           style={styles.backButton}
-          activeOpacity={0.7}
         >
-          <ArrowLeftIcon size={24} color={MODERN_COLORS.textDark} />
+          <Ionicons
+            name="chevron-back"
+            size={24}
+            color={MODERN_COLORS.textDark}
+          />
         </TouchableOpacity>
 
         <Text style={styles.title}>Editar multa</Text>

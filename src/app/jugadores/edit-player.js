@@ -284,9 +284,12 @@ export default function EditPlayer() {
           <TouchableOpacity
             onPress={() => router.back()}
             style={styles.backButton}
-            activeOpacity={0.7}
           >
-            <ArrowLeftIcon size={24} color={MODERN_COLORS.textDark} />
+            <Ionicons
+              name="chevron-back"
+              size={24}
+              color={MODERN_COLORS.textDark}
+            />
           </TouchableOpacity>
 
           <Text style={styles.title}>Editar jugador</Text>

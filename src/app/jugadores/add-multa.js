@@ -1,4 +1,3 @@
-// app/jugadores/add-multa.js - CON ESTILOS MODERNOS
 import { useState, useCallback, useEffect } from "react";
 import {
   View,
@@ -19,8 +18,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { MODERN_COLORS } from "../../constants/modernColors";
 import { addMultaToJugador } from "../../services/playersService";
 import {
-  ArrowLeftIcon,
-  UserFriendsIcon, // En lugar de FileTextIcon
   CoinsIcon, // En lugar de EuroIcon
   CalendarIcon,
   CheckIcon,
@@ -36,10 +33,6 @@ export default function AddMulta() {
     paid: false,
   });
 
-  // 🔍 DEBUG: Ver cambios en el estado
-  useEffect(() => {
-    console.log("🔍 Estado actual de multa:", multa);
-  }, [multa]);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [formErrors, setFormErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
@@ -182,9 +175,12 @@ export default function AddMulta() {
         <TouchableOpacity
           onPress={() => router.push(`/jugadores/${jugadorId}/multas`)}
           style={styles.backButton}
-          activeOpacity={0.7}
         >
-          <ArrowLeftIcon size={24} color={MODERN_COLORS.textDark} />
+          <Ionicons
+            name="chevron-back"
+            size={24}
+            color={MODERN_COLORS.textDark}
+          />
         </TouchableOpacity>
 
         <Text style={styles.title}>Nueva multa</Text>
