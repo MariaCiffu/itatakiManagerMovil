@@ -93,10 +93,6 @@ export default function AddPlayer() {
       errors.foot = "El pie dominante es obligatorio";
     }
 
-    if (!player.phone.trim()) {
-      errors.phone = "El teléfono es obligatorio";
-    }
-
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -436,7 +432,7 @@ export default function AddPlayer() {
 
           {/* Teléfono */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Teléfono *</Text>
+            <Text style={styles.inputLabel}>Teléfono</Text>
             <View
               style={[
                 styles.inputContainer,
