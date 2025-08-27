@@ -1,5 +1,4 @@
-// src/app/partidos/[id]/editar.js
-import React, { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -11,16 +10,19 @@ import {
   ActivityIndicator,
   Platform,
   Alert,
+  KeyboardAvoidingView,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import StepIndicator from "../../../components/partido/StepIndicator";
 import {
-  getPartidoByIdWithDelay,
-  updatePartidoWithDelay,
+  getPartidoById,
+  updatePartido,
 } from "../../../services/partidosService";
-import LineupScreen from "../../alineacion"; // Asegúrate de que la ruta sea correcta
+import LineupScreen from "../../alineacion";
+import { MODERN_COLORS } from "../../../constants/modernColors";
 
 export default function EditarPartidoScreen() {
   const router = useRouter();
@@ -29,6 +31,7 @@ export default function EditarPartidoScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [formErrors, setFormErrors] = useState({});
 
   // Estados separados para los pickers de fecha y hora
   const [dateTimeMode, setDateTimeMode] = useState("date");
@@ -42,7 +45,7 @@ export default function EditarPartidoScreen() {
   const steps = [
     { id: "info", title: "Información" },
     { id: "rival", title: "Rival" },
-    { id: "alineacion", title: "Alineación" }, // Ahora es el tercer paso
+    { id: "alineacion", title: "Alineación" },
     { id: "estrategia", title: "Estrategia" }, // Ahora es el cuarto paso
   ];
 
@@ -54,7 +57,7 @@ export default function EditarPartidoScreen() {
   const loadPartido = async () => {
     try {
       setLoading(true);
-      const data = await getPartidoByIdWithDelay(id);
+      const data = await getPartidoById(id);
       if (data) {
         // Asegurarse de que la fecha es un objeto Date
         data.fecha = new Date(data.fecha);
@@ -86,6 +89,10 @@ export default function EditarPartidoScreen() {
 
   // Función para avanzar al siguiente paso
   const nextStep = () => {
+    if (!validateStep(currentStep)) {
+      return;
+    }
+
     // Si estamos en el paso de alineación, guardar los datos antes de avanzar
     if (currentStep === 2 && alineacionRef.current) {
       const alineacionData = alineacionRef.current.getAlineacionData();
@@ -179,32 +186,87 @@ export default function EditarPartidoScreen() {
       setSaving(true);
 
       // Si la alineación se maneja por referencia
+      let finalAlineacion = partidoData.alineacion;
       if (alineacionRef.current) {
-        const alineacionData = alineacionRef.current.getAlineacionData();
-        // Asegurarse de que los datos de alineación incluyen los jugadores temporales
-        setPartidoData((prev) => ({ ...prev, alineacion: alineacionData }));
+        finalAlineacion = alineacionRef.current.getAlineacionData();
       }
 
-      // Actualizar el partido
-      const partidoActualizado = await updatePartidoWithDelay(id, partidoData);
-      console.log("Partido actualizado:", partidoActualizado);
+      // Preparar datos para actualizar
+      const updateData = {
+        ...partidoData,
+        alineacion: finalAlineacion,
+      };
 
-      // Mostrar mensaje de éxito
-      Alert.alert(
-        "Partido actualizado",
-        "Los cambios se han guardado correctamente",
-        [
-          {
-            text: "OK",
-            onPress: () => router.replace(`/partidos/${id}`),
-          },
-        ]
-      );
+      // Eliminar campos que no deberían actualizarse
+      delete updateData.id;
+      delete updateData.createdAt;
+      delete updateData.updatedAt;
+      delete updateData.teamId;
+
+      // Actualizar el partido usando Firebase
+      const result = await updatePartido(id, updateData);
+
+      if (result.success) {
+        console.log("Partido actualizado correctamente");
+
+        // Mostrar mensaje de éxito
+        Alert.alert(
+          "Partido actualizado",
+          "Los cambios se han guardado correctamente",
+          [
+            {
+              text: "OK",
+              onPress: () => router.replace(`/partidos/${id}`),
+            },
+          ]
+        );
+      } else {
+        // Mostrar error del servicio
+        Alert.alert("Error", result.message);
+        setSaving(false);
+      }
     } catch (error) {
       console.error("Error al actualizar partido:", error);
       Alert.alert("Error", "No se pudo actualizar el partido");
       setSaving(false);
     }
+  };
+
+  // Función para validar cada paso
+  const validateStep = (step) => {
+    const errors = {};
+
+    switch (step) {
+      case 0: // Información
+        if (
+          partidoData.tipoPartido !== "amistoso" &&
+          !partidoData.jornada.trim()
+        ) {
+          errors.jornada =
+            partidoData.tipoPartido === "liga"
+              ? "La jornada es obligatoria"
+              : "El nombre del torneo es obligatorio";
+        }
+        if (
+          partidoData.lugar === "Fuera" &&
+          !partidoData.lugarEspecifico.trim()
+        ) {
+          errors.lugarEspecifico =
+            "Especifica el lugar cuando juegues de visitante";
+        }
+        break;
+
+      case 1: // Rival
+        if (!partidoData.rival.trim()) {
+          errors.rival = "El nombre del rival es obligatorio";
+        }
+        break;
+
+      // Los pasos de alineación y estrategia son opcionales
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   // Renderizar el paso actual
@@ -217,6 +279,7 @@ export default function EditarPartidoScreen() {
           <View style={styles.stepContainer}>
             <Text style={styles.stepTitle}>Información del partido</Text>
 
+            {/* Tipo de partido */}
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Tipo de partido</Text>
               <View style={styles.radioGroup}>
@@ -229,8 +292,17 @@ export default function EditarPartidoScreen() {
                   onPress={() =>
                     setPartidoData({ ...partidoData, tipoPartido: "liga" })
                   }
+                  activeOpacity={0.7}
                 >
-                  <Text style={styles.radioText}>Liga</Text>
+                  <Text
+                    style={[
+                      styles.radioText,
+                      partidoData.tipoPartido === "liga" &&
+                        styles.radioTextSelected,
+                    ]}
+                  >
+                    Liga
+                  </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[
@@ -241,8 +313,17 @@ export default function EditarPartidoScreen() {
                   onPress={() =>
                     setPartidoData({ ...partidoData, tipoPartido: "torneo" })
                   }
+                  activeOpacity={0.7}
                 >
-                  <Text style={styles.radioText}>Torneo</Text>
+                  <Text
+                    style={[
+                      styles.radioText,
+                      partidoData.tipoPartido === "torneo" &&
+                        styles.radioTextSelected,
+                    ]}
+                  >
+                    Torneo
+                  </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[
@@ -253,54 +334,94 @@ export default function EditarPartidoScreen() {
                   onPress={() =>
                     setPartidoData({ ...partidoData, tipoPartido: "amistoso" })
                   }
+                  activeOpacity={0.7}
                 >
-                  <Text style={styles.radioText}>Amistoso</Text>
+                  <Text
+                    style={[
+                      styles.radioText,
+                      partidoData.tipoPartido === "amistoso" &&
+                        styles.radioTextSelected,
+                    ]}
+                  >
+                    Amistoso
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>
 
+            {/* Jornada/Torneo */}
             {partidoData.tipoPartido !== "amistoso" && (
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>
                   {partidoData.tipoPartido === "liga"
-                    ? "Jornada"
-                    : "Nombre del torneo"}
+                    ? "Jornada *"
+                    : "Nombre del torneo *"}
                 </Text>
-                <TextInput
-                  style={styles.input}
-                  value={partidoData.jornada}
-                  onChangeText={(text) =>
-                    setPartidoData({ ...partidoData, jornada: text })
-                  }
-                  keyboardType={
-                    partidoData.tipoPartido === "liga" ? "numeric" : "default"
-                  }
-                  placeholder={
-                    partidoData.tipoPartido === "liga"
-                      ? "Número de jornada"
-                      : "Nombre del torneo"
-                  }
-                  placeholderTextColor="#999"
-                />
+                <View
+                  style={[
+                    styles.inputContainer,
+                    formErrors.jornada && styles.inputError,
+                  ]}
+                >
+                  <Ionicons
+                    name="trophy-outline"
+                    size={20}
+                    color={
+                      formErrors.jornada
+                        ? MODERN_COLORS.danger
+                        : MODERN_COLORS.textGray
+                    }
+                    style={styles.inputIcon}
+                  />
+                  <TextInput
+                    style={styles.textInput}
+                    value={partidoData.jornada}
+                    onChangeText={(text) =>
+                      setPartidoData({ ...partidoData, jornada: text })
+                    }
+                    keyboardType={
+                      partidoData.tipoPartido === "liga" ? "numeric" : "default"
+                    }
+                    placeholder={
+                      partidoData.tipoPartido === "liga"
+                        ? "Número de jornada"
+                        : "Nombre del torneo"
+                    }
+                    placeholderTextColor={MODERN_COLORS.textLight}
+                  />
+                </View>
+                {formErrors.jornada && (
+                  <Text style={styles.errorText}>{formErrors.jornada}</Text>
+                )}
               </View>
             )}
 
+            {/* Fecha y Hora */}
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Fecha y Hora</Text>
               <TouchableOpacity
-                style={styles.input}
+                style={styles.inputContainer}
                 onPress={() => {
                   setDateTimeMode("date");
                   setShowDatePicker(true);
                 }}
+                activeOpacity={0.7}
               >
-                <Text style={styles.dateText}>
-                  {partidoData.fecha.toLocaleDateString()}{" "}
-                  {partidoData.fecha.toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </Text>
+                <Ionicons
+                  name="calendar-outline"
+                  size={20}
+                  color={MODERN_COLORS.textGray}
+                  style={styles.inputIcon}
+                />
+                <View style={styles.dateTimeInfo}>
+                  <Text style={styles.dateTimeText}>
+                    {partidoData.fecha.toLocaleDateString()}{" "}
+                    {partidoData.fecha.toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </Text>
+                </View>
               </TouchableOpacity>
 
               {showDatePicker && (
@@ -314,6 +435,7 @@ export default function EditarPartidoScreen() {
               )}
             </View>
 
+            {/* Lugar */}
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Lugar</Text>
               <View style={styles.radioGroup}>
@@ -325,8 +447,26 @@ export default function EditarPartidoScreen() {
                   onPress={() =>
                     setPartidoData({ ...partidoData, lugar: "Casa" })
                   }
+                  activeOpacity={0.7}
                 >
-                  <Text style={styles.radioText}>Local</Text>
+                  <Ionicons
+                    name="home"
+                    size={16}
+                    color={
+                      partidoData.lugar === "Casa"
+                        ? MODERN_COLORS.textWhite
+                        : MODERN_COLORS.textGray
+                    }
+                    style={{ marginRight: 6 }}
+                  />
+                  <Text
+                    style={[
+                      styles.radioText,
+                      partidoData.lugar === "Casa" && styles.radioTextSelected,
+                    ]}
+                  >
+                    Local
+                  </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[
@@ -336,40 +476,67 @@ export default function EditarPartidoScreen() {
                   onPress={() =>
                     setPartidoData({ ...partidoData, lugar: "Fuera" })
                   }
+                  activeOpacity={0.7}
                 >
-                  <Text style={styles.radioText}>Visitante</Text>
+                  <Ionicons
+                    name="airplane"
+                    size={16}
+                    color={
+                      partidoData.lugar === "Fuera"
+                        ? MODERN_COLORS.textWhite
+                        : MODERN_COLORS.textGray
+                    }
+                    style={{ marginRight: 6 }}
+                  />
+                  <Text
+                    style={[
+                      styles.radioText,
+                      partidoData.lugar === "Fuera" && styles.radioTextSelected,
+                    ]}
+                  >
+                    Visitante
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>
 
-            {/* Campo adicional para lugar específico cuando es visitante */}
+            {/* Lugar específico cuando es visitante */}
             {partidoData.lugar === "Fuera" && (
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Lugar específico</Text>
-                <TextInput
-                  style={styles.input}
-                  value={partidoData.lugarEspecifico}
-                  onChangeText={(text) =>
-                    setPartidoData({ ...partidoData, lugarEspecifico: text })
-                  }
-                  placeholder=""
-                  placeholderTextColor="#999"
-                />
+                <Text style={styles.inputLabel}>Lugar específico *</Text>
+                <View
+                  style={[
+                    styles.inputContainer,
+                    formErrors.lugarEspecifico && styles.inputError,
+                  ]}
+                >
+                  <Ionicons
+                    name="location-outline"
+                    size={20}
+                    color={
+                      formErrors.lugarEspecifico
+                        ? MODERN_COLORS.danger
+                        : MODERN_COLORS.textGray
+                    }
+                    style={styles.inputIcon}
+                  />
+                  <TextInput
+                    style={styles.textInput}
+                    value={partidoData.lugarEspecifico}
+                    onChangeText={(text) =>
+                      setPartidoData({ ...partidoData, lugarEspecifico: text })
+                    }
+                    placeholder="Nombre del campo o ciudad"
+                    placeholderTextColor={MODERN_COLORS.textLight}
+                  />
+                </View>
+                {formErrors.lugarEspecifico && (
+                  <Text style={styles.errorText}>
+                    {formErrors.lugarEspecifico}
+                  </Text>
+                )}
               </View>
             )}
-
-            <TouchableOpacity
-              style={[
-                styles.nextButton,
-                !partidoData.jornada && styles.buttonDisabled,
-              ]}
-              onPress={nextStep}
-              disabled={
-                partidoData.tipoPartido !== "amistoso" && !partidoData.jornada
-              }
-            >
-              <Text style={styles.nextButtonText}>Siguiente</Text>
-            </TouchableOpacity>
           </View>
         );
 
@@ -378,104 +545,104 @@ export default function EditarPartidoScreen() {
           <View style={styles.stepContainer}>
             <Text style={styles.stepTitle}>Información del rival</Text>
 
+            {/* Nombre del rival */}
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Nombre del equipo rival</Text>
-              <TextInput
-                style={styles.input}
-                value={partidoData.rival}
-                onChangeText={(text) =>
-                  setPartidoData({ ...partidoData, rival: text })
-                }
-                placeholder="Introduce el nombre del equipo rival"
-                placeholderTextColor="#999"
-              />
+              <View
+                style={[
+                  styles.inputContainer,
+                  formErrors.rival && styles.inputError,
+                ]}
+              >
+                <Ionicons
+                  name="shield-outline"
+                  size={20}
+                  color={
+                    formErrors.rival
+                      ? MODERN_COLORS.danger
+                      : MODERN_COLORS.textGray
+                  }
+                  style={styles.inputIcon}
+                />
+                <TextInput
+                  style={styles.textInput}
+                  value={partidoData.rival}
+                  onChangeText={(text) =>
+                    setPartidoData({ ...partidoData, rival: text })
+                  }
+                  placeholder="Introduce el nombre del equipo rival"
+                  placeholderTextColor={MODERN_COLORS.textLight}
+                />
+              </View>
+              {formErrors.rival && (
+                <Text style={styles.errorText}>{formErrors.rival}</Text>
+              )}
             </View>
 
-            {/* Nuevo campo para notas del rival */}
+            {/* Notas sobre el rival */}
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Notas sobre el rival</Text>
-              <TextInput
-                style={[styles.input, styles.textAreaRival]}
-                value={partidoData.notasRival}
-                onChangeText={(text) =>
-                  setPartidoData({ ...partidoData, notasRival: text })
-                }
-                placeholder="Información sobre el rival, jugadores clave, etc."
-                placeholderTextColor="#999"
-                multiline={true}
-                numberOfLines={4}
-                textAlignVertical="top"
-              />
+              <View style={styles.textAreaContainer}>
+                <TextInput
+                  style={[styles.input, styles.textAreaRival]}
+                  value={partidoData.notasRival}
+                  onChangeText={(text) =>
+                    setPartidoData({ ...partidoData, notasRival: text })
+                  }
+                  placeholder="Información sobre el rival, jugadores clave, fortalezas, debilidades..."
+                  placeholderTextColor={MODERN_COLORS.textLight}
+                  multiline={true}
+                  numberOfLines={6}
+                  textAlignVertical="top"
+                />
+              </View>
             </View>
-
-            <TouchableOpacity
-              style={[
-                styles.nextButton,
-                !partidoData.rival && styles.buttonDisabled,
-              ]}
-              onPress={nextStep}
-              disabled={!partidoData.rival}
-            >
-              <Text style={styles.nextButtonText}>Siguiente</Text>
-            </TouchableOpacity>
           </View>
         );
 
-      case "alineacion": // Ahora es el tercer paso
+      case "alineacion":
         return (
           <View style={styles.alineacionContainer}>
-            <LineupScreen
-              ref={alineacionRef}
-              matchday={
-                partidoData.tipoPartido === "liga"
-                  ? parseInt(partidoData.jornada) || 0
-                  : partidoData.jornada || ""
-              }
-              isEmbedded={true}
-              initialData={partidoData.alineacion}
-              onSaveLineup={(lineupData) => {
-                setPartidoData({ ...partidoData, alineacion: lineupData });
-              }}
-            />
-
-            <TouchableOpacity style={styles.nextButton} onPress={nextStep}>
-              <Text style={styles.nextButtonText}>Siguiente</Text>
-            </TouchableOpacity>
+            <View style={styles.lineupWrapper}>
+              <LineupScreen
+                ref={alineacionRef}
+                matchday={
+                  partidoData.tipoPartido === "liga"
+                    ? parseInt(partidoData.jornada) || 0
+                    : partidoData.jornada || ""
+                }
+                isEmbedded={true}
+                initialData={partidoData.alineacion}
+                onSaveLineup={(lineupData) => {
+                  setPartidoData({ ...partidoData, alineacion: lineupData });
+                }}
+              />
+            </View>
           </View>
         );
 
-      case "estrategia": // Ahora es el cuarto paso (último)
+      case "estrategia":
         return (
           <View style={styles.stepContainer}>
             <Text style={styles.stepTitle}>Estrategia para el partido</Text>
 
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Estrategia y observaciones</Text>
-              <TextInput
-                style={[styles.input, styles.textAreaEstrategia]}
-                value={partidoData.estrategia}
-                onChangeText={(text) =>
-                  setPartidoData({ ...partidoData, estrategia: text })
-                }
-                placeholder="Define la estrategia para este partido, instrucciones tácticas, etc."
-                placeholderTextColor="#999"
-                multiline={true}
-                numberOfLines={5}
-                textAlignVertical="top"
-              />
+              <View style={styles.textAreaContainer}>
+                <TextInput
+                  style={[styles.textArea, styles.textAreaLarge]}
+                  value={partidoData.estrategia}
+                  onChangeText={(text) =>
+                    setPartidoData({ ...partidoData, estrategia: text })
+                  }
+                  placeholder="Define la estrategia para este partido, instrucciones tácticas, sistemas de juego..."
+                  placeholderTextColor={MODERN_COLORS.textLight}
+                  multiline={true}
+                  numberOfLines={6}
+                  textAlignVertical="top"
+                />
+              </View>
             </View>
-
-            <TouchableOpacity
-              style={[styles.saveButton, saving && styles.buttonDisabled]}
-              onPress={actualizarPartido}
-              disabled={saving}
-            >
-              {saving ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Text style={styles.saveButtonText}>Guardar cambios</Text>
-              )}
-            </TouchableOpacity>
           </View>
         );
 
@@ -484,191 +651,292 @@ export default function EditarPartidoScreen() {
     }
   };
 
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#4CAF50" />
-          <Text style={styles.loadingText}>Cargando partido...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
   return (
-    <SafeAreaView style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+    >
+      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={prevStep} style={styles.backButtonHeader}>
-          <Ionicons name="arrow-back" size={24} color="#fff" />
+        <TouchableOpacity onPress={prevStep} style={styles.backButton}>
+          <Ionicons
+            name="chevron-back"
+            size={24}
+            color={MODERN_COLORS.textDark}
+          />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Editar partido</Text>
+        <View style={{ width: 40 }} />
       </View>
 
+      {/* Step Indicator */}
       <StepIndicator
         steps={steps}
         currentStep={currentStep}
         onStepPress={handleStepPress}
       />
 
-      <ScrollView style={styles.content}>{renderStep()}</ScrollView>
-    </SafeAreaView>
+      {/* Content */}
+      <ScrollView
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={styles.scrollContent}
+      >
+        <View style={styles.stepContentContainer}>{renderStep()}</View>
+      </ScrollView>
+
+      {/* Botón fijo en la parte inferior */}
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity
+          style={[styles.nextButton, loading && styles.buttonDisabled]}
+          onPress={nextStep}
+          disabled={loading}
+          activeOpacity={0.8}
+        >
+          <LinearGradient
+            colors={[MODERN_COLORS.primary, MODERN_COLORS.primaryDark]}
+            style={styles.buttonGradient}
+          >
+            {loading ? (
+              <ActivityIndicator size="small" color={MODERN_COLORS.textWhite} />
+            ) : (
+              <>
+                <Text style={styles.nextButtonText}>
+                  {currentStep === steps.length - 1
+                    ? "Guardar partido"
+                    : "Siguiente"}
+                </Text>
+                <Ionicons
+                  name="chevron-forward"
+                  size={16}
+                  color={MODERN_COLORS.textWhite}
+                  style={{ marginLeft: 4 }}
+                />
+              </>
+            )}
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#121212",
+    backgroundColor: MODERN_COLORS.background,
   },
+
+  // HEADER
   header: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingTop: 15,
+    paddingBottom: 15,
+    backgroundColor: MODERN_COLORS.surface,
     borderBottomWidth: 1,
-    borderBottomColor: "#333",
-    backgroundColor: "#4CAF50", // Color verde para el encabezado
+    borderBottomColor: MODERN_COLORS.border,
   },
-  backButtonHeader: {
-    padding: 8,
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: MODERN_COLORS.surfaceGray,
+    justifyContent: "center",
+    alignItems: "center",
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#fff",
-    marginLeft: 16,
+    fontSize: 18,
+    fontWeight: "700",
+    color: MODERN_COLORS.textDark,
+    letterSpacing: -0.3,
   },
+
+  // CONTENT
   content: {
     flex: 1,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
+  scrollContent: {
+    flexGrow: 1,
   },
-  loadingText: {
-    color: "#ccc",
-    fontSize: 16,
-    marginTop: 16,
+  stepContentContainer: {
+    flex: 1,
   },
   stepContainer: {
-    padding: 16,
-  },
-  alineacionContainer: {
     flex: 1,
-    paddingHorizontal: 16,
-    paddingBottom: 16,
+    padding: 20,
   },
   stepTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#fff",
+    fontSize: 20,
+    fontWeight: "700",
+    color: MODERN_COLORS.textDark,
+    marginBottom: 24,
+    letterSpacing: -0.3,
+  },
+  // FORM
+  inputGroup: {
     marginBottom: 20,
   },
-  inputGroup: {
-    marginBottom: 16,
-  },
+
   inputLabel: {
-    fontSize: 16,
-    color: "#ccc",
+    fontSize: 14,
+    fontWeight: "600",
+    color: MODERN_COLORS.textDark,
     marginBottom: 8,
   },
-  input: {
-    backgroundColor: "#333",
-    borderRadius: 8,
-    padding: 12,
-    color: "#fff",
-    fontSize: 16,
-  },
-  dateTimeContainer: {
-    backgroundColor: "#333",
-    borderRadius: 8,
-    padding: 12,
-  },
-  dateTimeText: {
-    color: "#fff",
-    fontSize: 16,
-    marginBottom: 8,
-  },
-  dateTimeButtons: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 8,
-  },
-  dateTimeButton: {
+
+  inputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#4CAF50",
-    borderRadius: 4,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    justifyContent: "center",
-    flex: 1,
-    marginHorizontal: 4,
+    backgroundColor: MODERN_COLORS.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: MODERN_COLORS.border,
+    paddingHorizontal: 16,
+    height: 52,
   },
-  dateTimeButtonText: {
-    color: "#fff",
-    marginLeft: 4,
-    fontSize: 14,
+
+  inputError: {
+    borderColor: MODERN_COLORS.danger,
+    backgroundColor: `${MODERN_COLORS.danger}10`,
+  },
+
+  inputIcon: {
+    marginRight: 12,
+  },
+
+  textInput: {
+    flex: 1,
+    fontSize: 16,
+    color: MODERN_COLORS.textDark,
     fontWeight: "500",
   },
-  dateText: {
-    color: "#fff",
+
+  dateTimeInfo: {
+    flex: 1,
   },
-  textAreaEstrategia: {
-    height: 450,
-    textAlignVertical: "top",
-    paddingTop: 12,
+
+  dateTimeText: {
+    fontSize: 16,
+    color: MODERN_COLORS.textDark,
+    fontWeight: "600",
   },
-  textAreaRival: {
-    height: 350,
-    textAlignVertical: "top",
-    paddingTop: 12,
+
+  errorText: {
+    fontSize: 12,
+    color: MODERN_COLORS.danger,
+    marginTop: 4,
+    marginLeft: 4,
+    fontWeight: "500",
   },
+
+  // RADIO BUTTONS
   radioGroup: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    gap: 8,
   },
+
   radioButton: {
     flex: 1,
-    padding: 12,
-    borderRadius: 8,
-    backgroundColor: "#333",
+    flexDirection: "row",
     alignItems: "center",
-    marginHorizontal: 4,
+    justifyContent: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    backgroundColor: MODERN_COLORS.surface,
+    borderWidth: 1,
+    borderColor: MODERN_COLORS.border,
   },
+
   radioButtonSelected: {
-    backgroundColor: "#4CAF50",
+    backgroundColor: MODERN_COLORS.primary,
+    borderColor: MODERN_COLORS.primary,
   },
+
   radioText: {
-    color: "#fff",
-    fontSize: 16,
+    fontSize: 14,
+    fontWeight: "600",
+    color: MODERN_COLORS.textDark,
   },
+
+  radioTextSelected: {
+    color: MODERN_COLORS.textWhite,
+  },
+
+  // TEXT AREAS
+  textAreaContainer: {
+    backgroundColor: MODERN_COLORS.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: MODERN_COLORS.border,
+    padding: 16,
+  },
+
+  textArea: {
+    fontSize: 16,
+    color: MODERN_COLORS.textDark,
+    fontWeight: "500",
+    minHeight: 100,
+    textAlignVertical: "top",
+  },
+
+  textAreaLarge: {
+    minHeight: 350,
+  },
+
+  textAreaRival: {
+    minHeight: 250, // Más grande para las notas del rival
+  },
+
+  // ALINEACIÓN
+  alineacionContainer: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
+
+  lineupWrapper: {
+    flex: 1,
+    backgroundColor: MODERN_COLORS.surface,
+    borderRadius: 16,
+    marginBottom: 10,
+    marginBottom: 20,
+    overflow: "hidden",
+  },
+
+  // BOTONES
+  buttonContainer: {
+    backgroundColor: MODERN_COLORS.surface,
+    borderTopWidth: 1,
+    borderTopColor: MODERN_COLORS.border,
+    padding: 20,
+  },
+
   nextButton: {
-    padding: 12,
-    borderRadius: 8,
-    backgroundColor: "#4CAF50",
-    alignItems: "center",
-    marginTop: 20,
+    borderRadius: 12,
+    overflow: "hidden",
   },
+
+  buttonGradient: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 16,
+    gap: 8,
+  },
+
   nextButtonText: {
-    color: "#fff",
+    color: MODERN_COLORS.textWhite,
     fontSize: 16,
-    fontWeight: "bold",
+    fontWeight: "600",
   },
-  saveButton: {
-    padding: 12,
-    borderRadius: 8,
-    backgroundColor: "#2196F3",
-    alignItems: "center",
-    marginTop: 20,
-  },
-  saveButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
+
   buttonDisabled: {
-    opacity: 0.5,
+    opacity: 0.6,
   },
 });

@@ -1,5 +1,3 @@
-"use client";
-
 import { useState, useEffect } from "react";
 import {
   View,
@@ -7,31 +5,27 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  SafeAreaView,
   ActivityIndicator,
   Alert,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import {
-  getPartidoByIdWithDelay,
-  deletePartidoWithDelay,
-} from "../../services/partidosService";
-import { getAllJugadores } from "../../services/jugadoresService";
+import { LinearGradient } from "expo-linear-gradient";
+import { MODERN_COLORS } from "../../constants/modernColors";
+import { getPartidoById, deletePartido } from "../../services/partidosService";
+import { getAllJugadores } from "../../services/playersService";
 import { availableRoles } from "../../data/roles";
-import { useAuth } from "../../context/authContext";
+import { useAuth } from "../../hooks/useFirebase";
 
 export default function DetallePartidoScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
-  const { state } = useAuth();
-  const { user } = state;
+  const { user } = useAuth();
 
   const [partido, setPartido] = useState(null);
   const [jugadores, setJugadores] = useState([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
-  const [generatingConvocatoria, setGeneratingConvocatoria] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -42,16 +36,13 @@ export default function DetallePartidoScreen() {
       setLoading(true);
       // Cargar partido y jugadores en paralelo
       const [partidoData, jugadoresData] = await Promise.all([
-        getPartidoByIdWithDelay(id),
+        getPartidoById(id),
         getAllJugadores(),
       ]);
 
       if (partidoData) {
-        // Asegurarse de que la fecha es un objeto Date
-        partidoData.fecha = new Date(partidoData.fecha);
         setPartido(partidoData);
       } else {
-        // Manejar caso de partido no encontrado
         Alert.alert("Error", "Partido no encontrado");
         router.replace("/partidos");
         return;
@@ -83,8 +74,13 @@ export default function DetallePartidoScreen() {
           onPress: async () => {
             try {
               setDeleting(true);
-              await deletePartidoWithDelay(id);
-              router.replace("/partidos");
+              const result = await deletePartido(id);
+              if (result.success) {
+                router.replace("/partidos");
+              } else {
+                Alert.alert("Error", result.message);
+                setDeleting(false);
+              }
             } catch (error) {
               console.error("Error al eliminar partido:", error);
               Alert.alert("Error", "No se pudo eliminar el partido");
@@ -100,11 +96,11 @@ export default function DetallePartidoScreen() {
     router.push(`/partidos/${id}/alineacion`);
   };
 
-  // Función para obtener el nombre del jugador por ID usando el estado local
+  // Función para obtener el nombre del jugador por ID
   const getPlayerNameById = (playerId) => {
     if (!playerId) return "No asignado";
 
-    // Primero buscar en jugadores regulares
+    // Buscar en jugadores regulares
     const jugador = jugadores.find((player) => player.id === playerId);
     if (jugador) return jugador.name;
 
@@ -119,12 +115,12 @@ export default function DetallePartidoScreen() {
     return "No asignado";
   };
 
-  // Función para renderizar el indicador de rol (icono o letra)
+  // Función para renderizar el indicador de rol
   const renderRoleIndicator = (role) => {
     if (role.type === "icon") {
       return (
         <View
-          style={[styles.rolBadge, { backgroundColor: role.backgroundColor }]}
+          style={[styles.roleBadge, { backgroundColor: role.backgroundColor }]}
         >
           <Ionicons
             name={role.icon.replace("-outline", "")}
@@ -136,9 +132,9 @@ export default function DetallePartidoScreen() {
     } else if (role.type === "letter") {
       return (
         <View
-          style={[styles.rolBadge, { backgroundColor: role.backgroundColor }]}
+          style={[styles.roleBadge, { backgroundColor: role.backgroundColor }]}
         >
-          <Text style={[styles.rolBadgeText, { color: role.letterColor }]}>
+          <Text style={[styles.roleBadgeText, { color: role.letterColor }]}>
             {role.letter}
           </Text>
         </View>
@@ -147,32 +143,21 @@ export default function DetallePartidoScreen() {
     return null;
   };
 
-  // Función para generar la convocatoria
-  function handleGenerarConvocatoria() {
+  // Función para generar convocatoria
+  const handleGenerarConvocatoria = () => {
     if (!partido) return;
 
     try {
-      // Formatear fecha en formato DD/MM/YYYY para la pantalla de convocatoria
-      const fechaFormateada = `${String(partido.fecha.getDate()).padStart(2, "0")}/${String(partido.fecha.getMonth() + 1).padStart(2, "0")}/${partido.fecha.getFullYear()}`;
-
-      // Formatear hora en formato HH:MM
-      const horaFormateada = partido.fecha.toLocaleTimeString([], {
+      // Formatear fecha en formato DD/MM/YYYY
+      const fechaFormateada = partido.fecha.toLocaleDateString("es-ES");
+      const horaFormateada = partido.fecha.toLocaleTimeString("es-ES", {
         hour: "2-digit",
         minute: "2-digit",
-        hour12: false,
       });
-
-      // Determinar tipo de partido y datos relacionados
-      const tipoPartido = partido.tipoPartido || "liga";
-      const jornada = partido.jornada || "";
-      const nombreTorneo =
-        partido.tipoPartido === "torneo" ? partido.jornada : "";
 
       // Determinar lugar específico
       const lugarEspecifico =
-        partido.lugar === "Casa"
-          ? user?.homeField // 👈 Usa el campo del usuario
-          : partido.lugarEspecifico || "Campo visitante";
+        partido.lugar === "Casa" ? user?.teamField : partido.lugarEspecifico;
 
       // Crear objeto con los datos a pasar
       const datosConvocatoria = {
@@ -180,9 +165,9 @@ export default function DetallePartidoScreen() {
         hora: horaFormateada,
         lugar: lugarEspecifico,
         rival: partido.rival,
-        tipoPartido: tipoPartido,
-        jornada: jornada,
-        nombreTorneo: nombreTorneo,
+        tipoPartido: partido.tipoPartido,
+        jornada: partido.jornada,
+        nombreTorneo: partido.tipoPartido === "torneo" ? partido.jornada : "",
         // Si hay alineación, pasar los jugadores seleccionados
         jugadoresSeleccionados: partido.alineacion
           ? {
@@ -200,7 +185,7 @@ export default function DetallePartidoScreen() {
         temporaryPlayers: partido.alineacion?.temporaryPlayers || [],
       };
 
-      // Navegar a la pantalla de convocatoria pasando los datos
+      // Navegar a la pantalla de convocatoria
       router.push({
         pathname: "/convocatorias",
         params: { datosPartido: JSON.stringify(datosConvocatoria) },
@@ -212,23 +197,57 @@ export default function DetallePartidoScreen() {
         "No se pudieron preparar los datos para la convocatoria"
       );
     }
-  }
+  };
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButton}
+          >
+            <Ionicons
+              name="chevron-back"
+              size={24}
+              color={MODERN_COLORS.textDark}
+            />
+          </TouchableOpacity>
+          <Text style={styles.title}>Cargando partido...</Text>
+          <View style={{ width: 40 }} />
+        </View>
+
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#4CAF50" />
+          <ActivityIndicator size="large" color={MODERN_COLORS.primary} />
           <Text style={styles.loadingText}>Cargando partido...</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
-  // Determinar si hay notas para mostrar (estrategia o notas del rival)
-  const hayNotas = partido.estrategia || partido.notasRival;
+  if (!partido) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButton}
+          >
+            <Ionicons
+              name="chevron-back"
+              size={24}
+              color={MODERN_COLORS.textDark}
+            />
+          </TouchableOpacity>
+          <Text style={styles.title}>Partido no encontrado</Text>
+          <View style={{ width: 40 }} />
+        </View>
+      </View>
+    );
+  }
 
-  // Determinar si hay roles especiales asignados
+  const esLocal = partido.lugar === "Casa";
+  const hayNotas = partido.estrategia || partido.notasRival;
   const hayRolesEspeciales =
     partido.alineacion &&
     partido.alineacion.specialRoles &&
@@ -237,468 +256,680 @@ export default function DetallePartidoScreen() {
     );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => router.back()}
           style={styles.backButton}
         >
-          <Ionicons name="arrow-back" size={24} color="#fff" />
+          <Ionicons
+            name="chevron-back"
+            size={24}
+            color={MODERN_COLORS.textDark}
+          />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Detalles del partido</Text>
+
+        <View style={styles.headerCenter}>
+          <Text style={styles.title}>
+            {partido.tipoPartido === "liga"
+              ? `Jornada ${partido.jornada}`
+              : partido.tipoPartido === "torneo"
+                ? `Torneo ${partido.jornada}`
+                : "Amistoso"}
+          </Text>
+        </View>
+
         <TouchableOpacity
           onPress={handleEditarPartido}
-          style={styles.editButton}
+          style={styles.editHeaderButton}
         >
-          <Ionicons name="create-outline" size={24} color="#fff" />
+          <Ionicons
+            name="create-outline"
+            size={24}
+            color={MODERN_COLORS.textDark}
+          />
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content}>
-        {/* Sección de información general */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Información general</Text>
-
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Tipo:</Text>
-            <Text style={styles.infoValue}>
-              {partido.tipoPartido === "liga"
-                ? "Liga"
-                : partido.tipoPartido === "torneo"
-                  ? "Torneo"
-                  : "Amistoso"}
-            </Text>
-          </View>
-
-          {partido.tipoPartido !== "amistoso" && (
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>
-                {partido.tipoPartido === "liga" ? "Jornada:" : "Torneo:"}
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Información compacta del partido */}
+        <View style={styles.mainCard}>
+          {/* Equipos */}
+          <View style={styles.equiposContainer}>
+            <View style={styles.equipoInfo}>
+              <Text style={styles.equipoNombre}>
+                {esLocal ? user?.teamName : partido.rival}
               </Text>
-              <Text style={styles.infoValue}>{partido.jornada}</Text>
             </View>
-          )}
 
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Fecha y hora:</Text>
-            <Text style={styles.infoValue}>
-              {partido.fecha.toLocaleDateString()}{" "}
-              {partido.fecha.toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </Text>
+            <View style={styles.vsContainer}>
+              <Text style={styles.vsText}>VS</Text>
+            </View>
+
+            <View style={styles.equipoInfo}>
+              <Text style={styles.equipoNombre}>
+                {esLocal ? partido.rival : user?.teamName}
+              </Text>
+            </View>
           </View>
 
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Lugar:</Text>
-            <Text style={styles.infoValue}>
-              {partido.lugar === "Casa" ? "Local" : "Visitante"}
-              {partido.lugar === "Fuera" && partido.lugarEspecifico
-                ? ` (${partido.lugarEspecifico})`
-                : ""}
-            </Text>
-          </View>
+          {/* Información en columna vertical */}
+          <View style={styles.infoList}>
+            <View style={styles.infoItem}>
+              <Ionicons
+                name="calendar-outline"
+                size={18}
+                color={MODERN_COLORS.primary}
+              />
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>Fecha y hora</Text>
+                <Text style={styles.infoValue}>
+                  {partido.fecha.toLocaleDateString("es-ES")} •{" "}
+                  {partido.fecha.toLocaleTimeString("es-ES", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </Text>
+              </View>
+            </View>
 
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Rival:</Text>
-            <Text style={styles.infoValue}>{partido.rival}</Text>
+            <View style={styles.infoItem}>
+              <Ionicons
+                name={esLocal ? "home-outline" : "location-outline"}
+                size={18}
+                color={MODERN_COLORS.primary}
+              />
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>Lugar</Text>
+                <Text style={styles.infoValue}>
+                  {esLocal ? user?.homeField : partido.lugarEspecifico}
+                </Text>
+              </View>
+            </View>
           </View>
         </View>
 
-        {/* Sección de alineación (primero) */}
+        {/* Alineación */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Alineación</Text>
-
           {partido.alineacion ? (
-            <>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Formación:</Text>
-                <Text style={styles.infoValue}>
-                  {partido.alineacion.formacion || "4-3-3"}
-                </Text>
+            <View style={styles.alineacionCard}>
+              <View style={styles.alineacionHeader}>
+                <View style={styles.alineacionInfo}>
+                  <Text style={styles.alineacionTitle}>
+                    Alineación configurada
+                  </Text>
+                </View>
+                <View style={styles.formacionBadge}>
+                  <Text style={styles.formacionText}>
+                    {partido.alineacion.formacion}
+                  </Text>
+                </View>
               </View>
 
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Titulares:</Text>
-                <Text style={styles.infoValue}>
-                  {partido.alineacion.titulares
-                    ? partido.alineacion.titulares.length
-                    : 11}{" "}
-                  jugadores
-                </Text>
+              <View style={styles.alineacionStats}>
+                <View style={styles.statItem}>
+                  <Text style={styles.statNumber}>
+                    {partido.alineacion.titulares?.length}
+                  </Text>
+                  <Text style={styles.statLabel}>Titulares</Text>
+                </View>
+                <View style={styles.statDivider} />
+                <View style={styles.statItem}>
+                  <Text style={styles.statNumber}>
+                    {partido.alineacion.suplentes?.length}
+                  </Text>
+                  <Text style={styles.statLabel}>Suplentes</Text>
+                </View>
               </View>
 
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Suplentes:</Text>
-                <Text style={styles.infoValue}>
-                  {partido.alineacion.suplentes
-                    ? partido.alineacion.suplentes.length
-                    : 5}{" "}
-                  jugadores
-                </Text>
-              </View>
-
-              {/* Roles especiales */}
+              {/* Roles especiales compactos */}
               {hayRolesEspeciales && (
                 <View style={styles.rolesContainer}>
-                  <Text style={styles.rolesTitle}>Roles especiales:</Text>
+                  <Text style={styles.rolesTitle}>Roles especiales</Text>
+                  <View style={styles.rolesList}>
+                    {availableRoles.map((role) => {
+                      const playerId =
+                        partido.alineacion.specialRoles?.[role.id];
+                      if (!playerId) return null;
 
-                  {availableRoles.map((role) => {
-                    const playerId = partido.alineacion.specialRoles?.[role.id];
-                    if (!playerId) return null;
-
-                    return (
-                      <View style={styles.rolRow} key={role.id}>
-                        {renderRoleIndicator(role)}
-                        <Text style={styles.rolText}>
-                          {role.name}: {getPlayerNameById(playerId)}
-                        </Text>
-                      </View>
-                    );
-                  })}
+                      return (
+                        <View style={styles.roleItem} key={role.id}>
+                          {renderRoleIndicator(role)}
+                          <Text style={styles.roleText}>
+                            {role.name}: {getPlayerNameById(playerId)}
+                          </Text>
+                        </View>
+                      );
+                    })}
+                  </View>
                 </View>
               )}
 
               <TouchableOpacity
                 style={styles.verAlineacionButton}
                 onPress={handleVerAlineacion}
+                activeOpacity={0.8}
               >
-                <Text style={styles.verAlineacionButtonText}>
+                <Ionicons name="eye-outline" size={20} color="#fff" />
+                <Text style={styles.verAlineacionText}>
                   Ver alineación completa
                 </Text>
               </TouchableOpacity>
-            </>
+            </View>
           ) : (
-            <Text style={styles.noAlineacionText}>
-              No hay alineación configurada
-            </Text>
+            <View style={styles.noAlineacionCard}>
+              <Ionicons
+                name="people-outline"
+                size={48}
+                color={MODERN_COLORS.textLight}
+              />
+              <Text style={styles.noAlineacionTitle}>Sin alineación</Text>
+              <Text style={styles.noAlineacionText}>
+                No hay alineación configurada para este partido
+              </Text>
+            </View>
           )}
         </View>
 
-        {/* Sección de notas (después de alineación) */}
+        {/* Notas compactas */}
         {hayNotas && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Notas</Text>
+            <View style={styles.notasCard}>
+              {partido.estrategia && (
+                <View style={styles.notaSection}>
+                  <View style={styles.notaHeader}>
+                    <Ionicons
+                      name="bulb-outline"
+                      size={16}
+                      color={MODERN_COLORS.accent}
+                    />
+                    <Text style={styles.notaTitle}>Estrategia</Text>
+                  </View>
+                  <Text style={styles.notaText}>{partido.estrategia}</Text>
+                </View>
+              )}
 
-            {partido.estrategia && (
-              <View style={styles.notasContainer}>
-                <Text style={styles.notasSubtitle}>Estrategia:</Text>
-                <Text style={styles.notasText}>{partido.estrategia}</Text>
-              </View>
-            )}
-
-            {partido.notasRival && (
-              <View
-                style={[
-                  styles.notasContainer,
-                  partido.estrategia && styles.notasSeparator,
-                ]}
-              >
-                <Text style={styles.notasSubtitle}>Sobre el rival:</Text>
-                <Text style={styles.notasText}>{partido.notasRival}</Text>
-              </View>
-            )}
+              {partido.notasRival && (
+                <View
+                  style={[
+                    styles.notaSection,
+                    partido.estrategia && styles.notaSectionBorder,
+                  ]}
+                >
+                  <View style={styles.notaHeader}>
+                    <Ionicons
+                      name="shield-outline"
+                      size={16}
+                      color={MODERN_COLORS.primary}
+                    />
+                    <Text style={styles.notaTitle}>Sobre el rival</Text>
+                  </View>
+                  <Text style={styles.notaText}>{partido.notasRival}</Text>
+                </View>
+              )}
+            </View>
           </View>
         )}
 
-        {/* Botón para generar convocatoria */}
-        <TouchableOpacity
-          style={styles.convocatoriaButton}
-          onPress={handleGenerarConvocatoria}
-          disabled={generatingConvocatoria}
-        >
-          {generatingConvocatoria ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <>
-              <Ionicons
-                name="megaphone-outline"
-                size={20}
-                color="#fff"
-                style={styles.buttonIcon}
-              />
-              <Text style={styles.convocatoriaButtonText}>
-                Generar convocatoria
-              </Text>
-            </>
-          )}
-        </TouchableOpacity>
+        {/* Acciones */}
+        <View style={styles.actionsSection}>
+          {/* Botón para generar convocatoria */}
+          <TouchableOpacity
+            style={styles.convocatoriaButton}
+            onPress={handleGenerarConvocatoria}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={[MODERN_COLORS.primary, MODERN_COLORS.primaryDark]}
+              style={styles.buttonGradient}
+            >
+              <Ionicons name="megaphone-outline" size={20} color="#fff" />
+              <Text style={styles.convocatoriaText}>Generar convocatoria</Text>
+            </LinearGradient>
+          </TouchableOpacity>
 
-        {/* Botón de eliminar */}
-        <TouchableOpacity
-          style={[styles.eliminarButton, deleting && styles.buttonDisabled]}
-          onPress={handleEliminarPartido}
-          disabled={deleting}
-        >
-          {deleting ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <>
-              <Ionicons
-                name="trash-outline"
-                size={20}
-                color="#fff"
-                style={styles.buttonIcon}
-              />
-              <Text style={styles.eliminarButtonText}>Eliminar partido</Text>
-            </>
-          )}
-        </TouchableOpacity>
+          {/* Botón de eliminar */}
+          <TouchableOpacity
+            style={[styles.eliminarButton, deleting && styles.buttonDisabled]}
+            onPress={handleEliminarPartido}
+            disabled={deleting}
+            activeOpacity={0.8}
+          >
+            {deleting ? (
+              <ActivityIndicator size="small" color={MODERN_COLORS.textWhite} />
+            ) : (
+              <>
+                <Ionicons
+                  name="trash-outline"
+                  size={20}
+                  color={MODERN_COLORS.danger}
+                />
+                <Text style={styles.eliminarText}>Eliminar partido</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#121212",
+    backgroundColor: MODERN_COLORS.background,
   },
+
+  // HEADER
   header: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingTop: 15,
+    paddingBottom: 15,
+    backgroundColor: MODERN_COLORS.surface,
     borderBottomWidth: 1,
-    borderBottomColor: "#333",
-    backgroundColor: "#1e1e1e",
+    borderBottomColor: MODERN_COLORS.border,
   },
+
   backButton: {
-    padding: 8,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: MODERN_COLORS.surfaceGray,
+    justifyContent: "center",
+    alignItems: "center",
   },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#fff",
+
+  headerCenter: {
     flex: 1,
-    marginLeft: 8,
+    alignItems: "center",
   },
-  editButton: {
-    padding: 8,
+
+  title: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: MODERN_COLORS.textDark,
+    letterSpacing: -0.3,
   },
-  content: {
-    flex: 1,
+
+  editHeaderButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: MODERN_COLORS.primary + "20",
+    justifyContent: "center",
+    alignItems: "center",
   },
+
+  // LOADING
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    gap: 16,
   },
+
   loadingText: {
-    color: "#ccc",
     fontSize: 16,
-    marginTop: 16,
+    color: MODERN_COLORS.textGray,
+    fontWeight: "500",
   },
+
+  // CONTENT
+  content: {
+    flex: 1,
+  },
+
+  // CARD PRINCIPAL COMPACTA
+  mainCard: {
+    backgroundColor: MODERN_COLORS.surface,
+    borderRadius: 16,
+    margin: 20,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: MODERN_COLORS.border,
+  },
+
+  equiposContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+
+  equipoInfo: {
+    flex: 1,
+    alignItems: "center",
+  },
+
+  equipoNombre: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: MODERN_COLORS.textDark,
+    textAlign: "center",
+  },
+
+  localBadge: {
+    backgroundColor: MODERN_COLORS.success,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+
+  visitanteBadge: {
+    backgroundColor: MODERN_COLORS.primary,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+
+  badgeText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+
+  vsContainer: {
+    paddingHorizontal: 20,
+  },
+
+  vsText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: MODERN_COLORS.textLight,
+    letterSpacing: 1,
+  },
+
+  // INFO LIST VERTICAL
+  infoList: {
+    gap: 16,
+  },
+
+  infoItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+
+  infoContent: {
+    flex: 1,
+  },
+
+  infoLabel: {
+    fontSize: 12,
+    color: MODERN_COLORS.textGray,
+    fontWeight: "500",
+    marginBottom: 2,
+  },
+
+  infoValue: {
+    fontSize: 15,
+    color: MODERN_COLORS.textDark,
+    fontWeight: "600",
+  },
+
+  // SECCIONES
   section: {
-    backgroundColor: "#1e1e1e",
-    borderRadius: 8,
-    padding: 16,
-    marginHorizontal: 16,
-    marginTop: 16,
+    marginHorizontal: 20,
+    marginBottom: 20,
   },
+
   sectionTitle: {
     fontSize: 18,
-    fontWeight: "bold",
-    color: "#fff",
+    fontWeight: "700",
+    color: MODERN_COLORS.textDark,
     marginBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#333",
-    paddingBottom: 8,
+    letterSpacing: -0.3,
   },
-  infoRow: {
+
+  // ALINEACIÓN
+  alineacionCard: {
+    backgroundColor: MODERN_COLORS.surface,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: MODERN_COLORS.border,
+  },
+
+  alineacionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: "#333",
-  },
-  infoLabel: {
-    fontSize: 16,
-    color: "#ccc",
-  },
-  infoValue: {
-    fontSize: 16,
-    color: "#fff",
-    fontWeight: "500",
-  },
-  notasContainer: {
+    alignItems: "center",
     marginBottom: 12,
   },
-  notasSeparator: {
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: "#333",
+
+  alineacionInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
-  notasSubtitle: {
+
+  alineacionTitle: {
     fontSize: 16,
-    color: "#ccc",
+    fontWeight: "600",
+    color: MODERN_COLORS.textDark,
+  },
+
+  formacionBadge: {
+    backgroundColor: MODERN_COLORS.primary + "20",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+
+  formacionText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: MODERN_COLORS.primary,
+  },
+
+  alineacionStats: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+
+  statItem: {
+    flex: 1,
+    alignItems: "center",
+  },
+
+  statNumber: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: MODERN_COLORS.textDark,
+  },
+
+  statLabel: {
+    fontSize: 12,
+    color: MODERN_COLORS.textGray,
     fontWeight: "500",
-    marginBottom: 4,
   },
-  notasText: {
-    fontSize: 16,
-    color: "#fff",
-    lineHeight: 22,
+
+  statDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: MODERN_COLORS.border,
   },
-  noAlineacionText: {
-    fontSize: 16,
-    color: "#999",
-    fontStyle: "italic",
-    textAlign: "center",
-    marginVertical: 12,
-  },
-  verAlineacionButton: {
-    backgroundColor: "#4CAF50",
-    padding: 12,
-    borderRadius: 8,
-    alignItems: "center",
-    marginTop: 16,
-  },
-  verAlineacionButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  convocatoriaButton: {
-    backgroundColor: "#2196F3",
-    padding: 12,
-    borderRadius: 8,
-    alignItems: "center",
-    marginHorizontal: 16,
-    marginTop: 24,
-    flexDirection: "row",
-    justifyContent: "center",
-  },
-  convocatoriaButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  eliminarButton: {
-    backgroundColor: "#F44336",
-    padding: 12,
-    borderRadius: 8,
-    alignItems: "center",
-    marginHorizontal: 16,
-    marginVertical: 24,
-    flexDirection: "row",
-    justifyContent: "center",
-  },
-  eliminarButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  buttonIcon: {
-    marginRight: 8,
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  // Estilos para los roles especiales
+
+  // ROLES COMPACTOS
   rolesContainer: {
-    marginTop: 12,
+    marginBottom: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: "#333",
+    borderTopColor: MODERN_COLORS.border,
   },
+
   rolesTitle: {
-    fontSize: 16,
-    color: "#ccc",
+    fontSize: 14,
+    fontWeight: "600",
+    color: MODERN_COLORS.textGray,
     marginBottom: 8,
   },
-  rolRow: {
+
+  rolesList: {
+    gap: 6,
+  },
+
+  roleItem: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 8,
+    gap: 8,
   },
-  rolBadge: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+
+  roleBadge: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 8,
   },
-  rolBadgeText: {
-    fontSize: 12,
+
+  roleBadgeText: {
+    fontSize: 11,
     fontWeight: "bold",
   },
-  rolText: {
-    fontSize: 14,
-    color: "#fff",
-  },
-  // Estilos para el modal de convocatoria
-  modalContainer: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.7)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  modalContent: {
-    width: "90%",
-    maxHeight: "80%",
-    backgroundColor: "#1e1e1e",
-    borderRadius: 12,
-    padding: 16,
-  },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#fff",
-  },
-  closeButton: {
-    padding: 4,
-  },
-  mensajeContainer: {
-    backgroundColor: "#121212",
-    borderRadius: 8,
-    padding: 12,
-    maxHeight: 300,
-    marginBottom: 16,
-  },
-  mensajeText: {
-    color: "#fff",
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  modalButtons: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  cancelButton: {
-    padding: 12,
-    borderRadius: 8,
-    backgroundColor: "#333",
-    flex: 1,
-    marginRight: 8,
-    alignItems: "center",
-  },
-  cancelButtonText: {
-    color: "#fff",
-    fontSize: 16,
+
+  roleText: {
+    fontSize: 13,
+    color: MODERN_COLORS.textDark,
     fontWeight: "500",
   },
-  whatsappButton: {
-    padding: 12,
-    borderRadius: 8,
-    backgroundColor: "#25D366", // Color de WhatsApp
-    flex: 2,
+
+  verAlineacionButton: {
+    backgroundColor: MODERN_COLORS.success,
     flexDirection: "row",
-    justifyContent: "center",
     alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 8,
   },
-  whatsappButtonText: {
+
+  verAlineacionText: {
     color: "#fff",
     fontSize: 16,
-    fontWeight: "bold",
+    fontWeight: "600",
+  },
+
+  // SIN ALINEACIÓN
+  noAlineacionCard: {
+    backgroundColor: MODERN_COLORS.surface,
+    borderRadius: 16,
+    padding: 24,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: MODERN_COLORS.border,
+    borderStyle: "dashed",
+  },
+
+  noAlineacionTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: MODERN_COLORS.textDark,
+    marginTop: 12,
+    marginBottom: 4,
+  },
+
+  noAlineacionText: {
+    fontSize: 14,
+    color: MODERN_COLORS.textGray,
+    textAlign: "center",
+    lineHeight: 20,
+  },
+
+  // NOTAS COMPACTAS
+  notasCard: {
+    backgroundColor: MODERN_COLORS.surface,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: MODERN_COLORS.border,
+  },
+
+  notaSection: {
+    marginBottom: 12,
+  },
+
+  notaSectionBorder: {
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: MODERN_COLORS.border,
+  },
+
+  notaHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 6,
+    gap: 6,
+  },
+
+  notaTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: MODERN_COLORS.textDark,
+  },
+
+  notaText: {
+    fontSize: 14,
+    color: MODERN_COLORS.textDark,
+    lineHeight: 18,
+  },
+
+  // ACCIONES
+  actionsSection: {
+    paddingHorizontal: 20,
+    paddingBottom: 32,
+    gap: 12,
+  },
+
+  convocatoriaButton: {
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+
+  buttonGradient: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 16,
+    gap: 8,
+  },
+
+  convocatoriaText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+
+  eliminarButton: {
+    backgroundColor: MODERN_COLORS.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: MODERN_COLORS.danger,
+    paddingVertical: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+
+  eliminarText: {
+    color: MODERN_COLORS.danger,
+    fontSize: 16,
+    fontWeight: "600",
+  },
+
+  buttonDisabled: {
+    opacity: 0.6,
   },
 });
