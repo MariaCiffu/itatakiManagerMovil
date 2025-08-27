@@ -36,6 +36,7 @@ export const COLLECTIONS = {
   STAFF: "staff",
   TEAMS: "teams",
   USERS: "users",
+  PARTIDOS: "partidos",
 };
 
 // ROLES DE USUARIO
