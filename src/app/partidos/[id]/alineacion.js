@@ -8,7 +8,8 @@ import {
   SafeAreaView,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { getPartidoByIdWithDelay } from "../../../services/partidosService";
+import { getPartidoById } from "../../../services/partidosService";
+import { MODERN_COLORS } from "../../../constants/modernColors";
 import LineupScreen from "../../alineacion";
 
 export default function PartidoAlineacionScreen() {
@@ -23,7 +24,7 @@ export default function PartidoAlineacionScreen() {
       try {
         setLoading(true);
         setError(null);
-        const data = await getPartidoByIdWithDelay(id);
+        const data = await getPartidoById(id);
         console.log(
           "Datos del partido cargados:",
           JSON.stringify(data, null, 2)
@@ -53,7 +54,7 @@ export default function PartidoAlineacionScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#4CAF50" />
+          <ActivityIndicator size="large" color={MODERN_COLORS.primary} />
           <Text style={styles.loadingText}>Cargando alineación...</Text>
         </View>
       </SafeAreaView>
@@ -85,12 +86,20 @@ export default function PartidoAlineacionScreen() {
   // Usar valores directos en lugar de funciones para evitar actualizaciones de estado durante el renderizado
   return (
     <LineupScreen
-      matchday={partido.tipoPartido === "amistoso" ? "Amistoso" : 
-               partido.tipoPartido === "torneo" ? partido.jornada : 
-               parseInt(partido.jornada) || 0}
-      matchTitle={partido.tipoPartido === "amistoso" ? "Amistoso" : 
-                 partido.tipoPartido === "torneo" ? partido.jornada : 
-                 `Jornada ${partido.jornada || ""}`}
+      matchday={
+        partido.tipoPartido === "amistoso"
+          ? "Amistoso"
+          : partido.tipoPartido === "torneo"
+            ? partido.jornada
+            : parseInt(partido.jornada) || 0
+      }
+      matchTitle={
+        partido.tipoPartido === "amistoso"
+          ? "Amistoso"
+          : partido.tipoPartido === "torneo"
+            ? partido.jornada
+            : `Jornada ${partido.jornada || ""}`
+      }
       initialData={partido.alineacion}
       readOnly={true}
     />
@@ -100,7 +109,7 @@ export default function PartidoAlineacionScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#121212",
+    backgroundColor: MODERN_COLORS.background,
   },
   loadingContainer: {
     flex: 1,
@@ -108,8 +117,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   loadingText: {
-    color: "#ccc",
+    color: MODERN_COLORS.textGray,
     fontSize: 16,
+    fontWeight: "500",
     marginTop: 16,
   },
   errorContainer: {
@@ -119,8 +129,9 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   errorText: {
-    color: "#ff6b6b",
+    color: MODERN_COLORS.danger,
     fontSize: 16,
     textAlign: "center",
+    fontWeight: "500",
   },
 });

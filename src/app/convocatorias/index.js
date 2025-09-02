@@ -1,10 +1,20 @@
-"use client"
+"use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react"
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Linking, Modal } from "react-native"
-import { useRouter, useLocalSearchParams } from "expo-router"
-import { LinearGradient } from "expo-linear-gradient"
-import DateTimePicker from "@react-native-community/datetimepicker"
+import { useState, useEffect, useCallback, useMemo } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  Alert,
+  Linking,
+  Modal,
+} from "react-native";
+import { useRouter, useLocalSearchParams } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import {
   ArrowLeftIcon,
   CalendarIcon,
@@ -19,29 +29,33 @@ import {
   PlusIcon,
   WhatsAppIcon,
   ShirtIcon,
-} from "../../components/Icons"
-import { COLORS } from "../../constants/colors"
-// ✅ SOLO importar del servicio, no directamente de teamData
-import { getAllJugadores, getJugadoresConMultas } from "../../services/jugadoresService"
-import PLANTILLAS from "../../data/plantillasConv"
-import { POSICIONES } from "../../constants/positions"
-import { useAuth } from "../../context/authContext"
+} from "../../components/Icons";
+import { COLORS } from "../../constants/colors";
+import {
+  getAllJugadores,
+  getJugadoresConMultas,
+} from "../../services/playersService";
+import PLANTILLAS from "../../data/plantillasConv";
+import { POSICIONES } from "../../constants/positions";
+import { useAuth } from "../../hooks/useFirebase";
 
 export default function Convocatorias() {
-  const router = useRouter()
-  const params = useLocalSearchParams()
-  const { state } = useAuth()
-  const { user } = state
+  const router = useRouter();
+  const params = useLocalSearchParams();
+  const { state } = useAuth();
+  const { user } = state;
 
-  const [plantillaSeleccionada, setPlantillaSeleccionada] = useState(PLANTILLAS[0])
+  const [plantillaSeleccionada, setPlantillaSeleccionada] = useState(
+    PLANTILLAS[0]
+  );
 
   // ✅ Inicializar jugadores desde el servicio
-  const [jugadores, setJugadores] = useState([])
-  const [jugadoresSeleccionados, setJugadoresSeleccionados] = useState({})
-  const [searchQuery, setSearchQuery] = useState("")
-  const [showDatePicker, setShowDatePicker] = useState(false)
-  const [showTimePicker, setShowTimePicker] = useState(false)
-  const [showCitacionPicker, setShowCitacionPicker] = useState(false)
+  const [jugadores, setJugadores] = useState([]);
+  const [jugadoresSeleccionados, setJugadoresSeleccionados] = useState({});
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [showCitacionPicker, setShowCitacionPicker] = useState(false);
   const [datos, setDatos] = useState({
     fecha: "",
     hora: "",
@@ -51,28 +65,28 @@ export default function Convocatorias() {
     tipoPartido: "liga",
     jornada: "",
     nombreTorneo: "",
-  })
-  const [mensajeFinal, setMensajeFinal] = useState("")
-  const [mostrarPreview, setMostrarPreview] = useState(false)
-  const [showAddPlayerModal, setShowAddPlayerModal] = useState(false)
+  });
+  const [mensajeFinal, setMensajeFinal] = useState("");
+  const [mostrarPreview, setMostrarPreview] = useState(false);
+  const [showAddPlayerModal, setShowAddPlayerModal] = useState(false);
   const [tempPlayer, setTempPlayer] = useState({
     name: "",
     number: "",
     position: "JUG",
-  })
+  });
 
   // ✅ Cargar jugadores al iniciar
   useEffect(() => {
-    const jugadoresData = getAllJugadores()
-    setJugadores(jugadoresData)
-    console.log("🎯 Jugadores cargados:", jugadoresData.length)
-  }, [])
+    const jugadoresData = getAllJugadores();
+    setJugadores(jugadoresData);
+    console.log("🎯 Jugadores cargados:", jugadoresData.length);
+  }, []);
 
   // Procesar datos del partido si se reciben como parámetro
   useEffect(() => {
     if (params.datosPartido) {
       try {
-        const datosPartido = JSON.parse(params.datosPartido)
+        const datosPartido = JSON.parse(params.datosPartido);
 
         setDatos({
           fecha: datosPartido.fecha || "",
@@ -83,52 +97,68 @@ export default function Convocatorias() {
           tipoPartido: datosPartido.tipoPartido || "liga",
           jornada: datosPartido.jornada || "",
           nombreTorneo: datosPartido.nombreTorneo || "",
-        })
+        });
 
-        if (datosPartido.temporaryPlayers && datosPartido.temporaryPlayers.length > 0) {
-          setJugadores((prevJugadores) => [...prevJugadores, ...datosPartido.temporaryPlayers])
+        if (
+          datosPartido.temporaryPlayers &&
+          datosPartido.temporaryPlayers.length > 0
+        ) {
+          setJugadores((prevJugadores) => [
+            ...prevJugadores,
+            ...datosPartido.temporaryPlayers,
+          ]);
         }
 
         if (datosPartido.jugadoresSeleccionados) {
-          const seleccionados = {}
+          const seleccionados = {};
 
           if (datosPartido.jugadoresSeleccionados.titulares) {
             datosPartido.jugadoresSeleccionados.titulares.forEach((id) => {
-              if (id) seleccionados[id] = true
-            })
+              if (id) seleccionados[id] = true;
+            });
           }
 
           if (datosPartido.jugadoresSeleccionados.suplentes) {
             datosPartido.jugadoresSeleccionados.suplentes.forEach((id) => {
-              if (id) seleccionados[id] = true
-            })
+              if (id) seleccionados[id] = true;
+            });
           }
 
-          setJugadoresSeleccionados(seleccionados)
+          setJugadoresSeleccionados(seleccionados);
         }
 
-        const plantillaConvocatoria = PLANTILLAS.find((p) => p.id === "convocatoria")
+        const plantillaConvocatoria = PLANTILLAS.find(
+          (p) => p.id === "convocatoria"
+        );
         if (plantillaConvocatoria) {
-          setPlantillaSeleccionada(plantillaConvocatoria)
+          setPlantillaSeleccionada(plantillaConvocatoria);
         }
       } catch (error) {
-        console.error("Error al procesar datos del partido:", error)
-        Alert.alert("Error", "No se pudieron cargar los datos del partido")
+        console.error("Error al procesar datos del partido:", error);
+        Alert.alert("Error", "No se pudieron cargar los datos del partido");
       }
     }
-  }, [params.datosPartido])
+  }, [params.datosPartido]);
 
   // Función para formatear la fecha
   const formatearFecha = useCallback((fechaStr) => {
-    if (!fechaStr) return ""
+    if (!fechaStr) return "";
 
     try {
-      const partes = fechaStr.split("/")
-      if (partes.length !== 3) return fechaStr
+      const partes = fechaStr.split("/");
+      if (partes.length !== 3) return fechaStr;
 
-      const fecha = new Date(partes[2], partes[1] - 1, partes[0])
+      const fecha = new Date(partes[2], partes[1] - 1, partes[0]);
 
-      const diasSemana = ["DOMINGO", "LUNES", "MARTES", "MIÉRCOLES", "JUEVES", "VIERNES", "SÁBADO"]
+      const diasSemana = [
+        "DOMINGO",
+        "LUNES",
+        "MARTES",
+        "MIÉRCOLES",
+        "JUEVES",
+        "VIERNES",
+        "SÁBADO",
+      ];
 
       const meses = [
         "ENERO",
@@ -143,18 +173,18 @@ export default function Convocatorias() {
         "OCTUBRE",
         "NOVIEMBRE",
         "DICIEMBRE",
-      ]
+      ];
 
-      const diaSemana = diasSemana[fecha.getDay()]
-      const dia = fecha.getDate()
-      const mes = meses[fecha.getMonth()]
+      const diaSemana = diasSemana[fecha.getDay()];
+      const dia = fecha.getDate();
+      const mes = meses[fecha.getMonth()];
 
-      return `${diaSemana} ${dia} ${mes}`
+      return `${diaSemana} ${dia} ${mes}`;
     } catch (error) {
-      console.error("Error al formatear fecha:", error)
-      return fechaStr
+      console.error("Error al formatear fecha:", error);
+      return fechaStr;
     }
-  }, [])
+  }, []);
 
   // Filtrar y ordenar jugadores según la búsqueda, posición y número de dorsal
   const jugadoresFiltrados = useMemo(() => {
@@ -162,31 +192,33 @@ export default function Convocatorias() {
       ? jugadores.filter(
           (jugador) =>
             jugador.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            jugador.position.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            jugador.number.toString().includes(searchQuery),
+            jugador.position
+              .toLowerCase()
+              .includes(searchQuery.toLowerCase()) ||
+            jugador.number.toString().includes(searchQuery)
         )
-      : jugadores
+      : jugadores;
 
     // ✅ Ordenar primero por posición (según array POSICIONES) y luego por número de dorsal
     return jugadoresFiltrados.sort((a, b) => {
       // Obtener índice de posición en el array POSICIONES
-      const posicionA = POSICIONES.indexOf(a.position)
-      const posicionB = POSICIONES.indexOf(b.position)
+      const posicionA = POSICIONES.indexOf(a.position);
+      const posicionB = POSICIONES.indexOf(b.position);
 
       // Si las posiciones son diferentes, ordenar por posición
       if (posicionA !== posicionB) {
         // Si la posición no está en el array, ponerla al final
-        const indexA = posicionA === -1 ? 999 : posicionA
-        const indexB = posicionB === -1 ? 999 : posicionB
-        return indexA - indexB
+        const indexA = posicionA === -1 ? 999 : posicionA;
+        const indexB = posicionB === -1 ? 999 : posicionB;
+        return indexA - indexB;
       }
 
       // Si tienen la misma posición, ordenar por número de dorsal
-      const numeroA = Number(a.number) || 999
-      const numeroB = Number(b.number) || 999
-      return numeroA - numeroB
-    })
-  }, [jugadores, searchQuery])
+      const numeroA = Number(a.number) || 999;
+      const numeroB = Number(b.number) || 999;
+      return numeroA - numeroB;
+    });
+  }, [jugadores, searchQuery]);
 
   // Calcular jugadores convocados y no convocados (ordenados por posición y dorsal)
   const jugadoresConvocados = useMemo(() => {
@@ -194,105 +226,111 @@ export default function Convocatorias() {
       .filter((j) => jugadoresSeleccionados[j.id])
       .sort((a, b) => {
         // Ordenar por posición primero
-        const posicionA = POSICIONES.indexOf(a.position)
-        const posicionB = POSICIONES.indexOf(b.position)
+        const posicionA = POSICIONES.indexOf(a.position);
+        const posicionB = POSICIONES.indexOf(b.position);
 
         if (posicionA !== posicionB) {
-          const indexA = posicionA === -1 ? 999 : posicionA
-          const indexB = posicionB === -1 ? 999 : posicionB
-          return indexA - indexB
+          const indexA = posicionA === -1 ? 999 : posicionA;
+          const indexB = posicionB === -1 ? 999 : posicionB;
+          return indexA - indexB;
         }
 
         // Luego por número de dorsal
-        const numeroA = Number(a.number) || 999
-        const numeroB = Number(b.number) || 999
-        return numeroA - numeroB
-      })
-  }, [jugadores, jugadoresSeleccionados])
+        const numeroA = Number(a.number) || 999;
+        const numeroB = Number(b.number) || 999;
+        return numeroA - numeroB;
+      });
+  }, [jugadores, jugadoresSeleccionados]);
 
   const jugadoresNoConvocados = useMemo(() => {
     return jugadores
       .filter((j) => !jugadoresSeleccionados[j.id])
       .sort((a, b) => {
         // Ordenar por posición primero
-        const posicionA = POSICIONES.indexOf(a.position)
-        const posicionB = POSICIONES.indexOf(b.position)
+        const posicionA = POSICIONES.indexOf(a.position);
+        const posicionB = POSICIONES.indexOf(b.position);
 
         if (posicionA !== posicionB) {
-          const indexA = posicionA === -1 ? 999 : posicionA
-          const indexB = posicionB === -1 ? 999 : posicionB
-          return indexA - indexB
+          const indexA = posicionA === -1 ? 999 : posicionA;
+          const indexB = posicionB === -1 ? 999 : posicionB;
+          return indexA - indexB;
         }
 
         // Luego por número de dorsal
-        const numeroA = Number(a.number) || 999
-        const numeroB = Number(b.number) || 999
-        return numeroA - numeroB
-      })
-  }, [jugadores, jugadoresSeleccionados])
+        const numeroA = Number(a.number) || 999;
+        const numeroB = Number(b.number) || 999;
+        return numeroA - numeroB;
+      });
+  }, [jugadores, jugadoresSeleccionados]);
 
   // Actualizar mensaje cuando cambian los datos o jugadores seleccionados
   useEffect(() => {
-    generarMensaje()
-  }, [datos, jugadoresSeleccionados, plantillaSeleccionada, jugadoresConvocados, jugadoresNoConvocados])
+    generarMensaje();
+  }, [
+    datos,
+    jugadoresSeleccionados,
+    plantillaSeleccionada,
+    jugadoresConvocados,
+    jugadoresNoConvocados,
+  ]);
 
   const handleDateChange = (event, selectedDate) => {
-    setShowDatePicker(false)
+    setShowDatePicker(false);
     if (selectedDate) {
-      const day = String(selectedDate.getDate()).padStart(2, "0")
-      const month = String(selectedDate.getMonth() + 1).padStart(2, "0")
-      const year = selectedDate.getFullYear()
-      const dateStr = `${day}/${month}/${year}`
+      const day = String(selectedDate.getDate()).padStart(2, "0");
+      const month = String(selectedDate.getMonth() + 1).padStart(2, "0");
+      const year = selectedDate.getFullYear();
+      const dateStr = `${day}/${month}/${year}`;
 
       setDatos({
         ...datos,
         fecha: dateStr,
-      })
+      });
     }
-  }
+  };
 
   const handleTimeChange = (event, selectedTime) => {
-    setShowTimePicker(false)
+    setShowTimePicker(false);
     if (selectedTime) {
-      const hours = String(selectedTime.getHours()).padStart(2, "0")
-      const minutes = String(selectedTime.getMinutes()).padStart(2, "0")
-      const timeStr = `${hours}:${minutes}`
+      const hours = String(selectedTime.getHours()).padStart(2, "0");
+      const minutes = String(selectedTime.getMinutes()).padStart(2, "0");
+      const timeStr = `${hours}:${minutes}`;
 
       setDatos({
         ...datos,
         hora: timeStr,
-      })
+      });
     }
-  }
+  };
 
   const handleCitacionChange = (event, selectedTime) => {
-    setShowCitacionPicker(false)
+    setShowCitacionPicker(false);
     if (selectedTime) {
-      const hours = String(selectedTime.getHours()).padStart(2, "0")
-      const minutes = String(selectedTime.getMinutes()).padStart(2, "0")
-      const timeStr = `${hours}:${minutes}`
-      setDatos({ ...datos, citacion: timeStr })
+      const hours = String(selectedTime.getHours()).padStart(2, "0");
+      const minutes = String(selectedTime.getMinutes()).padStart(2, "0");
+      const timeStr = `${hours}:${minutes}`;
+      setDatos({ ...datos, citacion: timeStr });
     }
-  }
+  };
 
   const toggleJugadorSeleccionado = useCallback((jugadorId) => {
     setJugadoresSeleccionados((prev) => ({
       ...prev,
       [jugadorId]: !prev[jugadorId],
-    }))
-  }, [])
+    }));
+  }, []);
 
   const seleccionarTodos = useCallback(() => {
-    const todos = {}
+    const todos = {};
     jugadores.forEach((jugador) => {
-      todos[jugador.id] = true
-    })
-    setJugadoresSeleccionados(todos)
-  }, [jugadores])
+      todos[jugador.id] = true;
+    });
+    setJugadoresSeleccionados(todos);
+  }, [jugadores]);
 
   const deseleccionarTodos = useCallback(() => {
-    setJugadoresSeleccionados({})
-  }, [])
+    setJugadoresSeleccionados({});
+  }, []);
 
   const cambiarTipoPartido = useCallback((tipo) => {
     setDatos((prev) => ({
@@ -301,139 +339,168 @@ export default function Convocatorias() {
       jornada: tipo === "liga" ? prev.jornada : "",
       nombreTorneo: tipo === "torneo" ? prev.nombreTorneo : "",
       rival: tipo === "torneo" ? "" : prev.rival,
-    }))
-  }, [])
+    }));
+  }, []);
 
   const generateMapsLink = useCallback((lugar) => {
-    if (!lugar) return ""
-    const encodedPlace = encodeURIComponent(lugar)
-    return `https://www.google.com/maps/search/?api=1&query=${encodedPlace}`
-  }, [])
+    if (!lugar) return "";
+    const encodedPlace = encodeURIComponent(lugar);
+    return `https://www.google.com/maps/search/?api=1&query=${encodedPlace}`;
+  }, []);
 
   const generarMensaje = useCallback(() => {
-    let mensaje = plantillaSeleccionada.texto
+    let mensaje = plantillaSeleccionada.texto;
 
-    const fechaFormateada = formatearFecha(datos.fecha)
-    mensaje = mensaje.replace("{fecha}", fechaFormateada || "[FECHA]")
+    const fechaFormateada = formatearFecha(datos.fecha);
+    mensaje = mensaje.replace("{fecha}", fechaFormateada || "[FECHA]");
 
-    let tipoPartidoTexto = ""
+    let tipoPartidoTexto = "";
     if (datos.tipoPartido === "liga") {
-      tipoPartidoTexto = `JORNADA ${datos.jornada ? datos.jornada : "[NUMERO JORNADA]"} DE ${user?.category.toUpperCase() || "[CATEGORÍA]"}`
+      tipoPartidoTexto = `JORNADA ${datos.jornada ? datos.jornada : "[NUMERO JORNADA]"} DE ${user?.category.toUpperCase() || "[CATEGORÍA]"}`;
     } else if (datos.tipoPartido === "torneo") {
-      tipoPartidoTexto = `TORNEO ${datos.nombreTorneo ? datos.nombreTorneo.toUpperCase() : "[NOMBRE DEL TORNEO]"}`
+      tipoPartidoTexto = `TORNEO ${datos.nombreTorneo ? datos.nombreTorneo.toUpperCase() : "[NOMBRE DEL TORNEO]"}`;
     } else if (datos.tipoPartido === "amistoso") {
-      tipoPartidoTexto = "AMISTOSO"
+      tipoPartidoTexto = "AMISTOSO";
     }
 
-    mensaje = mensaje.replace("{tipoPartido}", tipoPartidoTexto)
+    mensaje = mensaje.replace("{tipoPartido}", tipoPartidoTexto);
 
     if (plantillaSeleccionada.id !== "multas") {
-      mensaje = mensaje.replace("{hora}", datos.hora || "[HORA]")
-      mensaje = mensaje.replace("{citacion}", datos.citacion || "[HORA DE CITACIÓN]")
+      mensaje = mensaje.replace("{hora}", datos.hora || "[HORA]");
+      mensaje = mensaje.replace(
+        "{citacion}",
+        datos.citacion || "[HORA DE CITACIÓN]"
+      );
 
       if (datos.lugar) {
-        const mapsLink = generateMapsLink(datos.lugar)
-        mensaje = mensaje.replace("{lugar}", `${datos.lugar}\n${mapsLink}`)
+        const mapsLink = generateMapsLink(datos.lugar);
+        mensaje = mensaje.replace("{lugar}", `${datos.lugar}\n${mapsLink}`);
       } else {
-        mensaje = mensaje.replace("{lugar}", "[LUGAR]")
+        mensaje = mensaje.replace("{lugar}", "[LUGAR]");
       }
 
       if (datos.tipoPartido !== "torneo") {
-        mensaje = mensaje.replace("{rival}", datos.rival || "[RIVAL]")
+        mensaje = mensaje.replace("{rival}", datos.rival || "[RIVAL]");
       } else {
-        mensaje = mensaje.replace(" - {rival}", "")
+        mensaje = mensaje.replace(" - {rival}", "");
       }
     }
 
-    let listaJugadoresConvocados = ""
-    let listaJugadoresNoConvocados = ""
+    let listaJugadoresConvocados = "";
+    let listaJugadoresNoConvocados = "";
 
     // ✅ Caso especial para el informe de multas
     if (plantillaSeleccionada.id === "multas") {
-      console.log("🚨 Generando informe de multas...")
-      const jugadoresConMultas = getJugadoresConMultas()
-      console.log("📋 Jugadores con multas:", jugadoresConMultas)
+      console.log("🚨 Generando informe de multas...");
+      const jugadoresConMultas = getJugadoresConMultas();
+      console.log("📋 Jugadores con multas:", jugadoresConMultas);
 
       if (jugadoresConMultas.length > 0) {
         jugadoresConMultas.forEach((jugador, index) => {
-          listaJugadoresConvocados += `${index + 1}. ${jugador.name} - Total: ${jugador.totalPendiente}€\n`
+          listaJugadoresConvocados += `${index + 1}. ${jugador.name} - Total: ${jugador.totalPendiente}€\n`;
           jugador.multasPendientes.forEach((multa) => {
-            listaJugadoresConvocados += `   • ${multa.reason}: ${multa.amount}€ (${multa.date})\n`
-          })
-          listaJugadoresConvocados += "\n"
-        })
+            listaJugadoresConvocados += `   • ${multa.reason}: ${multa.amount}€ (${multa.date})\n`;
+          });
+          listaJugadoresConvocados += "\n";
+        });
       } else {
-        listaJugadoresConvocados = "No hay jugadores con multas pendientes."
+        listaJugadoresConvocados = "No hay jugadores con multas pendientes.";
       }
     } else {
       // Para otros tipos de plantillas, usar la selección manual
       if (jugadoresConvocados.length > 0) {
         jugadoresConvocados.forEach((jugador, index) => {
-          listaJugadoresConvocados += `${index + 1}. ${jugador.name}\n`
-        })
+          listaJugadoresConvocados += `${index + 1}. ${jugador.name}\n`;
+        });
       } else {
-        listaJugadoresConvocados = "[SELECCIONA JUGADORES]"
+        listaJugadoresConvocados = "[SELECCIONA JUGADORES]";
       }
 
       if (jugadoresNoConvocados.length > 0) {
         jugadoresNoConvocados.forEach((jugador, index) => {
-          listaJugadoresNoConvocados += `${index + 1}. ${jugador.name}\n`
-        })
-        mensaje = mensaje.replace("{jugadoresNo}", listaJugadoresNoConvocados)
+          listaJugadoresNoConvocados += `${index + 1}. ${jugador.name}\n`;
+        });
+        mensaje = mensaje.replace("{jugadoresNo}", listaJugadoresNoConvocados);
       } else {
-        mensaje = mensaje.replace("\n\n*Jugadores no convocados:*\n{jugadoresNo}", "")
+        mensaje = mensaje.replace(
+          "\n\n*Jugadores no convocados:*\n{jugadoresNo}",
+          ""
+        );
       }
     }
 
-    mensaje = mensaje.replace("{jugadores}", listaJugadoresConvocados)
-    setMensajeFinal(mensaje)
-  }, [datos, jugadoresConvocados, jugadoresNoConvocados, plantillaSeleccionada, formatearFecha, generateMapsLink, user])
+    mensaje = mensaje.replace("{jugadores}", listaJugadoresConvocados);
+    setMensajeFinal(mensaje);
+  }, [
+    datos,
+    jugadoresConvocados,
+    jugadoresNoConvocados,
+    plantillaSeleccionada,
+    formatearFecha,
+    generateMapsLink,
+    user,
+  ]);
 
   const enviarPorWhatsApp = useCallback(async () => {
     if (
       !datos.fecha ||
       (plantillaSeleccionada.id !== "multas" && !datos.hora) ||
       (plantillaSeleccionada.id !== "multas" && !datos.lugar) ||
-      (plantillaSeleccionada.id === "convocatoria" && datos.tipoPartido !== "torneo" && !datos.rival) ||
-      (plantillaSeleccionada.id === "convocatoria" && datos.tipoPartido === "liga" && !datos.jornada) ||
-      (plantillaSeleccionada.id === "convocatoria" && datos.tipoPartido === "torneo" && !datos.nombreTorneo) ||
+      (plantillaSeleccionada.id === "convocatoria" &&
+        datos.tipoPartido !== "torneo" &&
+        !datos.rival) ||
+      (plantillaSeleccionada.id === "convocatoria" &&
+        datos.tipoPartido === "liga" &&
+        !datos.jornada) ||
+      (plantillaSeleccionada.id === "convocatoria" &&
+        datos.tipoPartido === "torneo" &&
+        !datos.nombreTorneo) ||
       (plantillaSeleccionada.id !== "multas" &&
-        Object.keys(jugadoresSeleccionados).filter((id) => jugadoresSeleccionados[id]).length === 0)
+        Object.keys(jugadoresSeleccionados).filter(
+          (id) => jugadoresSeleccionados[id]
+        ).length === 0)
     ) {
-      Alert.alert("Datos incompletos", "Por favor completa todos los campos requeridos.")
-      return
+      Alert.alert(
+        "Datos incompletos",
+        "Por favor completa todos los campos requeridos."
+      );
+      return;
     }
 
     try {
-      console.log("Mensaje antes de enviar:", mensajeFinal)
-      const mensaje = encodeURIComponent(mensajeFinal)
+      console.log("Mensaje antes de enviar:", mensajeFinal);
+      const mensaje = encodeURIComponent(mensajeFinal);
 
-      const url = `whatsapp://send?text=${mensaje}`
-      const supported = await Linking.canOpenURL(url)
+      const url = `whatsapp://send?text=${mensaje}`;
+      const supported = await Linking.canOpenURL(url);
 
       if (supported) {
-        await Linking.openURL(url)
+        await Linking.openURL(url);
       } else {
-        Alert.alert("Error", "WhatsApp no está instalado en este dispositivo.")
+        Alert.alert("Error", "WhatsApp no está instalado en este dispositivo.");
       }
     } catch (error) {
-      Alert.alert("Error", "No se pudo abrir WhatsApp.")
+      Alert.alert("Error", "No se pudo abrir WhatsApp.");
     }
-  }, [datos, jugadoresSeleccionados, mensajeFinal, plantillaSeleccionada])
+  }, [datos, jugadoresSeleccionados, mensajeFinal, plantillaSeleccionada]);
 
   const getPlaceholderText = (field) => {
     if (field === "fecha") {
-      return datos.tipoPartido === "torneo" ? "Fecha del torneo *" : "Fecha del partido *"
+      return datos.tipoPartido === "torneo"
+        ? "Fecha del torneo *"
+        : "Fecha del partido *";
     } else if (field === "hora") {
-      return datos.tipoPartido === "torneo" ? "Hora del torneo *" : "Hora del partido *"
+      return datos.tipoPartido === "torneo"
+        ? "Hora del torneo *"
+        : "Hora del partido *";
     }
-    return ""
-  }
+    return "";
+  };
 
   const handleAddTempPlayer = () => {
     if (!tempPlayer.name || !tempPlayer.number || !tempPlayer.position) {
-      Alert.alert("Error", "Por favor, complete todos los campos.")
-      return
+      Alert.alert("Error", "Por favor, complete todos los campos.");
+      return;
     }
 
     const newPlayer = {
@@ -443,23 +510,27 @@ export default function Convocatorias() {
       number: Number.parseInt(tempPlayer.number),
       phone: "+34666666666",
       isTemporary: true,
-    }
+    };
 
-    setJugadores((prevJugadores) => [...prevJugadores, newPlayer])
+    setJugadores((prevJugadores) => [...prevJugadores, newPlayer]);
 
     setJugadoresSeleccionados((prev) => ({
       ...prev,
       [newPlayer.id]: true,
-    }))
+    }));
 
-    setShowAddPlayerModal(false)
-    setTempPlayer({ name: "", number: "", position: "JUG" })
-  }
+    setShowAddPlayerModal(false);
+    setTempPlayer({ name: "", number: "", position: "JUG" });
+  };
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()} activeOpacity={0.7}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+          activeOpacity={0.7}
+        >
           <ArrowLeftIcon size={24} color={COLORS.text} />
         </TouchableOpacity>
         <Text style={styles.title}>Generar convocatoria</Text>
@@ -480,19 +551,25 @@ export default function Convocatorias() {
                 key={plantilla.id}
                 style={[
                   styles.plantillaCard,
-                  plantillaSeleccionada.id === plantilla.id && styles.plantillaSeleccionada,
+                  plantillaSeleccionada.id === plantilla.id &&
+                    styles.plantillaSeleccionada,
                 ]}
                 onPress={() => setPlantillaSeleccionada(plantilla)}
                 activeOpacity={0.7}
               >
                 <FileIcon
                   size={24}
-                  color={plantillaSeleccionada.id === plantilla.id ? COLORS.primary : COLORS.textSecondary}
+                  color={
+                    plantillaSeleccionada.id === plantilla.id
+                      ? COLORS.primary
+                      : COLORS.textSecondary
+                  }
                 />
                 <Text
                   style={[
                     styles.plantillaText,
-                    plantillaSeleccionada.id === plantilla.id && styles.plantillaTextSeleccionada,
+                    plantillaSeleccionada.id === plantilla.id &&
+                      styles.plantillaTextSeleccionada,
                   ]}
                 >
                   {plantilla.nombre}
@@ -512,11 +589,19 @@ export default function Convocatorias() {
               <Text style={styles.tipoPartidoLabel}>Tipo de partido:</Text>
               <View style={styles.tipoPartidoOptions}>
                 <TouchableOpacity
-                  style={[styles.tipoPartidoOption, datos.tipoPartido === "liga" && styles.tipoPartidoOptionSelected]}
+                  style={[
+                    styles.tipoPartidoOption,
+                    datos.tipoPartido === "liga" &&
+                      styles.tipoPartidoOptionSelected,
+                  ]}
                   onPress={() => cambiarTipoPartido("liga")}
                 >
                   <Text
-                    style={[styles.tipoPartidoText, datos.tipoPartido === "liga" && styles.tipoPartidoTextSelected]}
+                    style={[
+                      styles.tipoPartidoText,
+                      datos.tipoPartido === "liga" &&
+                        styles.tipoPartidoTextSelected,
+                    ]}
                   >
                     Liga
                   </Text>
@@ -524,22 +609,35 @@ export default function Convocatorias() {
                 <TouchableOpacity
                   style={[
                     styles.tipoPartidoOption,
-                    datos.tipoPartido === "amistoso" && styles.tipoPartidoOptionSelected,
+                    datos.tipoPartido === "amistoso" &&
+                      styles.tipoPartidoOptionSelected,
                   ]}
                   onPress={() => cambiarTipoPartido("amistoso")}
                 >
                   <Text
-                    style={[styles.tipoPartidoText, datos.tipoPartido === "amistoso" && styles.tipoPartidoTextSelected]}
+                    style={[
+                      styles.tipoPartidoText,
+                      datos.tipoPartido === "amistoso" &&
+                        styles.tipoPartidoTextSelected,
+                    ]}
                   >
                     Amistoso
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.tipoPartidoOption, datos.tipoPartido === "torneo" && styles.tipoPartidoOptionSelected]}
+                  style={[
+                    styles.tipoPartidoOption,
+                    datos.tipoPartido === "torneo" &&
+                      styles.tipoPartidoOptionSelected,
+                  ]}
                   onPress={() => cambiarTipoPartido("torneo")}
                 >
                   <Text
-                    style={[styles.tipoPartidoText, datos.tipoPartido === "torneo" && styles.tipoPartidoTextSelected]}
+                    style={[
+                      styles.tipoPartidoText,
+                      datos.tipoPartido === "torneo" &&
+                        styles.tipoPartidoTextSelected,
+                    ]}
                   >
                     Torneo
                   </Text>
@@ -549,43 +647,58 @@ export default function Convocatorias() {
           )}
 
           {/* Jornada - solo visible para partidos de liga */}
-          {plantillaSeleccionada.id === "convocatoria" && datos.tipoPartido === "liga" && (
-            <View style={styles.inputContainer}>
-              <NumberIcon size={20} color={COLORS.primary} />
-              <TextInput
-                placeholder="Número de jornada *"
-                placeholderTextColor={COLORS.textSecondary}
-                value={datos.jornada}
-                onChangeText={(text) => setDatos({ ...datos, jornada: text })}
-                style={styles.input}
-                keyboardType="numeric"
-              />
-            </View>
-          )}
+          {plantillaSeleccionada.id === "convocatoria" &&
+            datos.tipoPartido === "liga" && (
+              <View style={styles.inputContainer}>
+                <NumberIcon size={20} color={COLORS.primary} />
+                <TextInput
+                  placeholder="Número de jornada *"
+                  placeholderTextColor={COLORS.textSecondary}
+                  value={datos.jornada}
+                  onChangeText={(text) => setDatos({ ...datos, jornada: text })}
+                  style={styles.input}
+                  keyboardType="numeric"
+                />
+              </View>
+            )}
 
           {/* Nombre del torneo - solo visible para torneos */}
-          {plantillaSeleccionada.id === "convocatoria" && datos.tipoPartido === "torneo" && (
-            <View style={styles.inputContainer}>
-              <TrophyIcon size={20} color={COLORS.primary} />
-              <TextInput
-                placeholder="Nombre del torneo *"
-                placeholderTextColor={COLORS.textSecondary}
-                value={datos.nombreTorneo}
-                onChangeText={(text) => setDatos({ ...datos, nombreTorneo: text })}
-                style={styles.input}
-              />
-            </View>
-          )}
+          {plantillaSeleccionada.id === "convocatoria" &&
+            datos.tipoPartido === "torneo" && (
+              <View style={styles.inputContainer}>
+                <TrophyIcon size={20} color={COLORS.primary} />
+                <TextInput
+                  placeholder="Nombre del torneo *"
+                  placeholderTextColor={COLORS.textSecondary}
+                  value={datos.nombreTorneo}
+                  onChangeText={(text) =>
+                    setDatos({ ...datos, nombreTorneo: text })
+                  }
+                  style={styles.input}
+                />
+              </View>
+            )}
 
           {/* Fecha - siempre visible para todas las plantillas */}
-          <TouchableOpacity style={styles.inputContainer} onPress={() => setShowDatePicker(true)} activeOpacity={0.7}>
+          <TouchableOpacity
+            style={styles.inputContainer}
+            onPress={() => setShowDatePicker(true)}
+            activeOpacity={0.7}
+          >
             <CalendarIcon size={20} color={COLORS.primary} />
             <Text style={datos.fecha ? styles.input : styles.inputPlaceholder}>
-              {datos.fecha ? formatearFecha(datos.fecha) : getPlaceholderText("fecha")}
+              {datos.fecha
+                ? formatearFecha(datos.fecha)
+                : getPlaceholderText("fecha")}
             </Text>
           </TouchableOpacity>
           {showDatePicker && (
-            <DateTimePicker value={new Date()} mode="date" display="spinner" onChange={handleDateChange} />
+            <DateTimePicker
+              value={new Date()}
+              mode="date"
+              display="spinner"
+              onChange={handleDateChange}
+            />
           )}
 
           {/* Hora del partido - solo visible para convocatorias y entrenamientos */}
@@ -597,29 +710,37 @@ export default function Convocatorias() {
                 activeOpacity={0.7}
               >
                 <ClockIcon size={20} color={COLORS.primary} />
-                <Text style={datos.hora ? styles.input : styles.inputPlaceholder}>
+                <Text
+                  style={datos.hora ? styles.input : styles.inputPlaceholder}
+                >
                   {datos.hora || getPlaceholderText("hora")}
                 </Text>
               </TouchableOpacity>
               {showTimePicker && (
-                <DateTimePicker value={new Date()} mode="time" display="spinner" onChange={handleTimeChange} />
+                <DateTimePicker
+                  value={new Date()}
+                  mode="time"
+                  display="spinner"
+                  onChange={handleTimeChange}
+                />
               )}
             </>
           )}
 
           {/* Rival - solo visible para convocatorias de liga y amistosos */}
-          {plantillaSeleccionada.id === "convocatoria" && datos.tipoPartido !== "torneo" && (
-            <View style={styles.inputContainer}>
-              <UserFriendsIcon size={20} color={COLORS.primary} />
-              <TextInput
-                placeholder="Rival *"
-                placeholderTextColor={COLORS.textSecondary}
-                value={datos.rival}
-                onChangeText={(text) => setDatos({ ...datos, rival: text })}
-                style={styles.input}
-              />
-            </View>
-          )}
+          {plantillaSeleccionada.id === "convocatoria" &&
+            datos.tipoPartido !== "torneo" && (
+              <View style={styles.inputContainer}>
+                <UserFriendsIcon size={20} color={COLORS.primary} />
+                <TextInput
+                  placeholder="Rival *"
+                  placeholderTextColor={COLORS.textSecondary}
+                  value={datos.rival}
+                  onChangeText={(text) => setDatos({ ...datos, rival: text })}
+                  style={styles.input}
+                />
+              </View>
+            )}
 
           {/* Hora de citación - solo visible para convocatorias y entrenamientos */}
           {plantillaSeleccionada.id !== "multas" && (
@@ -630,12 +751,21 @@ export default function Convocatorias() {
                 activeOpacity={0.7}
               >
                 <ClockIcon size={20} color={COLORS.warning} />
-                <Text style={datos.citacion ? styles.input : styles.inputPlaceholder}>
+                <Text
+                  style={
+                    datos.citacion ? styles.input : styles.inputPlaceholder
+                  }
+                >
                   {datos.citacion || "Hora de citación *"}
                 </Text>
               </TouchableOpacity>
               {showCitacionPicker && (
-                <DateTimePicker value={new Date()} mode="time" display="spinner" onChange={handleCitacionChange} />
+                <DateTimePicker
+                  value={new Date()}
+                  mode="time"
+                  display="spinner"
+                  onChange={handleCitacionChange}
+                />
               )}
             </>
           )}
@@ -661,7 +791,11 @@ export default function Convocatorias() {
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Seleccionar jugadores</Text>
               <View style={styles.selectionButtons}>
-                <TouchableOpacity style={styles.selectionButton} onPress={seleccionarTodos} activeOpacity={0.7}>
+                <TouchableOpacity
+                  style={styles.selectionButton}
+                  onPress={seleccionarTodos}
+                  activeOpacity={0.7}
+                >
                   <Text style={styles.selectionButtonText}>Todos</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -698,20 +832,29 @@ export default function Convocatorias() {
               {jugadoresFiltrados.map((jugador) => (
                 <TouchableOpacity
                   key={jugador.id}
-                  style={[styles.jugadorItem, jugador.isTemporary && styles.jugadorItemTemporary]}
+                  style={[
+                    styles.jugadorItem,
+                    jugador.isTemporary && styles.jugadorItemTemporary,
+                  ]}
                   onPress={() => toggleJugadorSeleccionado(jugador.id)}
                   activeOpacity={0.7}
                 >
                   <View style={styles.jugadorInfo}>
                     <View style={styles.jugadorHeader}>
                       <Text style={styles.jugadorNombre}>{jugador.name}</Text>
-                      <Text style={styles.jugadorNumero}>#{jugador.number}</Text>
+                      <Text style={styles.jugadorNumero}>
+                        #{jugador.number}
+                      </Text>
                     </View>
                     <View style={styles.jugadorDetalles}>
-                      <Text style={styles.jugadorPosicion}>{jugador.position}</Text>
+                      <Text style={styles.jugadorPosicion}>
+                        {jugador.position}
+                      </Text>
                       {jugador.isTemporary && (
                         <View style={styles.temporaryBadge}>
-                          <Text style={styles.temporaryBadgeText}>Temporal</Text>
+                          <Text style={styles.temporaryBadgeText}>
+                            Temporal
+                          </Text>
                         </View>
                       )}
                     </View>
@@ -719,11 +862,16 @@ export default function Convocatorias() {
                   <View
                     style={[
                       styles.checkbox,
-                      jugadoresSeleccionados[jugador.id] && styles.checkboxSelected,
-                      jugador.isTemporary && jugadoresSeleccionados[jugador.id] && styles.checkboxSelectedTemporary,
+                      jugadoresSeleccionados[jugador.id] &&
+                        styles.checkboxSelected,
+                      jugador.isTemporary &&
+                        jugadoresSeleccionados[jugador.id] &&
+                        styles.checkboxSelectedTemporary,
                     ]}
                   >
-                    {jugadoresSeleccionados[jugador.id] && <CheckIcon size={16} color="#fff" />}
+                    {jugadoresSeleccionados[jugador.id] && (
+                      <CheckIcon size={16} color="#fff" />
+                    )}
                   </View>
                 </TouchableOpacity>
               ))}
@@ -732,7 +880,8 @@ export default function Convocatorias() {
             {/* Resumen de selección */}
             <View style={styles.selectionSummary}>
               <Text style={styles.summaryText}>
-                Convocados: {jugadoresConvocados.length} | No convocados: {jugadoresNoConvocados.length}
+                Convocados: {jugadoresConvocados.length} | No convocados:{" "}
+                {jugadoresNoConvocados.length}
               </Text>
             </View>
           </View>
@@ -743,33 +892,42 @@ export default function Convocatorias() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Informe de multas</Text>
             <Text style={styles.infoText}>
-              Este informe mostrará automáticamente todos los jugadores que tienen multas pendientes de pago.
+              Este informe mostrará automáticamente todos los jugadores que
+              tienen multas pendientes de pago.
             </Text>
 
             <View style={styles.multasSummary}>
               {(() => {
-                const jugadoresConMultas = getJugadoresConMultas()
-                console.log("🎯 Renderizando multas:", jugadoresConMultas)
+                const jugadoresConMultas = getJugadoresConMultas();
+                console.log("🎯 Renderizando multas:", jugadoresConMultas);
 
                 return jugadoresConMultas.length > 0 ? (
                   jugadoresConMultas.map((jugador) => (
                     <View key={jugador.id} style={styles.multaItem}>
                       <View style={styles.multaHeader}>
-                        <Text style={styles.multaPlayerName}>{jugador.name}</Text>
-                        <Text style={styles.multaTotal}>{jugador.totalPendiente}€</Text>
+                        <Text style={styles.multaPlayerName}>
+                          {jugador.name}
+                        </Text>
+                        <Text style={styles.multaTotal}>
+                          {jugador.totalPendiente}€
+                        </Text>
                       </View>
                       {jugador.multasPendientes.map((multa, index) => (
                         <View key={index} style={styles.multaDetail}>
                           <Text style={styles.multaReason}>{multa.reason}</Text>
-                          <Text style={styles.multaAmount}>{multa.amount}€</Text>
+                          <Text style={styles.multaAmount}>
+                            {multa.amount}€
+                          </Text>
                           <Text style={styles.multaDate}>{multa.date}</Text>
                         </View>
                       ))}
                     </View>
                   ))
                 ) : (
-                  <Text style={styles.noMultasText}>No hay jugadores con multas pendientes.</Text>
-                )
+                  <Text style={styles.noMultasText}>
+                    No hay jugadores con multas pendientes.
+                  </Text>
+                );
               })()}
             </View>
           </View>
@@ -794,8 +952,15 @@ export default function Convocatorias() {
           )}
 
           <View style={styles.actionButtons}>
-            <TouchableOpacity style={styles.actionButton} onPress={enviarPorWhatsApp} activeOpacity={0.8}>
-              <LinearGradient colors={[COLORS.primary, COLORS.primaryDark]} style={styles.actionButtonGradient}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={enviarPorWhatsApp}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={[COLORS.primary, COLORS.primaryDark]}
+                style={styles.actionButtonGradient}
+              >
                 <WhatsAppIcon />
                 <Text style={styles.actionButtonText}>Enviar a grupo</Text>
               </LinearGradient>
@@ -813,7 +978,10 @@ export default function Convocatorias() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
-            <LinearGradient colors={["#FF9500", "#FF7800"]} style={styles.modalHeader}>
+            <LinearGradient
+              colors={["#FF9500", "#FF7800"]}
+              style={styles.modalHeader}
+            >
               <Text style={styles.modalTitle}>Añadir jugador temporal</Text>
             </LinearGradient>
 
@@ -824,7 +992,9 @@ export default function Convocatorias() {
                   placeholder="Nombre del jugador *"
                   placeholderTextColor={COLORS.textSecondary}
                   value={tempPlayer.name}
-                  onChangeText={(text) => setTempPlayer({ ...tempPlayer, name: text })}
+                  onChangeText={(text) =>
+                    setTempPlayer({ ...tempPlayer, name: text })
+                  }
                   style={styles.input}
                 />
               </View>
@@ -835,7 +1005,9 @@ export default function Convocatorias() {
                   placeholder="Número de dorsal *"
                   placeholderTextColor={COLORS.textSecondary}
                   value={tempPlayer.number}
-                  onChangeText={(text) => setTempPlayer({ ...tempPlayer, number: text })}
+                  onChangeText={(text) =>
+                    setTempPlayer({ ...tempPlayer, number: text })
+                  }
                   style={styles.input}
                   keyboardType="numeric"
                 />
@@ -846,13 +1018,20 @@ export default function Convocatorias() {
                 {POSICIONES.map((pos) => (
                   <TouchableOpacity
                     key={pos}
-                    style={[styles.positionButton, tempPlayer.position === pos && styles.positionButtonSelected]}
-                    onPress={() => setTempPlayer({ ...tempPlayer, position: pos })}
+                    style={[
+                      styles.positionButton,
+                      tempPlayer.position === pos &&
+                        styles.positionButtonSelected,
+                    ]}
+                    onPress={() =>
+                      setTempPlayer({ ...tempPlayer, position: pos })
+                    }
                   >
                     <Text
                       style={[
                         styles.positionButtonText,
-                        tempPlayer.position === pos && styles.positionButtonTextSelected,
+                        tempPlayer.position === pos &&
+                          styles.positionButtonTextSelected,
                       ]}
                     >
                       {pos}
@@ -869,8 +1048,14 @@ export default function Convocatorias() {
                   <Text style={styles.buttonText}>Cancelar</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={[styles.modalButton, styles.addButton]} onPress={handleAddTempPlayer}>
-                  <LinearGradient colors={["#FF9500", "#FF7800"]} style={styles.addButtonGradient}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.addButton]}
+                  onPress={handleAddTempPlayer}
+                >
+                  <LinearGradient
+                    colors={["#FF9500", "#FF7800"]}
+                    style={styles.addButtonGradient}
+                  >
                     <Text style={styles.addButtonText}>Añadir</Text>
                   </LinearGradient>
                 </TouchableOpacity>
@@ -880,7 +1065,7 @@ export default function Convocatorias() {
         </View>
       </Modal>
     </View>
-  )
+  );
 }
 
 const styles = StyleSheet.create({
@@ -1350,4 +1535,4 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
   },
-})
+});

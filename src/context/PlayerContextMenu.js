@@ -1,88 +1,173 @@
 // src/components/PlayerContextMenu.js
-import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from "react-native"
-import { Ionicons } from "@expo/vector-icons"
+import React from "react";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Dimensions,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { MODERN_COLORS } from "../constants/modernColors";
 
-const { width: screenWidth } = Dimensions.get("window")
+const { width: screenWidth } = Dimensions.get("window");
 
-const PlayerContextMenu = ({ player, onAssignRole, onRemovePlayer, onClose, position, theme }) => {
-  const colors = theme || {
-    modalContent: "#333333",
-    text: "#ffffff",
-    textSecondary: "#cccccc",
-    modalBorder: "#444444",
-  }
-
+const PlayerContextMenu = ({
+  player,
+  onAssignRole,
+  onRemovePlayer,
+  onClose,
+  position,
+}) => {
   // Determinar si el menú debe mostrarse a la izquierda o derecha
-  const showOnLeft = position && position.x > screenWidth / 2
+  const showOnLeft = position && position.x > screenWidth / 2;
 
   // Calcular el estilo de posición basado en la ubicación del toque
   const positionStyle = showOnLeft
-    ? { right: 10 } // Si está en la mitad derecha, alinear a la izquierda del punto
-    : { left: 10 } // Si está en la mitad izquierda, alinear a la derecha del punto
+    ? { right: 16 } // Si está en la mitad derecha, alinear a la izquierda del punto
+    : { left: 16 }; // Si está en la mitad izquierda, alinear a la derecha del punto
 
   return (
-    <View
-      style={[
-        styles.container,
-        { backgroundColor: colors.modalContent, borderColor: colors.modalBorder },
-        positionStyle,
-      ]}
-    >
-      <View style={[styles.header, { borderBottomColor: colors.modalBorder }]}>
-        <Text style={[styles.playerName, { color: colors.text }]}>{player.name}</Text>
-        <TouchableOpacity onPress={onClose}>
-          <Ionicons name="close" size={20} color={colors.textSecondary} />
+    <View style={[styles.container, positionStyle]}>
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.playerName}>{player.name}</Text>
+          <Text style={styles.playerNumber}>#{player.number}</Text>
+        </View>
+        <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+          <Ionicons name="close" size={18} color={MODERN_COLORS.textGray} />
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity style={styles.menuItem} onPress={onAssignRole}>
-        <Ionicons name="star-outline" size={20} color="#FFC107" />
-        <Text style={[styles.menuItemText, { color: colors.text }]}>Asignar roles especiales</Text>
+      <TouchableOpacity
+        style={styles.menuItem}
+        onPress={onAssignRole}
+        activeOpacity={0.8}
+      >
+        <View
+          style={[
+            styles.menuItemIcon,
+            { backgroundColor: `${MODERN_COLORS.accent}15` },
+          ]}
+        >
+          <Ionicons
+            name="star-outline"
+            size={18}
+            color={MODERN_COLORS.accent}
+          />
+        </View>
+        <Text style={styles.menuItemText}>Asignar roles especiales</Text>
+        <Ionicons
+          name="chevron-forward"
+          size={16}
+          color={MODERN_COLORS.textLight}
+        />
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.menuItem} onPress={onRemovePlayer}>
-        <Ionicons name="trash-outline" size={20} color="#F44336" />
-        <Text style={[styles.menuItemText, { color: colors.text }]}>Quitar de la alineación</Text>
+      <TouchableOpacity
+        style={styles.menuItem}
+        onPress={onRemovePlayer}
+        activeOpacity={0.8}
+      >
+        <View
+          style={[
+            styles.menuItemIcon,
+            { backgroundColor: `${MODERN_COLORS.danger}15` },
+          ]}
+        >
+          <Ionicons
+            name="trash-outline"
+            size={18}
+            color={MODERN_COLORS.danger}
+          />
+        </View>
+        <Text style={styles.menuItemText}>Quitar de la alineación</Text>
+        <Ionicons
+          name="chevron-forward"
+          size={16}
+          color={MODERN_COLORS.textLight}
+        />
       </TouchableOpacity>
     </View>
-  )
-}
+  );
+};
 
 const styles = StyleSheet.create({
   container: {
     position: "absolute",
     top: 10,
-    borderRadius: 8,
-    padding: 12,
-    width: 250,
+    backgroundColor: MODERN_COLORS.surface,
+    borderRadius: 12,
+    padding: 16,
+    width: 280,
     borderWidth: 1,
+    borderColor: MODERN_COLORS.border,
+    elevation: 8,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
     zIndex: 1000,
   },
+
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 10,
-    paddingBottom: 10,
+    marginBottom: 12,
+    paddingBottom: 12,
     borderBottomWidth: 1,
+    borderBottomColor: MODERN_COLORS.border,
   },
+
   playerName: {
-    fontWeight: "bold",
     fontSize: 16,
+    fontWeight: "700",
+    color: MODERN_COLORS.textDark,
+    letterSpacing: -0.2,
   },
+
+  playerNumber: {
+    fontSize: 13,
+    color: MODERN_COLORS.textGray,
+    fontWeight: "500",
+    marginTop: 2,
+  },
+
+  closeButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: MODERN_COLORS.surfaceGray,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
   menuItem: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+    borderRadius: 8,
+    marginBottom: 4,
   },
-  menuItemText: {
-    marginLeft: 10,
-  },
-})
 
-export default PlayerContextMenu
+  menuItemIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+
+  menuItemText: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: "500",
+    color: MODERN_COLORS.textDark,
+    letterSpacing: 0.1,
+  },
+});
+
+export default PlayerContextMenu;
