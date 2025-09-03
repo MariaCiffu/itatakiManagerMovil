@@ -75,85 +75,86 @@ export default function Convocatorias() {
   });
   const [loadingJugadores, setLoadingJugadores] = useState(true);
 
-  // ✅ Cargar jugadores al iniciar
   useEffect(() => {
-    const loadJugadores = async () => {
+    const loadAllJugadores = async () => {
       try {
         setLoadingJugadores(true);
-        console.log("📡 Cargando jugadores desde Firebase...");
-        const jugadoresData = await getAllJugadores();
+
+        // 1. Cargar jugadores de Firebase
+        let jugadoresData = await getAllJugadores();
+        console.log("Jugadores de Firebase cargados:", jugadoresData.length);
+
+        // 2. Procesar datos del partido si existen
+        if (params.datosPartido) {
+          const datosPartido = JSON.parse(params.datosPartido);
+
+          // 2a. Agregar jugadores temporales del partido
+          if (
+            datosPartido.temporaryPlayers &&
+            datosPartido.temporaryPlayers.length > 0
+          ) {
+            console.log(
+              "Agregando jugadores temporales del partido:",
+              datosPartido.temporaryPlayers.length
+            );
+            jugadoresData = [
+              ...jugadoresData,
+              ...datosPartido.temporaryPlayers,
+            ];
+          }
+
+          // 2b. Configurar datos del partido
+          setDatos({
+            fecha: datosPartido.fecha || "",
+            hora: datosPartido.hora || "",
+            citacion: "",
+            lugar: datosPartido.lugar || "",
+            rival: datosPartido.rival || "",
+            tipoPartido: datosPartido.tipoPartido || "liga",
+            jornada: datosPartido.jornada || "",
+            nombreTorneo: datosPartido.nombreTorneo || "",
+          });
+
+          // 2c. Configurar jugadores seleccionados
+          if (datosPartido.jugadoresSeleccionados) {
+            const seleccionados = {};
+
+            if (datosPartido.jugadoresSeleccionados.titulares) {
+              datosPartido.jugadoresSeleccionados.titulares.forEach((id) => {
+                if (id) seleccionados[id] = true;
+              });
+            }
+
+            if (datosPartido.jugadoresSeleccionados.suplentes) {
+              datosPartido.jugadoresSeleccionados.suplentes.forEach((id) => {
+                if (id) seleccionados[id] = true;
+              });
+            }
+
+            setJugadoresSeleccionados(seleccionados);
+          }
+
+          // 2d. Seleccionar plantilla de convocatoria
+          const plantillaConvocatoria = PLANTILLAS.find(
+            (p) => p.id === "convocatoria"
+          );
+          if (plantillaConvocatoria) {
+            setPlantillaSeleccionada(plantillaConvocatoria);
+          }
+        }
+
+        // 3. Establecer jugadores finales
         setJugadores(jugadoresData);
-        console.log(
-          "✅ Jugadores cargados desde Firebase:",
-          jugadoresData.length
-        );
+        console.log("Total jugadores cargados:", jugadoresData.length);
       } catch (error) {
-        console.error("❌ Error cargando jugadores desde Firebase:", error);
-        Alert.alert("Error", "No se pudieron cargar los jugadores");
+        console.error("Error cargando datos:", error);
+        Alert.alert("Error", "No se pudieron cargar los datos");
       } finally {
         setLoadingJugadores(false);
       }
     };
 
-    loadJugadores();
-  }, []);
-
-  // Procesar datos del partido si se reciben como parámetro
-  useEffect(() => {
-    if (params.datosPartido) {
-      try {
-        const datosPartido = JSON.parse(params.datosPartido);
-
-        setDatos({
-          fecha: datosPartido.fecha || "",
-          hora: datosPartido.hora || "",
-          citacion: "",
-          lugar: datosPartido.lugar || "",
-          rival: datosPartido.rival || "",
-          tipoPartido: datosPartido.tipoPartido || "liga",
-          jornada: datosPartido.jornada || "",
-          nombreTorneo: datosPartido.nombreTorneo || "",
-        });
-
-        if (
-          datosPartido.temporaryPlayers &&
-          datosPartido.temporaryPlayers.length > 0
-        ) {
-          setJugadores((prevJugadores) => [
-            ...prevJugadores,
-            ...datosPartido.temporaryPlayers,
-          ]);
-        }
-
-        if (datosPartido.jugadoresSeleccionados) {
-          const seleccionados = {};
-
-          if (datosPartido.jugadoresSeleccionados.titulares) {
-            datosPartido.jugadoresSeleccionados.titulares.forEach((id) => {
-              if (id) seleccionados[id] = true;
-            });
-          }
-
-          if (datosPartido.jugadoresSeleccionados.suplentes) {
-            datosPartido.jugadoresSeleccionados.suplentes.forEach((id) => {
-              if (id) seleccionados[id] = true;
-            });
-          }
-
-          setJugadoresSeleccionados(seleccionados);
-        }
-
-        const plantillaConvocatoria = PLANTILLAS.find(
-          (p) => p.id === "convocatoria"
-        );
-        if (plantillaConvocatoria) {
-          setPlantillaSeleccionada(plantillaConvocatoria);
-        }
-      } catch (error) {
-        console.error("Error al procesar datos del partido:", error);
-        Alert.alert("Error", "No se pudieron cargar los datos del partido");
-      }
-    }
+    loadAllJugadores();
   }, [params.datosPartido]);
 
   // Función para formatear la fecha
