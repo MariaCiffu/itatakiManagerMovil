@@ -42,8 +42,7 @@ import { useAuth } from "../../hooks/useFirebase";
 export default function Convocatorias() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const { state } = useAuth();
-  const { user } = state;
+  const { user } = useAuth();
 
   const [plantillaSeleccionada, setPlantillaSeleccionada] = useState(
     PLANTILLAS[0]
@@ -74,12 +73,29 @@ export default function Convocatorias() {
     number: "",
     position: "JUG",
   });
+  const [loadingJugadores, setLoadingJugadores] = useState(true);
 
   // ✅ Cargar jugadores al iniciar
   useEffect(() => {
-    const jugadoresData = getAllJugadores();
-    setJugadores(jugadoresData);
-    console.log("🎯 Jugadores cargados:", jugadoresData.length);
+    const loadJugadores = async () => {
+      try {
+        setLoadingJugadores(true);
+        console.log("📡 Cargando jugadores desde Firebase...");
+        const jugadoresData = await getAllJugadores();
+        setJugadores(jugadoresData);
+        console.log(
+          "✅ Jugadores cargados desde Firebase:",
+          jugadoresData.length
+        );
+      } catch (error) {
+        console.error("❌ Error cargando jugadores desde Firebase:", error);
+        Alert.alert("Error", "No se pudieron cargar los jugadores");
+      } finally {
+        setLoadingJugadores(false);
+      }
+    };
+
+    loadJugadores();
   }, []);
 
   // Procesar datos del partido si se reciben como parámetro

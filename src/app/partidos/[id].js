@@ -157,7 +157,7 @@ export default function DetallePartidoScreen() {
 
       // Determinar lugar específico
       const lugarEspecifico =
-        partido.lugar === "Casa" ? user?.teamField : partido.lugarEspecifico;
+        partido.lugar === "Casa" ? user?.homeField : partido.lugarEspecifico;
 
       // Crear objeto con los datos a pasar
       const datosConvocatoria = {

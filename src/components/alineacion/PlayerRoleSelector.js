@@ -5,10 +5,13 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
+  Dimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { MODERN_COLORS } from "../../constants/modernColors";
 import { availableRoles } from "../../data/roles";
+
+const { height: screenHeight } = Dimensions.get("window");
 
 const PlayerRoleSelector = ({
   player,
@@ -89,6 +92,12 @@ const PlayerRoleSelector = ({
     return null;
   };
 
+  // Calcular altura dinámica basada en la cantidad de roles
+  const rolesContainerHeight = Math.min(
+    availableRoles.length * 60 + 20, // 60px por rol + padding
+    screenHeight * 0.4 // Máximo 40% de la pantalla
+  );
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -101,55 +110,60 @@ const PlayerRoleSelector = ({
         </TouchableOpacity>
       </View>
 
-      <ScrollView
-        style={styles.rolesContainer}
-        showsVerticalScrollIndicator={false}
-      >
-        {availableRoles.map((role) => {
-          const isAssigned = specialRoles[role.id] === player.id;
-          const isAssignedToOther =
-            specialRoles[role.id] && specialRoles[role.id] !== player.id;
+      <View style={[styles.rolesContainer, { height: rolesContainerHeight }]}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
+          {availableRoles.map((role) => {
+            const isAssigned = specialRoles[role.id] === player.id;
+            const isAssignedToOther =
+              specialRoles[role.id] && specialRoles[role.id] !== player.id;
 
-          return (
-            <TouchableOpacity
-              key={role.id}
-              style={[styles.roleButton, isAssigned && styles.roleButtonActive]}
-              onPress={() => toggleRole(role.id)}
-              activeOpacity={0.8}
-            >
-              {renderIndicator(role, isAssigned)}
+            return (
+              <TouchableOpacity
+                key={role.id}
+                style={[
+                  styles.roleButton,
+                  isAssigned && styles.roleButtonActive,
+                ]}
+                onPress={() => toggleRole(role.id)}
+                activeOpacity={0.8}
+              >
+                {renderIndicator(role, isAssigned)}
 
-              <View style={styles.roleInfo}>
-                <Text
-                  style={[
-                    styles.roleName,
-                    {
-                      color: isAssigned
-                        ? MODERN_COLORS.textDark
-                        : MODERN_COLORS.textGray,
-                    },
-                  ]}
-                >
-                  {role.name}
-                </Text>
-                {isAssignedToOther && (
-                  <Text style={styles.warningText}>
-                    Asignado a otro jugador
+                <View style={styles.roleInfo}>
+                  <Text
+                    style={[
+                      styles.roleName,
+                      {
+                        color: isAssigned
+                          ? MODERN_COLORS.textDark
+                          : MODERN_COLORS.textGray,
+                      },
+                    ]}
+                  >
+                    {role.name}
                   </Text>
-                )}
-              </View>
+                  {isAssignedToOther && (
+                    <Text style={styles.warningText}>
+                      Asignado a otro jugador
+                    </Text>
+                  )}
+                </View>
 
-              {isAssigned && (
-                <Ionicons
-                  name="checkmark-circle"
-                  size={20}
-                  color={MODERN_COLORS.success}
-                />
-              )}
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
+                {isAssigned && (
+                  <Ionicons
+                    name="checkmark-circle"
+                    size={20}
+                    color={MODERN_COLORS.success}
+                  />
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
 
       <TouchableOpacity style={styles.doneButton} onPress={onClose}>
         <Text style={styles.doneButtonText}>Listo</Text>
@@ -162,7 +176,7 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: MODERN_COLORS.surface,
     borderRadius: 16,
-    maxHeight: "80%",
+    maxHeight: screenHeight * 0.7, // Altura máxima del 70% de la pantalla
     elevation: 10,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
@@ -205,6 +219,9 @@ const styles = StyleSheet.create({
 
   rolesContainer: {
     paddingHorizontal: 20,
+  },
+
+  scrollContent: {
     paddingVertical: 8,
   },
 
@@ -212,12 +229,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 12, // Reducido de 14 a 12 para hacer los elementos más compactos
     borderRadius: 12,
-    marginVertical: 4,
+    marginVertical: 3, // Reducido de 4 a 3
     backgroundColor: MODERN_COLORS.surfaceGray,
     borderWidth: 1,
     borderColor: MODERN_COLORS.border,
+    height: 56, // Altura fija para consistencia
   },
 
   roleButtonActive: {

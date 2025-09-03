@@ -774,17 +774,20 @@ const LineupScreen = forwardRef((props, ref) => {
           setSelectedPlayer(player);
           setSelectedPosition(position);
 
-          if (event && event.nativeEvent) {
-            const adjustedY = Math.min(
-              event.nativeEvent.pageY,
-              CONTEXT_MENU_MAX_Y
-            );
+          // Usar las coordenadas del evento directamente
+          const x =
+            event?.nativeEvent?.pageX ||
+            event?.nativeEvent?.locationX ||
+            width / 2;
+          const y =
+            event?.nativeEvent?.pageY ||
+            event?.nativeEvent?.locationY ||
+            height / 2;
 
-            setContextMenuPosition({
-              x: event.nativeEvent.pageX,
-              y: adjustedY + CONTEXT_MENU_Y_OFFSET,
-            });
-          }
+          setContextMenuPosition({
+            x: x - 20,
+            y: y - 130,
+          });
 
           setContextMenuVisible(true);
         } else {
@@ -796,7 +799,7 @@ const LineupScreen = forwardRef((props, ref) => {
         showError("Error al seleccionar jugador");
       }
     },
-    [lineup, playerScaleAnim, readOnly, showError]
+    [lineup, playerScaleAnim, readOnly, showError, width, height]
   );
 
   // Función para manejar pulsación larga
@@ -1606,7 +1609,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     width: "100%",
     maxWidth: 280,
-    maxHeight: 300,
     elevation: 10,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
