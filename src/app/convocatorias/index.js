@@ -1,5 +1,3 @@
-"use client";
-
 import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
@@ -16,7 +14,6 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import {
-  ArrowLeftIcon,
   CalendarIcon,
   ClockIcon,
   UserFriendsIcon,
@@ -30,14 +27,16 @@ import {
   WhatsAppIcon,
   ShirtIcon,
 } from "../../components/Icons";
+import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../constants/colors";
 import {
   getAllJugadores,
-  getJugadoresConMultas,
+  getAllJugadoresWithMultas,
 } from "../../services/playersService";
 import PLANTILLAS from "../../data/plantillasConv";
 import { POSICIONES } from "../../constants/positions";
 import { useAuth } from "../../hooks/useFirebase";
+import { MODERN_COLORS } from "../../constants/modernColors";
 
 export default function Convocatorias() {
   const router = useRouter();
@@ -48,7 +47,7 @@ export default function Convocatorias() {
     PLANTILLAS[0]
   );
 
-  // ✅ Inicializar jugadores desde el servicio
+  // Estados principales
   const [jugadores, setJugadores] = useState([]);
   const [jugadoresSeleccionados, setJugadoresSeleccionados] = useState({});
   const [searchQuery, setSearchQuery] = useState("");
@@ -74,6 +73,33 @@ export default function Convocatorias() {
     position: "JUG",
   });
   const [loadingJugadores, setLoadingJugadores] = useState(true);
+
+  // Estados para multas
+  const [jugadoresConMultas, setJugadoresConMultas] = useState([]);
+  const [loadingMultas, setLoadingMultas] = useState(false);
+
+  // Función para cargar multas
+  const cargarMultas = async () => {
+    try {
+      setLoadingMultas(true);
+      console.log("🚨 Cargando multas...");
+      const jugadoresConMultasData = await getAllJugadoresWithMultas();
+      console.log("📋 Jugadores con multas cargados:", jugadoresConMultasData);
+      setJugadoresConMultas(jugadoresConMultasData);
+    } catch (error) {
+      console.error("❌ Error cargando multas:", error);
+      setJugadoresConMultas([]);
+    } finally {
+      setLoadingMultas(false);
+    }
+  };
+
+  // useEffect para cargar multas cuando se selecciona la plantilla de multas
+  useEffect(() => {
+    if (plantillaSeleccionada.id === "multas") {
+      cargarMultas();
+    }
+  }, [plantillaSeleccionada.id]);
 
   useEffect(() => {
     const loadAllJugadores = async () => {
@@ -216,7 +242,7 @@ export default function Convocatorias() {
         )
       : jugadores;
 
-    // ✅ Ordenar primero por posición (según array POSICIONES) y luego por número de dorsal
+    // Ordenar primero por posición (según array POSICIONES) y luego por número de dorsal
     return jugadoresFiltrados.sort((a, b) => {
       // Obtener índice de posición en el array POSICIONES
       const posicionA = POSICIONES.indexOf(a.position);
@@ -289,6 +315,7 @@ export default function Convocatorias() {
     plantillaSeleccionada,
     jugadoresConvocados,
     jugadoresNoConvocados,
+    jugadoresConMultas, // Agregar esta dependencia
   ]);
 
   const handleDateChange = (event, selectedDate) => {
@@ -406,20 +433,27 @@ export default function Convocatorias() {
     let listaJugadoresConvocados = "";
     let listaJugadoresNoConvocados = "";
 
-    // ✅ Caso especial para el informe de multas
+    // Caso especial para el informe de multas - CORREGIDO
     if (plantillaSeleccionada.id === "multas") {
       console.log("🚨 Generando informe de multas...");
-      const jugadoresConMultas = getJugadoresConMultas();
       console.log("📋 Jugadores con multas:", jugadoresConMultas);
 
-      if (jugadoresConMultas.length > 0) {
-        jugadoresConMultas.forEach((jugador, index) => {
-          listaJugadoresConvocados += `${index + 1}. ${jugador.name} - Total: ${jugador.totalPendiente}€\n`;
-          jugador.multasPendientes.forEach((multa) => {
-            listaJugadoresConvocados += `   • ${multa.reason}: ${multa.amount}€ (${multa.date})\n`;
+      if (jugadoresConMultas && jugadoresConMultas.length > 0) {
+        // Filtrar solo jugadores que tienen multas pendientes
+        const jugadoresConMultasPendientes = jugadoresConMultas.filter(
+          (jugador) => jugador.multasPendientes > 0
+        );
+
+        if (jugadoresConMultasPendientes.length > 0) {
+          jugadoresConMultasPendientes.forEach((jugador, index) => {
+            listaJugadoresConvocados += `${index + 1}. ${jugador.name} - Total: ${jugador.totalDeuda}€\n`;
+
+            // Mostrar resumen de multas pendientes
+            listaJugadoresConvocados += `   • ${jugador.multasPendientes} multa(s) pendiente(s)\n\n`;
           });
-          listaJugadoresConvocados += "\n";
-        });
+        } else {
+          listaJugadoresConvocados = "No hay jugadores con multas pendientes.";
+        }
       } else {
         listaJugadoresConvocados = "No hay jugadores con multas pendientes.";
       }
@@ -452,54 +486,12 @@ export default function Convocatorias() {
     datos,
     jugadoresConvocados,
     jugadoresNoConvocados,
+    jugadoresConMultas, // Agregar esta dependencia
     plantillaSeleccionada,
     formatearFecha,
     generateMapsLink,
     user,
   ]);
-
-  const enviarPorWhatsApp = useCallback(async () => {
-    if (
-      !datos.fecha ||
-      (plantillaSeleccionada.id !== "multas" && !datos.hora) ||
-      (plantillaSeleccionada.id !== "multas" && !datos.lugar) ||
-      (plantillaSeleccionada.id === "convocatoria" &&
-        datos.tipoPartido !== "torneo" &&
-        !datos.rival) ||
-      (plantillaSeleccionada.id === "convocatoria" &&
-        datos.tipoPartido === "liga" &&
-        !datos.jornada) ||
-      (plantillaSeleccionada.id === "convocatoria" &&
-        datos.tipoPartido === "torneo" &&
-        !datos.nombreTorneo) ||
-      (plantillaSeleccionada.id !== "multas" &&
-        Object.keys(jugadoresSeleccionados).filter(
-          (id) => jugadoresSeleccionados[id]
-        ).length === 0)
-    ) {
-      Alert.alert(
-        "Datos incompletos",
-        "Por favor completa todos los campos requeridos."
-      );
-      return;
-    }
-
-    try {
-      console.log("Mensaje antes de enviar:", mensajeFinal);
-      const mensaje = encodeURIComponent(mensajeFinal);
-
-      const url = `whatsapp://send?text=${mensaje}`;
-      const supported = await Linking.canOpenURL(url);
-
-      if (supported) {
-        await Linking.openURL(url);
-      } else {
-        Alert.alert("Error", "WhatsApp no está instalado en este dispositivo.");
-      }
-    } catch (error) {
-      Alert.alert("Error", "No se pudo abrir WhatsApp.");
-    }
-  }, [datos, jugadoresSeleccionados, mensajeFinal, plantillaSeleccionada]);
 
   const getPlaceholderText = (field) => {
     if (field === "fecha") {
@@ -540,15 +532,63 @@ export default function Convocatorias() {
     setTempPlayer({ name: "", number: "", position: "JUG" });
   };
 
+  const enviarPorWhatsApp = useCallback(async () => {
+    // Validación específica para multas
+    if (plantillaSeleccionada.id === "multas") {
+      if (!datos.fecha) {
+        Alert.alert("Datos incompletos", "Por favor selecciona una fecha.");
+        return;
+      }
+    } else {
+      // Validación para otras plantillas
+      if (
+        !datos.fecha ||
+        !datos.hora ||
+        !datos.lugar ||
+        (datos.tipoPartido !== "torneo" && !datos.rival) ||
+        (datos.tipoPartido === "liga" && !datos.jornada) ||
+        (datos.tipoPartido === "torneo" && !datos.nombreTorneo) ||
+        Object.keys(jugadoresSeleccionados).filter(
+          (id) => jugadoresSeleccionados[id]
+        ).length === 0
+      ) {
+        Alert.alert(
+          "Datos incompletos",
+          "Por favor completa todos los campos requeridos."
+        );
+        return;
+      }
+    }
+
+    try {
+      console.log("Mensaje antes de enviar:", mensajeFinal);
+      const mensaje = encodeURIComponent(mensajeFinal);
+
+      const url = `whatsapp://send?text=${mensaje}`;
+      const supported = await Linking.canOpenURL(url);
+
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert("Error", "WhatsApp no está instalado en este dispositivo.");
+      }
+    } catch (error) {
+      Alert.alert("Error", "No se pudo abrir WhatsApp.");
+    }
+  }, [datos, jugadoresSeleccionados, mensajeFinal, plantillaSeleccionada]);
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity
-          style={styles.backButton}
           onPress={() => router.back()}
-          activeOpacity={0.7}
+          style={styles.backButton}
         >
-          <ArrowLeftIcon size={24} color={COLORS.text} />
+          <Ionicons
+            name="chevron-back"
+            size={24}
+            color={MODERN_COLORS.textDark}
+          />
         </TouchableOpacity>
         <Text style={styles.title}>Generar convocatoria</Text>
         <View style={styles.placeholder} />
@@ -574,12 +614,13 @@ export default function Convocatorias() {
                 onPress={() => setPlantillaSeleccionada(plantilla)}
                 activeOpacity={0.7}
               >
-                <FileIcon
+                <Ionicons
+                  name="document-outline"
                   size={24}
                   color={
                     plantillaSeleccionada.id === plantilla.id
-                      ? COLORS.primary
-                      : COLORS.textSecondary
+                      ? MODERN_COLORS.primary
+                      : MODERN_COLORS.textGray
                   }
                 />
                 <Text
@@ -598,12 +639,23 @@ export default function Convocatorias() {
 
         {/* Datos de la convocatoria */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Datos</Text>
+          {plantillaSeleccionada.id === "convocatoria" ? (
+            <Text style={styles.sectionTitle}>Datos del partido</Text>
+          ) : (
+            plantillaSeleccionada.id === "multas" && (
+              <View>
+                <Text style={styles.sectionTitle}>Informe de multas</Text>
+                <Text style={styles.infoText}>
+                  Este informe mostrará automáticamente todos los jugadores que
+                  tienen multas pendientes de pago.
+                </Text>
+              </View>
+            )
+          )}
 
           {/* Tipo de partido - solo visible para convocatorias */}
           {plantillaSeleccionada.id === "convocatoria" && (
             <View style={styles.tipoPartidoContainer}>
-              <Text style={styles.tipoPartidoLabel}>Tipo de partido:</Text>
               <View style={styles.tipoPartidoOptions}>
                 <TouchableOpacity
                   style={[
@@ -667,7 +719,11 @@ export default function Convocatorias() {
           {plantillaSeleccionada.id === "convocatoria" &&
             datos.tipoPartido === "liga" && (
               <View style={styles.inputContainer}>
-                <NumberIcon size={20} color={COLORS.primary} />
+                <Ionicons
+                  name="trophy-outline"
+                  size={20}
+                  color={MODERN_COLORS.textGray}
+                />
                 <TextInput
                   placeholder="Número de jornada *"
                   placeholderTextColor={COLORS.textSecondary}
@@ -683,7 +739,11 @@ export default function Convocatorias() {
           {plantillaSeleccionada.id === "convocatoria" &&
             datos.tipoPartido === "torneo" && (
               <View style={styles.inputContainer}>
-                <TrophyIcon size={20} color={COLORS.primary} />
+                <Ionicons
+                  name="trophy-outline"
+                  size={20}
+                  color={MODERN_COLORS.textGray}
+                />
                 <TextInput
                   placeholder="Nombre del torneo *"
                   placeholderTextColor={COLORS.textSecondary}
@@ -702,7 +762,11 @@ export default function Convocatorias() {
             onPress={() => setShowDatePicker(true)}
             activeOpacity={0.7}
           >
-            <CalendarIcon size={20} color={COLORS.primary} />
+            <Ionicons
+              name="calendar-outline"
+              size={20}
+              color={MODERN_COLORS.textGray}
+            />
             <Text style={datos.fecha ? styles.input : styles.inputPlaceholder}>
               {datos.fecha
                 ? formatearFecha(datos.fecha)
@@ -726,7 +790,11 @@ export default function Convocatorias() {
                 onPress={() => setShowTimePicker(true)}
                 activeOpacity={0.7}
               >
-                <ClockIcon size={20} color={COLORS.primary} />
+                <Ionicons
+                  name="time-outline"
+                  size={20}
+                  color={MODERN_COLORS.textGray}
+                />
                 <Text
                   style={datos.hora ? styles.input : styles.inputPlaceholder}
                 >
@@ -748,7 +816,11 @@ export default function Convocatorias() {
           {plantillaSeleccionada.id === "convocatoria" &&
             datos.tipoPartido !== "torneo" && (
               <View style={styles.inputContainer}>
-                <UserFriendsIcon size={20} color={COLORS.primary} />
+                <Ionicons
+                  name="shield-outline"
+                  size={20}
+                  color={MODERN_COLORS.textGray}
+                />
                 <TextInput
                   placeholder="Rival *"
                   placeholderTextColor={COLORS.textSecondary}
@@ -767,7 +839,11 @@ export default function Convocatorias() {
                 onPress={() => setShowCitacionPicker(true)}
                 activeOpacity={0.7}
               >
-                <ClockIcon size={20} color={COLORS.warning} />
+                <Ionicons
+                  name="time-outline"
+                  size={20}
+                  color={MODERN_COLORS.textGray}
+                />
                 <Text
                   style={
                     datos.citacion ? styles.input : styles.inputPlaceholder
@@ -790,7 +866,7 @@ export default function Convocatorias() {
           {/* Lugar - solo visible para convocatorias y entrenamientos */}
           {plantillaSeleccionada.id !== "multas" && (
             <View style={styles.inputContainer}>
-              <MapIcon size={20} color={COLORS.primary} />
+              <MapIcon size={20} color={MODERN_COLORS.textGray} />
               <TextInput
                 placeholder="Lugar *"
                 placeholderTextColor={COLORS.textSecondary}
@@ -840,7 +916,7 @@ export default function Convocatorias() {
                 onPress={() => setShowAddPlayerModal(true)}
                 activeOpacity={0.7}
               >
-                <PlusIcon size={20} color={COLORS.primary} />
+                <Ionicons name="add" size={20} color={MODERN_COLORS.primary} />
               </TouchableOpacity>
             </View>
 
@@ -904,48 +980,52 @@ export default function Convocatorias() {
           </View>
         )}
 
-        {/* ✅ Sección especial para multas */}
+        {/* Sección especial para multas - CORREGIDA */}
         {plantillaSeleccionada.id === "multas" && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Informe de multas</Text>
-            <Text style={styles.infoText}>
-              Este informe mostrará automáticamente todos los jugadores que
-              tienen multas pendientes de pago.
-            </Text>
-
             <View style={styles.multasSummary}>
-              {(() => {
-                const jugadoresConMultas = getJugadoresConMultas();
-                console.log("🎯 Renderizando multas:", jugadoresConMultas);
+              {loadingMultas ? (
+                <Text style={styles.loadingText}>Cargando multas...</Text>
+              ) : jugadoresConMultas && jugadoresConMultas.length > 0 ? (
+                (() => {
+                  // Filtrar solo jugadores con multas pendientes
+                  const jugadoresConMultasPendientes =
+                    jugadoresConMultas.filter(
+                      (jugador) => jugador.multasPendientes > 0
+                    );
 
-                return jugadoresConMultas.length > 0 ? (
-                  jugadoresConMultas.map((jugador) => (
-                    <View key={jugador.id} style={styles.multaItem}>
-                      <View style={styles.multaHeader}>
-                        <Text style={styles.multaPlayerName}>
-                          {jugador.name}
-                        </Text>
-                        <Text style={styles.multaTotal}>
-                          {jugador.totalPendiente}€
-                        </Text>
-                      </View>
-                      {jugador.multasPendientes.map((multa, index) => (
-                        <View key={index} style={styles.multaDetail}>
-                          <Text style={styles.multaReason}>{multa.reason}</Text>
-                          <Text style={styles.multaAmount}>
-                            {multa.amount}€
+                  return jugadoresConMultasPendientes.length > 0 ? (
+                    jugadoresConMultasPendientes.map((jugador) => (
+                      <View key={jugador.id} style={styles.multaItem}>
+                        <View style={styles.multaHeader}>
+                          <Text style={styles.multaPlayerName}>
+                            {jugador.name}
                           </Text>
-                          <Text style={styles.multaDate}>{multa.date}</Text>
+                          <Text style={styles.multaTotal}>
+                            {jugador.totalDeuda}€
+                          </Text>
                         </View>
-                      ))}
-                    </View>
-                  ))
-                ) : (
-                  <Text style={styles.noMultasText}>
-                    No hay jugadores con multas pendientes.
-                  </Text>
-                );
-              })()}
+                        <View style={styles.multaDetail}>
+                          <Text style={styles.multaReason}>
+                            {jugador.multasPendientes} multa(s) pendiente(s)
+                          </Text>
+                          <Text style={styles.multaAmount}>
+                            Total: {jugador.totalDeuda}€
+                          </Text>
+                        </View>
+                      </View>
+                    ))
+                  ) : (
+                    <Text style={styles.noMultasText}>
+                      No hay jugadores con multas pendientes.
+                    </Text>
+                  );
+                })()
+              ) : (
+                <Text style={styles.noMultasText}>
+                  No hay jugadores con multas pendientes.
+                </Text>
+              )}
             </View>
           </View>
         )}
@@ -1088,468 +1168,637 @@ export default function Convocatorias() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
-    padding: 16,
+    backgroundColor: MODERN_COLORS.background,
   },
+
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: MODERN_COLORS.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: MODERN_COLORS.border,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
+
   backButton: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    borderRadius: 12,
+    backgroundColor: MODERN_COLORS.surfaceGray,
     justifyContent: "center",
     alignItems: "center",
   },
+
   placeholder: {
     width: 40,
   },
+
   title: {
-    fontSize: 24,
-    color: COLORS.text,
-    fontWeight: "bold",
+    fontSize: 18,
+    fontWeight: "700",
+    color: MODERN_COLORS.textDark,
+    letterSpacing: -0.3,
+  },
+
+  // Loading state
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: MODERN_COLORS.background,
+  },
+
+  loadingText: {
+    fontSize: 16,
+    color: MODERN_COLORS.textGray,
+    fontWeight: "500",
+    marginTop: 16,
     textAlign: "center",
   },
+
+  // Secciones
   section: {
+    marginHorizontal: 20,
     marginBottom: 24,
   },
+
   sectionTitle: {
-    fontSize: 18,
-    color: COLORS.text,
-    fontWeight: "bold",
+    fontSize: 16,
+    fontWeight: "700",
+    color: MODERN_COLORS.textDark,
     marginBottom: 12,
+    letterSpacing: -0.2,
   },
+
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 12,
   },
+
+  // Botones de selección
   selectionButtons: {
     flexDirection: "row",
     gap: 8,
   },
+
   selectionButton: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: MODERN_COLORS.primary,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 6,
+    borderRadius: 8,
   },
+
   selectionButtonClear: {
-    backgroundColor: COLORS.textSecondary,
+    backgroundColor: MODERN_COLORS.textGray,
   },
+
   selectionButtonText: {
-    color: "#fff",
+    color: MODERN_COLORS.textWhite,
     fontSize: 12,
-    fontWeight: "bold",
+    fontWeight: "600",
   },
+
+  // Plantillas
   plantillasContainer: {
     paddingBottom: 8,
     gap: 12,
   },
+
   plantillaCard: {
-    backgroundColor: COLORS.card,
-    borderRadius: 10,
-    padding: 12,
+    backgroundColor: MODERN_COLORS.surface,
+    borderRadius: 12,
+    padding: 16,
     minWidth: 120,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: COLORS.cardBorder,
+    borderColor: MODERN_COLORS.border,
+    elevation: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
   },
+
   plantillaSeleccionada: {
-    borderColor: COLORS.primary,
-    backgroundColor: `${COLORS.primary}20`,
+    borderColor: MODERN_COLORS.primary,
   },
+
   plantillaText: {
-    color: COLORS.textSecondary,
+    color: MODERN_COLORS.textGray,
     marginTop: 8,
     textAlign: "center",
+    fontSize: 14,
+    fontWeight: "500",
   },
+
   plantillaTextSeleccionada: {
-    color: COLORS.text,
-    fontWeight: "bold",
+    color: MODERN_COLORS.primary,
+    fontWeight: "700",
   },
+
+  // Tipo de partido
   tipoPartidoContainer: {
     marginBottom: 16,
   },
-  tipoPartidoLabel: {
-    color: COLORS.text,
-    fontSize: 16,
-    marginBottom: 8,
-  },
+
   tipoPartidoOptions: {
     flexDirection: "row",
-    justifyContent: "space-between",
     gap: 8,
   },
+
   tipoPartidoOption: {
     flex: 1,
-    backgroundColor: COLORS.card,
+    backgroundColor: MODERN_COLORS.surface,
     padding: 12,
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: COLORS.cardBorder,
+    borderColor: MODERN_COLORS.border,
   },
+
   tipoPartidoOptionSelected: {
-    borderColor: COLORS.primary,
-    backgroundColor: `${COLORS.primary}20`,
+    borderColor: MODERN_COLORS.primary,
+    backgroundColor: `${MODERN_COLORS.primary}10`,
   },
+
   tipoPartidoText: {
-    color: COLORS.textSecondary,
+    color: MODERN_COLORS.textGray,
     fontWeight: "500",
   },
+
   tipoPartidoTextSelected: {
-    color: COLORS.text,
-    fontWeight: "bold",
+    color: MODERN_COLORS.primary,
+    fontWeight: "700",
   },
+
+  // Inputs
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: COLORS.card,
-    borderRadius: 10,
+    backgroundColor: MODERN_COLORS.surface,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: COLORS.cardBorder,
+    borderColor: MODERN_COLORS.border,
     marginBottom: 12,
-    gap: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 0,
+    paddingHorizontal: 16,
     minHeight: 52,
+    elevation: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
   },
+
   input: {
     flex: 1,
-    color: COLORS.text,
+    color: MODERN_COLORS.textDark,
     fontSize: 16,
     paddingVertical: 14,
+    marginLeft: 12,
+    fontWeight: "500",
   },
+
   inputPlaceholder: {
     flex: 1,
-    color: COLORS.textSecondary,
+    color: MODERN_COLORS.textGray,
     fontSize: 16,
     paddingVertical: 14,
+    marginLeft: 12,
   },
+
+  // Búsqueda
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: COLORS.card,
-    borderRadius: 10,
-    paddingHorizontal: 12,
+    backgroundColor: MODERN_COLORS.surface,
+    borderRadius: 12,
+    paddingHorizontal: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: COLORS.cardBorder,
+    borderColor: MODERN_COLORS.border,
     minHeight: 52,
+    elevation: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
   },
+
   searchInput: {
     flex: 1,
-    color: COLORS.text,
+    color: MODERN_COLORS.textDark,
     fontSize: 16,
     paddingVertical: 14,
     marginLeft: 8,
+    fontWeight: "500",
   },
+
   addPlayerButton: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: `${COLORS.primary}20`,
+    backgroundColor: `${MODERN_COLORS.primary}20`,
     justifyContent: "center",
     alignItems: "center",
     marginLeft: 8,
   },
+
+  // Lista de jugadores
   jugadoresList: {
     gap: 8,
   },
+
   jugadorItem: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: COLORS.card,
-    padding: 12,
-    borderRadius: 10,
+    backgroundColor: MODERN_COLORS.surface,
+    padding: 16,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: COLORS.cardBorder,
+    borderColor: MODERN_COLORS.border,
+    elevation: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
   },
+
   jugadorItemTemporary: {
     borderLeftWidth: 4,
     borderLeftColor: "#FF9500",
   },
+
   jugadorInfo: {
     flex: 1,
   },
+
   jugadorHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 4,
   },
+
   jugadorNombre: {
-    color: COLORS.text,
+    color: MODERN_COLORS.textDark,
     fontSize: 16,
-    fontWeight: "bold",
+    fontWeight: "700",
+    letterSpacing: -0.2,
   },
+
   jugadorNumero: {
-    color: COLORS.primary,
+    color: MODERN_COLORS.primary,
     fontSize: 14,
-    fontWeight: "bold",
+    fontWeight: "700",
   },
+
   jugadorPosicion: {
-    color: COLORS.textSecondary,
+    color: MODERN_COLORS.textGray,
     fontSize: 14,
+    fontWeight: "500",
   },
+
   jugadorDetalles: {
     flexDirection: "row",
     alignItems: "center",
   },
+
   temporaryBadge: {
     backgroundColor: "#FF9500",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
     marginLeft: 8,
   },
+
   temporaryBadgeText: {
-    color: "#000",
+    color: MODERN_COLORS.textWhite,
     fontSize: 10,
-    fontWeight: "bold",
+    fontWeight: "700",
+    letterSpacing: 0.5,
   },
+
+  // Checkbox
   checkbox: {
     width: 24,
     height: 24,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: COLORS.textSecondary,
+    borderColor: MODERN_COLORS.border,
     justifyContent: "center",
     alignItems: "center",
   },
+
   checkboxSelected: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
+    backgroundColor: MODERN_COLORS.primary,
+    borderColor: MODERN_COLORS.primary,
   },
+
   checkboxSelectedTemporary: {
     backgroundColor: "#FF9500",
     borderColor: "#FF9500",
   },
+
+  // Vista previa
   previewToggle: {
     alignSelf: "center",
-    backgroundColor: COLORS.card,
+    backgroundColor: MODERN_COLORS.surface,
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingVertical: 10,
+    borderRadius: 12,
     marginBottom: 16,
-  },
-  previewToggleText: {
-    color: COLORS.primary,
-    fontWeight: "bold",
-  },
-  previewContainer: {
-    backgroundColor: COLORS.card,
-    padding: 16,
-    borderRadius: 10,
     borderWidth: 1,
-    borderColor: COLORS.cardBorder,
-    marginBottom: 16,
+    borderColor: MODERN_COLORS.primary,
   },
+
+  previewToggleText: {
+    color: MODERN_COLORS.primary,
+    fontWeight: "600",
+    fontSize: 14,
+  },
+
+  previewContainer: {
+    backgroundColor: MODERN_COLORS.surface,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: MODERN_COLORS.border,
+    marginBottom: 16,
+    elevation: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+  },
+
   previewText: {
-    color: COLORS.text,
+    color: MODERN_COLORS.textDark,
     fontSize: 14,
     lineHeight: 20,
+    fontFamily: "monospace",
   },
+
+  // Botones de acción
   actionButtons: {
-    flexDirection: "row",
-    gap: 12,
+    marginBottom: 20,
   },
+
   actionButton: {
-    flex: 1,
-    borderRadius: 10,
+    borderRadius: 12,
     overflow: "hidden",
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
+
   actionButtonGradient: {
-    paddingVertical: 14,
+    paddingVertical: 16,
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
     gap: 8,
   },
+
   actionButtonText: {
-    color: "#fff",
+    color: MODERN_COLORS.textWhite,
     fontSize: 16,
-    fontWeight: "bold",
+    fontWeight: "700",
+    letterSpacing: 0.3,
   },
+
+  // Info y multas
   infoText: {
-    color: COLORS.textSecondary,
+    color: MODERN_COLORS.textGray,
     marginBottom: 16,
+    fontSize: 14,
+    lineHeight: 20,
   },
+
   multasSummary: {
-    backgroundColor: COLORS.card,
-    borderRadius: 10,
+    backgroundColor: MODERN_COLORS.surface,
+    borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: COLORS.cardBorder,
+    borderColor: MODERN_COLORS.border,
+    elevation: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
   },
+
   multaItem: {
     marginBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.cardBorder,
+    borderBottomColor: MODERN_COLORS.border,
     paddingBottom: 12,
   },
+
   multaHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginBottom: 8,
   },
+
   multaPlayerName: {
-    color: COLORS.text,
+    color: MODERN_COLORS.textDark,
     fontSize: 16,
-    fontWeight: "bold",
+    fontWeight: "700",
+    letterSpacing: -0.2,
   },
+
   multaTotal: {
-    color: COLORS.danger,
+    color: MODERN_COLORS.danger,
     fontSize: 16,
-    fontWeight: "bold",
+    fontWeight: "700",
   },
+
   multaDetail: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginBottom: 4,
     paddingLeft: 12,
   },
+
   multaReason: {
-    color: COLORS.text,
+    color: MODERN_COLORS.textDark,
     fontSize: 14,
     flex: 2,
+    fontWeight: "500",
   },
+
   multaAmount: {
-    color: COLORS.danger,
+    color: MODERN_COLORS.danger,
     fontSize: 14,
     flex: 1,
     textAlign: "right",
+    fontWeight: "600",
   },
+
   multaDate: {
-    color: COLORS.textSecondary,
+    color: MODERN_COLORS.textGray,
     fontSize: 14,
     flex: 1,
     textAlign: "right",
   },
+
   noMultasText: {
-    color: COLORS.success,
+    color: MODERN_COLORS.success,
     textAlign: "center",
     padding: 16,
     fontSize: 16,
+    fontWeight: "600",
   },
+
+  // Resumen de selección
   selectionSummary: {
     marginTop: 12,
-    backgroundColor: COLORS.card,
-    padding: 10,
-    borderRadius: 8,
+    backgroundColor: MODERN_COLORS.surface,
+    padding: 12,
+    borderRadius: 12,
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: MODERN_COLORS.border,
   },
+
   summaryText: {
-    color: COLORS.text,
+    color: MODERN_COLORS.textDark,
     fontSize: 14,
+    fontWeight: "600",
   },
-  buttonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
+
+  // Modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "rgba(15, 23, 42, 0.8)",
     justifyContent: "center",
     alignItems: "center",
   },
+
   modalContainer: {
-    backgroundColor: COLORS.background,
-    borderRadius: 10,
+    backgroundColor: MODERN_COLORS.surface,
+    borderRadius: 16,
     width: "90%",
     maxWidth: 400,
     overflow: "hidden",
-    elevation: 5,
+    elevation: 10,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
   },
+
   modalHeader: {
     paddingVertical: 16,
     paddingHorizontal: 20,
-    borderTopLeftRadius: 10,
-    borderTopRightRadius: 10,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
   },
+
   modalTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#fff",
+    fontSize: 18,
+    fontWeight: "700",
+    color: MODERN_COLORS.textWhite,
     textAlign: "center",
+    letterSpacing: -0.2,
   },
+
   modalContent: {
     padding: 20,
   },
+
+  // Posiciones en modal
   positionLabel: {
-    fontSize: 16,
-    fontWeight: "500",
-    color: COLORS.text,
+    fontSize: 14,
+    fontWeight: "600",
+    color: MODERN_COLORS.textDark,
     marginBottom: 10,
     marginTop: 5,
   },
+
   positionContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
     marginBottom: 20,
     gap: 8,
   },
+
   positionButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#ddd",
-    backgroundColor: COLORS.card,
-    marginRight: 8,
-    marginBottom: 8,
+    borderColor: MODERN_COLORS.border,
+    backgroundColor: MODERN_COLORS.surfaceGray,
   },
+
   positionButtonSelected: {
     backgroundColor: "#FF9500",
     borderColor: "#FF9500",
   },
+
   positionButtonText: {
-    color: COLORS.textSecondary,
+    color: MODERN_COLORS.textGray,
     fontWeight: "500",
-    fontSize: 14,
+    fontSize: 12,
   },
+
   positionButtonTextSelected: {
-    color: "#fff",
-    fontWeight: "bold",
+    color: MODERN_COLORS.textWhite,
+    fontWeight: "700",
   },
+
+  // Botones del modal
   modalButtonsContainer: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    gap: 12,
     marginTop: 10,
   },
+
   modalButton: {
     flex: 1,
-    borderRadius: 8,
+    borderRadius: 12,
     overflow: "hidden",
-    marginHorizontal: 5,
   },
+
   cancelButton: {
-    backgroundColor: COLORS.textSecondary,
+    backgroundColor: MODERN_COLORS.textGray,
     paddingVertical: 12,
     alignItems: "center",
   },
+
   addButton: {
-    // Solo contenedor, el estilo real está en el gradiente
+    // El gradiente se maneja por separado
   },
+
   addButtonGradient: {
     paddingVertical: 12,
     alignItems: "center",
   },
+
   addButtonText: {
-    color: "#fff",
+    color: MODERN_COLORS.textWhite,
     fontSize: 16,
-    fontWeight: "bold",
+    fontWeight: "700",
+    letterSpacing: 0.3,
+  },
+
+  buttonText: {
+    color: MODERN_COLORS.textWhite,
+    fontSize: 16,
+    fontWeight: "700",
+    letterSpacing: 0.3,
   },
 });
