@@ -25,10 +25,7 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: EAS Login
-        run: eas login --non-interactive
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-
       - name: Create EAS build
         run: eas build --platform android --non-interactive --clear-cache
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
