@@ -259,6 +259,28 @@ export default function DetallePartidoScreen() {
       (role) => role !== null
     );
 
+  const getResultadoTexto = () => {
+    if (!partido?.reportePartido?.resultado) return "N/A";
+
+    const { golesLocal, golesVisitante } = partido.reportePartido.resultado;
+
+    return `${golesLocal} - ${golesVisitante}`; // LOCAL - VISITANTE
+  };
+
+  const getResultadoColor = () => {
+    if (!partido?.reportePartido?.resultado) return MODERN_COLORS.textGray;
+
+    const { golesLocal, golesVisitante } = partido.reportePartido.resultado;
+    const esLocal = partido.lugar === "Casa";
+
+    const misGoles = esLocal ? golesLocal : golesVisitante;
+    const golesRival = esLocal ? golesVisitante : golesLocal;
+
+    if (misGoles > golesRival) return MODERN_COLORS.success;
+    if (misGoles === golesRival) return MODERN_COLORS.accent;
+    return MODERN_COLORS.danger;
+  };
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -307,9 +329,21 @@ export default function DetallePartidoScreen() {
               </Text>
             </View>
 
-            <View style={styles.vsContainer}>
-              <Text style={styles.vsText}>VS</Text>
-            </View>
+            {partido &&
+            partido.reportePartido &&
+            partido.reportePartido.completado ? (
+              <View style={styles.resultadoContainer}>
+                <Text
+                  style={[styles.resultadoText, { color: getResultadoColor() }]}
+                >
+                  {getResultadoTexto()}
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.vsContainer}>
+                <Text style={styles.vsText}>VS</Text>
+              </View>
+            )}
 
             <View style={styles.equipoInfo}>
               <Text style={styles.equipoNombre}>
@@ -673,6 +707,17 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 12,
     fontWeight: "600",
+  },
+
+  resultadoContainer: {
+    alignItems: "center",
+    paddingHorizontal: 20,
+  },
+
+  resultadoText: {
+    fontSize: 32,
+    fontWeight: "800",
+    marginBottom: 4,
   },
 
   vsContainer: {

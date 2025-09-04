@@ -74,28 +74,6 @@ export default function VerReporteScreen() {
     return "Jugador desconocido";
   };
 
-  const getResultadoTexto = () => {
-    if (!partido?.reportePartido?.resultado) return "N/A";
-
-    const { golesLocal, golesVisitante } = partido.reportePartido.resultado;
-
-    return `${golesLocal} - ${golesVisitante}`; // LOCAL - VISITANTE
-  };
-
-  const getResultadoColor = () => {
-    if (!partido?.reportePartido?.resultado) return MODERN_COLORS.textGray;
-
-    const { golesLocal, golesVisitante } = partido.reportePartido.resultado;
-    const esLocal = partido.lugar === "Casa";
-
-    const misGoles = esLocal ? golesLocal : golesVisitante;
-    const golesRival = esLocal ? golesVisitante : golesLocal;
-
-    if (misGoles > golesRival) return MODERN_COLORS.success;
-    if (misGoles === golesRival) return MODERN_COLORS.accent;
-    return MODERN_COLORS.danger;
-  };
-
   const getTotalGoles = () => {
     if (!partido?.reportePartido?.jugadores) return 0;
     return partido.reportePartido.jugadores.reduce(
@@ -172,67 +150,6 @@ export default function VerReporteScreen() {
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Resultado principal */}
-        <View style={styles.resultadoCard}>
-          <View style={styles.equiposContainer}>
-            <View style={styles.equipoColumn}>
-              <Text style={styles.equipoLabel}>
-                {partido.lugar === "Casa" ? "LOCAL" : "VISITANTE"}
-              </Text>
-              <Text style={styles.equipoNombre}>
-                {partido.lugar === "Casa" ? user?.teamName : partido.rival}
-              </Text>
-            </View>
-
-            <View style={styles.resultadoContainer}>
-              <Text
-                style={[styles.resultadoText, { color: getResultadoColor() }]}
-              >
-                {getResultadoTexto()}
-              </Text>
-            </View>
-
-            <View style={styles.equipoColumn}>
-              <Text style={styles.equipoLabel}>
-                {partido.lugar === "Casa" ? "VISITANTE" : "LOCAL"}
-              </Text>
-              <Text style={styles.equipoNombre}>
-                {partido.lugar === "Casa" ? partido.rival : user?.teamName}
-              </Text>
-            </View>
-          </View>
-
-          {/* Información del partido */}
-          <View style={styles.partidoInfo}>
-            <View style={styles.infoItem}>
-              <Ionicons
-                name="calendar-outline"
-                size={16}
-                color={MODERN_COLORS.textGray}
-              />
-              <Text style={styles.infoText}>
-                {new Date(partido.fecha).toLocaleDateString("es-ES")} •{" "}
-                {new Date(partido.fecha).toLocaleTimeString("es-ES", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </Text>
-            </View>
-            <View style={styles.infoItem}>
-              <Ionicons
-                name="location-outline"
-                size={16}
-                color={MODERN_COLORS.textGray}
-              />
-              <Text style={styles.infoText}>
-                {partido.lugar === "Casa"
-                  ? user?.homeField
-                  : partido.lugarEspecifico}
-              </Text>
-            </View>
-          </View>
-        </View>
-
         {/* Estadísticas rápidas */}
         <View style={styles.statsCard}>
           <Text style={styles.cardTitle}>Estadísticas del equipo</Text>
@@ -437,6 +354,7 @@ const styles = StyleSheet.create({
     backgroundColor: MODERN_COLORS.surface,
     marginHorizontal: 20,
     marginBottom: 16,
+    marginTop: 16,
     borderRadius: 16,
     padding: 20,
     borderWidth: 1,
