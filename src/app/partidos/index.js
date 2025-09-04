@@ -53,7 +53,7 @@ export default function PartidosScreen() {
       setSearchQuery(query);
 
       if (query.trim() === "") {
-        setFilteredPartidos(partidos);
+        setFilteredPartidos([...partidos]); // Crear nueva referencia
       } else {
         try {
           const results = await searchPartidos(query);
