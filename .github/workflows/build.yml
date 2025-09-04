@@ -1,9 +1,7 @@
 name: EAS Build Android
 
 on:
-  # Permite ejecutar manualmente desde GitHub
   workflow_dispatch:
-  # Se ejecuta cuando haces push a main
   push:
     branches: [main]
 
@@ -21,20 +19,15 @@ jobs:
         with:
           node-version: 18
 
-      - name: Setup Expo and EAS
-        uses: expo/expo-github-action@v8
-        with:
-          expo-version: latest
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
+      - name: Install EAS CLI
+        run: npm install -g @expo/cli eas-cli
 
       - name: Install dependencies
         run: npm install
 
+      - name: EAS Login
+        run: |
+          echo "${{ secrets.EXPO_TOKEN }}" | eas login --non-interactive
+
       - name: Create EAS build
         run: eas build --platform android --non-interactive --clear-cache
-
-      - name: Get build URL
-        run: |
-          echo "Build completed! Check your EAS dashboard for download link:"
-          echo "https://expo.dev/accounts/mariaciffu/projects/itatakiManager"
