@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -7,13 +7,22 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   TextInput,
+  Alert,
+  Animated,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { Swipeable } from "react-native-gesture-handler";
 import { MODERN_COLORS } from "../../constants/modernColors";
-import { getAllPartidos, searchPartidos } from "../../services/partidosService";
+import {
+  getAllPartidos,
+  searchPartidos,
+  deletePartido,
+} from "../../services/partidosService";
 import { useAuth } from "../../hooks/useFirebase";
+import { useSwipeableManager } from "../../hooks/useSwipeableManager";
 
 export default function PartidosScreen() {
   const router = useRouter();
@@ -24,6 +33,9 @@ export default function PartidosScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Hook para gestión de swipeables
+  const { handleSwipeableOpen, closeCurrentSwipeable } = useSwipeableManager();
 
   // Cargar partidos cuando la pantalla obtiene el foco
   useFocusEffect(
@@ -67,6 +79,45 @@ export default function PartidosScreen() {
     [partidos]
   );
 
+  // Función para eliminar partido
+  const handleDeletePartido = useCallback(
+    (partidoId) => {
+      Alert.alert(
+        "Eliminar partido",
+        "¿Estás seguro de que quieres eliminar este partido?",
+        [
+          { text: "Cancelar", style: "cancel", onPress: closeCurrentSwipeable },
+          {
+            text: "Eliminar",
+            style: "destructive",
+            onPress: async () => {
+              try {
+                const result = await deletePartido(partidoId);
+                if (result.success) {
+                  setPartidos((prev) => prev.filter((p) => p.id !== partidoId));
+                  setFilteredPartidos((prev) =>
+                    prev.filter((p) => p.id !== partidoId)
+                  );
+                  closeCurrentSwipeable();
+                  Alert.alert("Éxito", "Partido eliminado correctamente");
+                } else {
+                  Alert.alert(
+                    "Error",
+                    result.message || "No se pudo eliminar el partido"
+                  );
+                }
+              } catch (error) {
+                console.error("Error al eliminar partido:", error);
+                Alert.alert("Error", "No se pudo eliminar el partido");
+              }
+            },
+          },
+        ]
+      );
+    },
+    [closeCurrentSwipeable]
+  );
+
   const navigateToPartidoDetail = useCallback(
     (partidoId) => {
       router.push(`/partidos/${partidoId}`);
@@ -106,23 +157,58 @@ export default function PartidosScreen() {
     return partidoDate < now;
   }, []);
 
+  /// Reemplazar el renderPartido completo con esta versión:
+
   const renderPartido = useCallback(
     ({ item }) => {
+      const renderRightActions = (progress, dragX) => {
+        const trans = dragX.interpolate({
+          inputRange: [-100, -50, 0],
+          outputRange: [0, 25, 100],
+          extrapolate: "clamp",
+        });
+
+        const scale = progress.interpolate({
+          inputRange: [0, 1],
+          outputRange: [0, 1],
+        });
+
+        return (
+          <View style={styles.deleteActionContainer}>
+            <Animated.View
+              style={[
+                styles.deleteAction,
+                { transform: [{ translateX: trans }, { scale }] },
+              ]}
+            >
+              <TouchableOpacity
+                style={styles.deleteButton}
+                onPress={() => handleDeletePartido(item.id)}
+                activeOpacity={0.8}
+              >
+                <Ionicons
+                  name="trash-outline"
+                  size={24}
+                  color={MODERN_COLORS.textWhite}
+                />
+              </TouchableOpacity>
+            </Animated.View>
+          </View>
+        );
+      };
+
       const jugado = isPartidoJugado(item.fecha);
       const esLocal = item.lugar === "Casa";
       const tieneReporte = item.reportePartido?.completado;
-
-      // Función para obtener el resultado del reporte
 
       const getResultadoTexto = () => {
         if (!tieneReporte || !item.reportePartido?.resultado) return null;
 
         const { golesLocal, golesVisitante } = item.reportePartido.resultado;
 
-        return `${golesLocal}-${golesVisitante}`; // ← LOCAL - VISITANTE
+        return `${golesLocal}-${golesVisitante}`;
       };
 
-      // Función para obtener el color del resultado
       const getResultadoColor = () => {
         if (!tieneReporte || !item.reportePartido?.resultado) return null;
 
@@ -130,12 +216,11 @@ export default function PartidosScreen() {
         const misGoles = esLocal ? golesLocal : golesVisitante;
         const golesRival = esLocal ? golesVisitante : golesLocal;
 
-        if (misGoles > golesRival) return MODERN_COLORS.success + "20"; // Victoria
-        if (misGoles === golesRival) return MODERN_COLORS.accent + "20"; // Empate
-        return MODERN_COLORS.danger + "20"; // Derrota
+        if (misGoles > golesRival) return MODERN_COLORS.success + "20";
+        if (misGoles === golesRival) return MODERN_COLORS.accent + "20";
+        return MODERN_COLORS.danger + "20";
       };
 
-      // Función para obtener el color del texto del resultado
       const getResultadoTextColor = () => {
         if (!tieneReporte || !item.reportePartido?.resultado) return null;
 
@@ -143,9 +228,9 @@ export default function PartidosScreen() {
         const misGoles = esLocal ? golesLocal : golesVisitante;
         const golesRival = esLocal ? golesVisitante : golesLocal;
 
-        if (misGoles > golesRival) return MODERN_COLORS.success; // Victoria
-        if (misGoles === golesRival) return MODERN_COLORS.accent; // Empate
-        return MODERN_COLORS.danger; // Derrota
+        if (misGoles > golesRival) return MODERN_COLORS.success;
+        if (misGoles === golesRival) return MODERN_COLORS.accent;
+        return MODERN_COLORS.danger;
       };
 
       const resultadoTexto = getResultadoTexto();
@@ -153,121 +238,208 @@ export default function PartidosScreen() {
       const resultadoTextColor = getResultadoTextColor();
 
       return (
-        <TouchableOpacity
-          style={styles.partidoCard}
-          onPress={() => navigateToPartidoDetail(item.id)}
-          activeOpacity={0.8}
+        <Swipeable
+          renderRightActions={renderRightActions}
+          onSwipeableOpen={(direction, swipeableRef) => {
+            // Crear un objeto que simule useRef para el hook
+            const refObject = { current: swipeableRef };
+            handleSwipeableOpen(refObject);
+          }}
+          rightThreshold={30}
+          overshootRight={false}
+          friction={2}
         >
-          {/* Header del partido */}
-          <View style={styles.partidoHeader}>
-            <View style={styles.partidoInfo}>
-              <Text style={styles.tipoPartido}>
-                {item.tipoPartido === "amistoso"
-                  ? "Amistoso"
-                  : item.tipoPartido === "torneo"
-                    ? `${item.jornada}`
-                    : `Jornada ${item.jornada}`}
-              </Text>
-              <View style={styles.fechaHoraContainer}>
-                <Ionicons
-                  name="calendar-outline"
-                  size={14}
-                  color={MODERN_COLORS.textGray}
-                />
-                <Text style={styles.fechaText}>{formatDate(item.fecha)}</Text>
-                <Ionicons
-                  name="time-outline"
-                  size={14}
-                  color={MODERN_COLORS.textGray}
-                  style={{ marginLeft: 8 }}
-                />
-                <Text style={styles.horaText}>{formatTime(item.fecha)}</Text>
+          <TouchableOpacity
+            style={styles.partidoCard}
+            onPress={() => navigateToPartidoDetail(item.id)}
+            activeOpacity={0.8}
+          >
+            {/* Header del partido */}
+            <View style={styles.partidoHeader}>
+              <View style={styles.partidoInfo}>
+                <Text style={styles.tipoPartido}>
+                  {item.tipoPartido === "amistoso"
+                    ? "Amistoso"
+                    : item.tipoPartido === "torneo"
+                      ? `${item.jornada}`
+                      : `Jornada ${item.jornada}`}
+                </Text>
+                <View style={styles.fechaHoraContainer}>
+                  <Ionicons
+                    name="calendar-outline"
+                    size={14}
+                    color={MODERN_COLORS.textGray}
+                  />
+                  <Text style={styles.fechaText}>{formatDate(item.fecha)}</Text>
+                  <Ionicons
+                    name="time-outline"
+                    size={14}
+                    color={MODERN_COLORS.textGray}
+                    style={{ marginLeft: 8 }}
+                  />
+                  <Text style={styles.horaText}>{formatTime(item.fecha)}</Text>
+                </View>
               </View>
-            </View>
 
-            <View
-              style={[
-                styles.estadoBadge,
-                !jugado
-                  ? styles.estadoPendiente
-                  : resultadoTexto
-                    ? { backgroundColor: resultadoColor }
-                    : styles.estadoJugado,
-              ]}
-            >
-              <Text
+              <View
                 style={[
-                  styles.estadoText,
+                  styles.estadoBadge,
                   !jugado
-                    ? styles.estadoPendienteText
+                    ? styles.estadoPendiente
                     : resultadoTexto
-                      ? { color: resultadoTextColor }
-                      : styles.estadoJugadoText,
+                      ? { backgroundColor: resultadoColor }
+                      : styles.estadoJugado,
                 ]}
               >
-                {!jugado
-                  ? "Pendiente"
-                  : resultadoTexto
-                    ? resultadoTexto
-                    : "Jugado"}
-              </Text>
-            </View>
-          </View>
-
-          {/* Contenido del partido */}
-          <View style={styles.partidoContent}>
-            <View style={styles.equiposContainer}>
-              {/* Equipo local/visitante izquierdo */}
-              <View style={styles.equipoInfo}>
-                <Text style={styles.equipoNombre} numberOfLines={2}>
-                  {esLocal ? user?.teamName : item.rival}
-                </Text>
-              </View>
-
-              {/* VS */}
-              <View style={styles.vsContainer}>
-                <Text style={styles.vsText}>VS</Text>
-              </View>
-
-              {/* Equipo local/visitante derecho */}
-              <View style={styles.equipoInfo}>
-                <Text style={styles.equipoNombre} numberOfLines={2}>
-                  {esLocal ? item.rival : user?.teamName}
+                <Text
+                  style={[
+                    styles.estadoText,
+                    !jugado
+                      ? styles.estadoPendienteText
+                      : resultadoTexto
+                        ? { color: resultadoTextColor }
+                        : styles.estadoJugadoText,
+                  ]}
+                >
+                  {!jugado
+                    ? "Pendiente"
+                    : resultadoTexto
+                      ? resultadoTexto
+                      : "Jugado"}
                 </Text>
               </View>
             </View>
 
-            {/* Información adicional */}
-            <View style={styles.partidoFooter}>
-              <View style={styles.lugarContainer}>
+            {/* Contenido del partido */}
+            <View style={styles.partidoContent}>
+              <View style={styles.equiposContainer}>
+                <View style={styles.equipoInfo}>
+                  <Text style={styles.equipoNombre} numberOfLines={2}>
+                    {esLocal ? user?.teamName : item.rival}
+                  </Text>
+                </View>
+
+                <View style={styles.vsContainer}>
+                  <Text style={styles.vsText}>VS</Text>
+                </View>
+
+                <View style={styles.equipoInfo}>
+                  <Text style={styles.equipoNombre} numberOfLines={2}>
+                    {esLocal ? item.rival : user?.teamName}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.partidoFooter}>
+                <View style={styles.lugarContainer}>
+                  <Ionicons
+                    name={esLocal ? "home-outline" : "airplane"}
+                    size={16}
+                    color={MODERN_COLORS.textGray}
+                  />
+                  <Text style={styles.lugarText}>
+                    {esLocal
+                      ? `Local • ${user?.homeField}`
+                      : `Visitante • ${item.lugarEspecifico}`}
+                  </Text>
+                </View>
+
                 <Ionicons
-                  name={esLocal ? "home-outline" : "airplane"}
-                  size={16}
-                  color={MODERN_COLORS.textGray}
+                  name="chevron-forward"
+                  size={20}
+                  color={MODERN_COLORS.textLight}
                 />
-                <Text style={styles.lugarText}>
-                  {esLocal
-                    ? `Local • ${user?.homeField}`
-                    : `Visitante • ${item.lugarEspecifico}`}
-                </Text>
               </View>
-
-              <Ionicons
-                name="chevron-forward"
-                size={20}
-                color={MODERN_COLORS.textLight}
-              />
             </View>
-          </View>
-        </TouchableOpacity>
+          </TouchableOpacity>
+        </Swipeable>
       );
     },
-    [navigateToPartidoDetail, formatDate, formatTime, isPartidoJugado, user]
+    [
+      navigateToPartidoDetail,
+      formatDate,
+      formatTime,
+      isPartidoJugado,
+      user,
+      handleDeletePartido,
+      handleSwipeableOpen,
+    ]
   );
 
   if (isLoading) {
     return (
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <View style={styles.container}>
+          <View style={styles.header}>
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={styles.backButton}
+            >
+              <Ionicons
+                name="chevron-back"
+                size={24}
+                color={MODERN_COLORS.textDark}
+              />
+            </TouchableOpacity>
+            <Text style={styles.title}>Partidos</Text>
+            <View style={{ width: 40 }} />
+          </View>
+
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={MODERN_COLORS.primary} />
+            <Text style={styles.loadingText}>Cargando partidos...</Text>
+          </View>
+        </View>
+      </GestureHandlerRootView>
+    );
+  }
+
+  if (error) {
+    return (
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <View style={styles.container}>
+          <View style={styles.header}>
+            <TouchableOpacity
+              onPress={() => router.push("/partidos")}
+              style={styles.backButton}
+            >
+              <Ionicons
+                name="chevron-back"
+                size={24}
+                color={MODERN_COLORS.textDark}
+              />
+            </TouchableOpacity>
+            <Text style={styles.title}>Partidos</Text>
+            <View style={{ width: 40 }} />
+          </View>
+
+          <View style={styles.errorContainer}>
+            <Ionicons
+              name="alert-circle-outline"
+              size={64}
+              color={MODERN_COLORS.danger}
+            />
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity
+              style={styles.retryButton}
+              onPress={() => {
+                setError(null);
+                setIsLoading(true);
+                // Recargar
+              }}
+            >
+              <Text style={styles.retryButtonText}>Reintentar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </GestureHandlerRootView>
+    );
+  }
+
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
       <View style={styles.container}>
+        {/* Header moderno */}
         <View style={styles.header}>
           <TouchableOpacity
             onPress={() => router.back()}
@@ -279,154 +451,92 @@ export default function PartidosScreen() {
               color={MODERN_COLORS.textDark}
             />
           </TouchableOpacity>
-          <Text style={styles.title}>Partidos</Text>
+
+          <View style={styles.headerCenter}>
+            <Text style={styles.title}>Partidos</Text>
+          </View>
+
           <View style={{ width: 40 }} />
         </View>
 
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={MODERN_COLORS.primary} />
-          <Text style={styles.loadingText}>Cargando partidos...</Text>
-        </View>
-      </View>
-    );
-  }
-
-  if (error) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity
-            onPress={() => router.push("/partidos")}
-            style={styles.backButton}
-          >
+        {/* Búsqueda */}
+        <View style={styles.searchContainer}>
+          <View style={styles.searchInputContainer}>
             <Ionicons
-              name="chevron-back"
-              size={24}
-              color={MODERN_COLORS.textDark}
+              name="search-outline"
+              size={20}
+              color={MODERN_COLORS.textGray}
             />
-          </TouchableOpacity>
-          <Text style={styles.title}>Partidos</Text>
-          <View style={{ width: 40 }} />
-        </View>
-
-        <View style={styles.errorContainer}>
-          <Ionicons
-            name="alert-circle-outline"
-            size={64}
-            color={MODERN_COLORS.danger}
-          />
-          <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity
-            style={styles.retryButton}
-            onPress={() => {
-              setError(null);
-              setIsLoading(true);
-              // Recargar
-            }}
-          >
-            <Text style={styles.retryButtonText}>Reintentar</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  }
-
-  return (
-    <View style={styles.container}>
-      {/* Header moderno */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={styles.backButton}
-        >
-          <Ionicons
-            name="chevron-back"
-            size={24}
-            color={MODERN_COLORS.textDark}
-          />
-        </TouchableOpacity>
-
-        <View style={styles.headerCenter}>
-          <Text style={styles.title}>Partidos</Text>
-        </View>
-
-        <View style={{ width: 40 }} />
-      </View>
-
-      {/* Búsqueda */}
-      <View style={styles.searchContainer}>
-        <View style={styles.searchInputContainer}>
-          <Ionicons
-            name="search-outline"
-            size={20}
-            color={MODERN_COLORS.textGray}
-          />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Buscar partidos..."
-            placeholderTextColor={MODERN_COLORS.textLight}
-            value={searchQuery}
-            onChangeText={handleSearch}
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => handleSearch("")}>
-              <Ionicons
-                name="close-circle"
-                size={20}
-                color={MODERN_COLORS.textGray}
-              />
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
-
-      {/* Lista de partidos */}
-      <FlatList
-        data={filteredPartidos}
-        renderItem={renderPartido}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContainer}
-        showsVerticalScrollIndicator={false}
-        removeClippedSubviews={true}
-        maxToRenderPerBatch={10}
-        windowSize={10}
-        initialNumToRender={10}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Ionicons
-              name="football-outline"
-              size={64}
-              color={MODERN_COLORS.textLight}
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Buscar partidos..."
+              placeholderTextColor={MODERN_COLORS.textLight}
+              value={searchQuery}
+              onChangeText={handleSearch}
+              onFocus={closeCurrentSwipeable}
             />
-            <Text style={styles.emptyTitle}>No hay partidos</Text>
-            <Text style={styles.emptySubtitle}>
-              {searchQuery
-                ? "No se encontraron resultados"
-                : "Añade tu primer partido"}
-            </Text>
-            {!searchQuery && (
-              <TouchableOpacity
-                style={styles.emptyButton}
-                onPress={navigateToCrearPartido}
-              >
-                <Text style={styles.emptyButtonText}>Añadir partido</Text>
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => handleSearch("")}>
+                <Ionicons
+                  name="close-circle"
+                  size={20}
+                  color={MODERN_COLORS.textGray}
+                />
               </TouchableOpacity>
             )}
           </View>
-        }
-      />
+        </View>
 
-      {/* Botón flotante */}
-      {!isLoading && (
-        <TouchableOpacity
-          style={styles.fab}
-          onPress={navigateToCrearPartido}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="add" size={28} color={MODERN_COLORS.textWhite} />
-        </TouchableOpacity>
-      )}
-    </View>
+        {/* Lista de partidos */}
+        <FlatList
+          data={filteredPartidos}
+          renderItem={renderPartido}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContainer}
+          showsVerticalScrollIndicator={false}
+          onScrollBeginDrag={closeCurrentSwipeable}
+          onTouchStart={closeCurrentSwipeable}
+          removeClippedSubviews={true}
+          maxToRenderPerBatch={10}
+          windowSize={10}
+          initialNumToRender={10}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Ionicons
+                name="football-outline"
+                size={64}
+                color={MODERN_COLORS.textLight}
+              />
+              <Text style={styles.emptyTitle}>No hay partidos</Text>
+              <Text style={styles.emptySubtitle}>
+                {searchQuery
+                  ? "No se encontraron resultados"
+                  : "Añade tu primer partido"}
+              </Text>
+              {!searchQuery && (
+                <TouchableOpacity
+                  style={styles.emptyButton}
+                  onPress={navigateToCrearPartido}
+                >
+                  <Text style={styles.emptyButtonText}>Añadir partido</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          }
+        />
+
+        {/* Botón flotante */}
+        {!isLoading && (
+          <TouchableOpacity
+            style={styles.fab}
+            onPress={navigateToCrearPartido}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="add" size={28} color={MODERN_COLORS.textWhite} />
+          </TouchableOpacity>
+        )}
+      </View>
+    </GestureHandlerRootView>
   );
 }
 
@@ -764,5 +874,33 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 12,
+  },
+
+  // ACCIONES DE SWIPE
+  deleteActionContainer: {
+    justifyContent: "center",
+    alignItems: "center",
+    width: 80,
+  },
+
+  deleteAction: {
+    justifyContent: "center",
+    alignItems: "center",
+    width: 80,
+    height: "100%",
+  },
+
+  deleteButton: {
+    backgroundColor: MODERN_COLORS.danger,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
   },
 });

@@ -296,6 +296,7 @@ const checkDuplicatePartido = async (
 // 🔍 FUNCIONES DE BÚSQUEDA
 
 export const searchPartidos = async (searchTerm) => {
+  console.log("searchTerm:", searchTerm);
   try {
     const allPartidos = await getAllPartidos();
 
@@ -304,7 +305,7 @@ export const searchPartidos = async (searchTerm) => {
     }
 
     const term = searchTerm.toLowerCase();
-
+    console.log(term);
     return allPartidos.filter(
       (partido) =>
         partido.rival.toLowerCase().includes(term) ||
@@ -312,6 +313,10 @@ export const searchPartidos = async (searchTerm) => {
           partido.jornada.toString().toLowerCase().includes(term)) ||
         (partido.tipoPartido &&
           partido.tipoPartido.toLowerCase().includes(term)) ||
+        (partido.tipoPartido &&
+          (partido.tipoPartido.toLowerCase().includes(term.toLowerCase()) ||
+            ("jornada".startsWith(term.toLowerCase()) &&
+              partido.tipoPartido === "liga"))) || // si escribe jornada => liga
         (partido.lugar && partido.lugar.toLowerCase().includes(term))
     );
   } catch (error) {

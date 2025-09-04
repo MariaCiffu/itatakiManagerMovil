@@ -97,7 +97,7 @@ export default function PartidoAlineacionScreen() {
         partido.tipoPartido === "amistoso"
           ? "Amistoso"
           : partido.tipoPartido === "torneo"
-            ? partido.jornada
+            ? `Torneo ${partido.jornada || ""}`
             : `Jornada ${partido.jornada || ""}`
       }
       initialData={partido.alineacion}

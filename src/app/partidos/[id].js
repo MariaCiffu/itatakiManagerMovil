@@ -14,7 +14,6 @@ import { LinearGradient } from "expo-linear-gradient";
 import { MODERN_COLORS } from "../../constants/modernColors";
 import {
   getPartidoById,
-  deletePartido,
   isPartidoJugado,
 } from "../../services/partidosService";
 import { getAllJugadores } from "../../services/playersService";
@@ -29,7 +28,6 @@ export default function DetallePartidoScreen() {
   const [partido, setPartido] = useState(null);
   const [jugadores, setJugadores] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -64,36 +62,6 @@ export default function DetallePartidoScreen() {
 
   const handleEditarPartido = () => {
     router.push(`/partidos/editar/${id}`);
-  };
-
-  const handleEliminarPartido = () => {
-    Alert.alert(
-      "Eliminar partido",
-      "¿Estás seguro de que quieres eliminar este partido?",
-      [
-        { text: "Cancelar", style: "cancel" },
-        {
-          text: "Eliminar",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              setDeleting(true);
-              const result = await deletePartido(id);
-              if (result.success) {
-                router.replace("/partidos");
-              } else {
-                Alert.alert("Error", result.message);
-                setDeleting(false);
-              }
-            } catch (error) {
-              console.error("Error al eliminar partido:", error);
-              Alert.alert("Error", "No se pudo eliminar el partido");
-              setDeleting(false);
-            }
-          },
-        },
-      ]
-    );
   };
 
   const handleVerAlineacion = () => {
@@ -208,7 +176,7 @@ export default function DetallePartidoScreen() {
       <View style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={() => router.replace("/partidos")}
             style={styles.backButton}
           >
             <Ionicons
@@ -560,27 +528,6 @@ export default function DetallePartidoScreen() {
                 <Text style={styles.verReporteText}>Post partido</Text>
               </TouchableOpacity>
             )}
-
-          {/* Botón de eliminar */}
-          <TouchableOpacity
-            style={[styles.eliminarButton, deleting && styles.buttonDisabled]}
-            onPress={handleEliminarPartido}
-            disabled={deleting}
-            activeOpacity={0.8}
-          >
-            {deleting ? (
-              <ActivityIndicator size="small" color={MODERN_COLORS.textWhite} />
-            ) : (
-              <>
-                <Ionicons
-                  name="trash-outline"
-                  size={20}
-                  color={MODERN_COLORS.danger}
-                />
-                <Text style={styles.eliminarText}>Eliminar partido</Text>
-              </>
-            )}
-          </TouchableOpacity>
         </View>
       </ScrollView>
     </View>
@@ -991,28 +938,6 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "600",
-  },
-
-  eliminarButton: {
-    backgroundColor: MODERN_COLORS.surface,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: MODERN_COLORS.danger,
-    paddingVertical: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-  },
-
-  eliminarText: {
-    color: MODERN_COLORS.danger,
-    fontSize: 16,
-    fontWeight: "600",
-  },
-
-  buttonDisabled: {
-    opacity: 0.6,
   },
 
   //Reporte

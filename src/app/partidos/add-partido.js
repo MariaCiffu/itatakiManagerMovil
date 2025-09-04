@@ -606,7 +606,10 @@ export default function CrearPartidoScreen() {
     >
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={prevStep} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => router.replace("/partidos")}
+          style={styles.backButton}
+        >
           <Ionicons
             name="chevron-back"
             size={24}
