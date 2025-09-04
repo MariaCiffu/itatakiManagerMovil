@@ -417,7 +417,7 @@ export default function DetallePartidoScreen() {
                 onPress={handleVerAlineacion}
                 activeOpacity={0.8}
               >
-                <Ionicons name="eye-outline" size={20} color="#fff" />
+                <Ionicons name="eye-outline" size={20} />
                 <Text style={styles.verAlineacionText}>
                   Ver alineación completa
                 </Text>
@@ -835,17 +835,17 @@ const styles = StyleSheet.create({
   },
 
   verAlineacionButton: {
-    backgroundColor: MODERN_COLORS.success,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 12,
     borderRadius: 12,
     gap: 8,
+    borderWidth: 1,
+    borderColor: MODERN_COLORS.primary,
   },
 
   verAlineacionText: {
-    color: "#fff",
     fontSize: 16,
     fontWeight: "600",
   },
