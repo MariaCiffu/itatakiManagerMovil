@@ -487,3 +487,158 @@ export const getPartidosPorMes = async (year, month) => {
 
 // Funciones adicionales para compatibilidad si las necesitas
 export const getPartidos = getAllPartidos;
+
+// Función para verificar si un partido ya se jugó
+export const isPartidoJugado = (fechaPartido) => {
+  if (!fechaPartido) return false;
+  const fecha =
+    fechaPartido instanceof Date ? fechaPartido : new Date(fechaPartido);
+  const ahora = new Date();
+  return fecha < ahora;
+};
+
+// Función para crear un nuevo reporte (primera vez)
+export const createReportePartido = async (partidoId, reporteData) => {
+  try {
+    if (!partidoId || !reporteData) {
+      return {
+        success: false,
+        message: "Datos insuficientes para crear el reporte",
+      };
+    }
+
+    const partidoRef = doc(db, "partidos", partidoId);
+
+    // Verificar que el partido existe
+    const partidoData = await getPartidoById(partidoId);
+    if (!partidoData) {
+      return { success: false, message: "El partido no existe" };
+    }
+
+    // Obtener el teamId del usuario actual
+    const currentTeamId = await getCurrentTeamId();
+
+    // Verificar que el partido pertenece al mismo equipo
+    if (partidoData.teamId !== currentTeamId) {
+      return {
+        success: false,
+        message: "No tienes permisos para crear este reporte",
+      };
+    }
+
+    // En partidosService.js, dentro de createReportePartido, añade estos logs:
+    console.log("Fecha del partido:", partidoData.fecha);
+    console.log("Tipo de fecha:", typeof partidoData.fecha);
+    console.log("Es Date?:", partidoData.fecha instanceof Date);
+    console.log("Fecha actual:", new Date());
+    console.log(
+      "Resultado isPartidoJugado:",
+      isPartidoJugado(partidoData.fecha)
+    );
+
+    // Verificar que el partido ya se jugó
+    if (!isPartidoJugado(partidoData.fecha)) {
+      return {
+        success: false,
+        message:
+          "No puedes crear un reporte para un partido que aún no se ha jugado",
+      };
+    }
+
+    // Verificar que no existe ya un reporte
+    if (partidoData.reportePartido?.completado) {
+      return {
+        success: false,
+        message: "Este partido ya tiene un reporte completado",
+      };
+    }
+
+    // Preparar datos del reporte
+    const nuevoReporte = {
+      ...reporteData,
+      fechaReporte: new Date().toISOString(),
+      completado: true,
+    };
+
+    // Actualizar el documento
+    await updateDoc(partidoRef, {
+      reportePartido: nuevoReporte,
+      updatedAt: new Date().toISOString(),
+    });
+
+    return {
+      success: true,
+      message: "Reporte creado correctamente",
+      id: partidoId,
+    };
+  } catch (error) {
+    console.error("Error al crear reporte:", error);
+    return {
+      success: false,
+      message: error.message || "Error al crear el reporte del partido",
+    };
+  }
+};
+
+// Función para actualizar un reporte existente
+export const updateReportePartido = async (partidoId, reporteData) => {
+  try {
+    if (!partidoId || !reporteData) {
+      return {
+        success: false,
+        message: "Datos insuficientes para actualizar el reporte",
+      };
+    }
+
+    const partidoRef = doc(db, COLLECTIONS.PARTIDOS, partidoId); // Usar COLLECTIONS
+
+    // Verificar que el partido existe
+    const partidoData = await getPartidoById(partidoId);
+    if (!partidoData) {
+      return { success: false, message: "El partido no existe" };
+    }
+
+    // Verificar que el usuario pertenece al mismo equipo
+    const currentTeamId = await getCurrentTeamId();
+    if (partidoData.teamId !== currentTeamId) {
+      return {
+        success: false,
+        message: "No tienes permisos para editar este reporte",
+      };
+    }
+
+    // Verificar que existe un reporte previo
+    if (!partidoData.reportePartido) {
+      return {
+        success: false,
+        message: "No existe un reporte previo para actualizar",
+      };
+    }
+
+    // Preparar datos actualizados (mantener fecha original de creación)
+    const reporteActualizado = {
+      ...reporteData,
+      fechaReporte: partidoData.reportePartido.fechaReporte, // Mantener fecha original
+      fechaActualizacion: new Date().toISOString(), // Nueva fecha de actualización
+      completado: true,
+    };
+
+    // Actualizar el documento
+    await updateDoc(partidoRef, {
+      reportePartido: reporteActualizado,
+      updatedAt: serverTimestamp(), // Usar serverTimestamp como en las otras funciones
+    });
+
+    return {
+      success: true,
+      message: "Reporte actualizado correctamente",
+      id: partidoId,
+    };
+  } catch (error) {
+    console.error("Error al actualizar reporte:", error);
+    return {
+      success: false,
+      message: error.message || "Error al actualizar el reporte del partido",
+    };
+  }
+};

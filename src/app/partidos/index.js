@@ -110,6 +110,47 @@ export default function PartidosScreen() {
     ({ item }) => {
       const jugado = isPartidoJugado(item.fecha);
       const esLocal = item.lugar === "Casa";
+      const tieneReporte = item.reportePartido?.completado;
+
+      // Función para obtener el resultado del reporte
+
+      const getResultadoTexto = () => {
+        if (!tieneReporte || !item.reportePartido?.resultado) return null;
+
+        const { golesLocal, golesVisitante } = item.reportePartido.resultado;
+
+        return `${golesLocal}-${golesVisitante}`; // ← LOCAL - VISITANTE
+      };
+
+      // Función para obtener el color del resultado
+      const getResultadoColor = () => {
+        if (!tieneReporte || !item.reportePartido?.resultado) return null;
+
+        const { golesLocal, golesVisitante } = item.reportePartido.resultado;
+        const misGoles = esLocal ? golesLocal : golesVisitante;
+        const golesRival = esLocal ? golesVisitante : golesLocal;
+
+        if (misGoles > golesRival) return MODERN_COLORS.success + "20"; // Victoria
+        if (misGoles === golesRival) return MODERN_COLORS.accent + "20"; // Empate
+        return MODERN_COLORS.danger + "20"; // Derrota
+      };
+
+      // Función para obtener el color del texto del resultado
+      const getResultadoTextColor = () => {
+        if (!tieneReporte || !item.reportePartido?.resultado) return null;
+
+        const { golesLocal, golesVisitante } = item.reportePartido.resultado;
+        const misGoles = esLocal ? golesLocal : golesVisitante;
+        const golesRival = esLocal ? golesVisitante : golesLocal;
+
+        if (misGoles > golesRival) return MODERN_COLORS.success; // Victoria
+        if (misGoles === golesRival) return MODERN_COLORS.accent; // Empate
+        return MODERN_COLORS.danger; // Derrota
+      };
+
+      const resultadoTexto = getResultadoTexto();
+      const resultadoColor = getResultadoColor();
+      const resultadoTextColor = getResultadoTextColor();
 
       return (
         <TouchableOpacity
@@ -147,16 +188,28 @@ export default function PartidosScreen() {
             <View
               style={[
                 styles.estadoBadge,
-                jugado ? styles.estadoJugado : styles.estadoPendiente,
+                !jugado
+                  ? styles.estadoPendiente
+                  : resultadoTexto
+                    ? { backgroundColor: resultadoColor }
+                    : styles.estadoJugado,
               ]}
             >
               <Text
                 style={[
                   styles.estadoText,
-                  jugado ? styles.estadoJugadoText : styles.estadoPendienteText,
+                  !jugado
+                    ? styles.estadoPendienteText
+                    : resultadoTexto
+                      ? { color: resultadoTextColor }
+                      : styles.estadoJugadoText,
                 ]}
               >
-                {jugado ? "Jugado" : "Pendiente"}
+                {!jugado
+                  ? "Pendiente"
+                  : resultadoTexto
+                    ? resultadoTexto
+                    : "Jugado"}
               </Text>
             </View>
           </View>

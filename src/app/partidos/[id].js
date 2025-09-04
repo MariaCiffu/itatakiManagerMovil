@@ -12,7 +12,11 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { MODERN_COLORS } from "../../constants/modernColors";
-import { getPartidoById, deletePartido } from "../../services/partidosService";
+import {
+  getPartidoById,
+  deletePartido,
+  isPartidoJugado,
+} from "../../services/partidosService";
 import { getAllJugadores } from "../../services/playersService";
 import { availableRoles } from "../../data/roles";
 import { useAuth } from "../../hooks/useFirebase";
@@ -490,6 +494,39 @@ export default function DetallePartidoScreen() {
             </LinearGradient>
           </TouchableOpacity>
 
+          {/* Botón para crear reporte - solo si el partido ya se jugó y no tiene reporte */}
+          {partido &&
+            partido.fecha &&
+            isPartidoJugado(partido.fecha) &&
+            (!partido.reportePartido || !partido.reportePartido.completado) && (
+              <TouchableOpacity
+                style={styles.reporteButton}
+                onPress={() => router.push(`/partidos/reporte/${id}`)}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="clipboard-outline" size={20} color="#fff" />
+                <Text style={styles.reporteText}>Completar post partido</Text>
+              </TouchableOpacity>
+            )}
+
+          {/* Botón para ver reporte - solo si ya tiene reporte completado */}
+          {partido &&
+            partido.reportePartido &&
+            partido.reportePartido.completado && (
+              <TouchableOpacity
+                style={styles.verReporteButton}
+                onPress={() => router.push(`/partidos/reporte/ver/${id}`)}
+                activeOpacity={0.8}
+              >
+                <Ionicons
+                  name="checkmark-circle-outline"
+                  size={20}
+                  color="#fff"
+                />
+                <Text style={styles.verReporteText}>Post partido</Text>
+              </TouchableOpacity>
+            )}
+
           {/* Botón de eliminar */}
           <TouchableOpacity
             style={[styles.eliminarButton, deleting && styles.buttonDisabled]}
@@ -931,5 +968,40 @@ const styles = StyleSheet.create({
 
   buttonDisabled: {
     opacity: 0.6,
+  },
+
+  //Reporte
+  reporteButton: {
+    backgroundColor: MODERN_COLORS.accent,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 16,
+    borderRadius: 12,
+    gap: 8,
+    marginBottom: 12,
+  },
+
+  reporteText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+
+  verReporteButton: {
+    backgroundColor: MODERN_COLORS.success,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 16,
+    borderRadius: 12,
+    gap: 8,
+    marginBottom: 12,
+  },
+
+  verReporteText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });

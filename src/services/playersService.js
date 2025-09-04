@@ -490,3 +490,97 @@ export const getEstadisticasEquipo = async () => {
     };
   }
 };
+
+export const getEstadisticasJugadorDesdeReportes = async (jugadorId) => {
+  try {
+    console.log("🔄 INICIO - Obteniendo estadísticas para jugador:", jugadorId);
+
+    const teamId = await getCurrentTeamId();
+    console.log("✅ TeamId obtenido:", teamId);
+
+    const partidosRef = collection(db, COLLECTIONS.PARTIDOS);
+    console.log("✅ Referencia a colección creada");
+
+    const q = query(
+      partidosRef,
+      where("teamId", "==", teamId),
+      where("reportePartido.completado", "==", true)
+    );
+    console.log("✅ Query creada");
+
+    console.log("🔄 Ejecutando getDocs...");
+    const snapshot = await getDocs(q);
+    console.log(
+      "✅ getDocs completado. Documentos encontrados:",
+      snapshot.size
+    );
+
+    const estadisticas = {
+      partidosJugados: 0,
+      partidosTitular: 0,
+      partidosSuplente: 0,
+      minutosJugados: 0,
+      goles: 0,
+      tarjetasAmarillas: 0,
+      tarjetasRojas: 0,
+    };
+
+    let partidosProcesados = 0;
+    snapshot.forEach((doc) => {
+      console.log(`🔄 Procesando partido ${partidosProcesados + 1}:`, doc.id);
+
+      const partido = doc.data();
+      const reporteJugadores = partido.reportePartido?.jugadores || [];
+      console.log(`   - Jugadores en reporte: ${reporteJugadores.length}`);
+
+      const jugadorEnPartido = reporteJugadores.find(
+        (j) => j.playerId === jugadorId
+      );
+
+      if (jugadorEnPartido) {
+        console.log(
+          `   - Jugador encontrado en partido. Minutos: ${jugadorEnPartido.minutosJugados}`
+        );
+
+        if ((jugadorEnPartido.minutosJugados || 0) > 0) {
+          estadisticas.partidosJugados++;
+
+          if (jugadorEnPartido.titular) {
+            estadisticas.partidosTitular++;
+          } else {
+            estadisticas.partidosSuplente++;
+          }
+
+          estadisticas.minutosJugados += jugadorEnPartido.minutosJugados || 0;
+          estadisticas.goles += jugadorEnPartido.goles || 0;
+          estadisticas.tarjetasAmarillas +=
+            jugadorEnPartido.tarjetasAmarillas || 0;
+          estadisticas.tarjetasRojas += jugadorEnPartido.tarjetasRojas || 0;
+        }
+      } else {
+        console.log(`   - Jugador NO encontrado en este partido`);
+      }
+
+      partidosProcesados++;
+    });
+
+    console.log("✅ RESULTADO FINAL:", estadisticas);
+    return estadisticas;
+  } catch (error) {
+    console.error("❌ ERROR en getEstadisticasJugadorDesdeReportes:", error);
+    console.error("   - Tipo de error:", error.name);
+    console.error("   - Mensaje:", error.message);
+    console.error("   - Stack:", error.stack);
+
+    // Devolver estadísticas vacías en caso de error
+    return {
+      partidosJugados: 0,
+      partidosTitular: 0,
+      partidosSuplente: 0,
+      minutosJugados: 0,
+      goles: 0,
+      tarjetasAmarillas: 0,
+      tarjetasRojas: 0,
+    };
+  }
+};
