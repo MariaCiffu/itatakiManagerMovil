@@ -325,51 +325,6 @@ export const searchPartidos = async (searchTerm) => {
   }
 };
 
-// 📊 ESTADÍSTICAS
-
-export const getEstadisticasPartidos = async () => {
-  try {
-    const teamId = await getCurrentTeamId();
-    const partidos = await getAllPartidos();
-
-    const now = new Date();
-    const partidosJugados = partidos.filter((p) => p.fecha < now);
-    const proximosPartidos = partidos.filter((p) => p.fecha >= now);
-
-    const partidosLocal = partidos.filter((p) => p.lugar === "Casa");
-    const partidosVisitante = partidos.filter((p) => p.lugar === "Fuera");
-
-    const partidosLiga = partidos.filter((p) => p.tipoPartido === "liga");
-    const partidosTorneo = partidos.filter((p) => p.tipoPartido === "torneo");
-    const partidosAmistoso = partidos.filter(
-      (p) => p.tipoPartido === "amistoso"
-    );
-
-    return {
-      totalPartidos: partidos.length,
-      partidosJugados: partidosJugados.length,
-      proximosPartidos: proximosPartidos.length,
-      partidosLocal: partidosLocal.length,
-      partidosVisitante: partidosVisitante.length,
-      partidosLiga: partidosLiga.length,
-      partidosTorneo: partidosTorneo.length,
-      partidosAmistoso: partidosAmistoso.length,
-    };
-  } catch (error) {
-    console.error("❌ Error en getEstadisticasPartidos:", error);
-    return {
-      totalPartidos: 0,
-      partidosJugados: 0,
-      proximosPartidos: 0,
-      partidosLocal: 0,
-      partidosVisitante: 0,
-      partidosLiga: 0,
-      partidosTorneo: 0,
-      partidosAmistoso: 0,
-    };
-  }
-};
-
 // 🕒 FUNCIONES DE TIEMPO
 
 export const getProximosPartidos = async (limite = 5) => {
@@ -406,86 +361,6 @@ export const getProximosPartidos = async (limite = 5) => {
     return proximosPartidos;
   } catch (error) {
     console.error("❌ Error en getProximosPartidos:", error);
-    return [];
-  }
-};
-
-export const getPartidosRecientes = async (limite = 5) => {
-  try {
-    const teamId = await getCurrentTeamId();
-    const partidosRef = collection(db, COLLECTIONS.PARTIDOS);
-
-    const now = new Date();
-    const q = query(
-      partidosRef,
-      where("teamId", "==", teamId),
-      where("active", "==", true),
-      where("fecha", "<", now),
-      orderBy("fecha", "desc")
-    );
-
-    const snapshot = await getDocs(q);
-    const partidosRecientes = [];
-
-    snapshot.forEach((doc) => {
-      if (partidosRecientes.length < limite) {
-        const data = doc.data();
-        partidosRecientes.push({
-          id: doc.id,
-          ...data,
-          fecha: data.fecha?.toDate
-            ? data.fecha.toDate()
-            : new Date(data.fecha),
-        });
-      }
-    });
-
-    console.log("✅ Partidos recientes obtenidos:", partidosRecientes.length);
-    return partidosRecientes;
-  } catch (error) {
-    console.error("❌ Error en getPartidosRecientes:", error);
-    return [];
-  }
-};
-
-// 📅 FUNCIONES DE FILTRADO POR FECHA
-
-export const getPartidosPorMes = async (year, month) => {
-  try {
-    const teamId = await getCurrentTeamId();
-    const partidosRef = collection(db, COLLECTIONS.PARTIDOS);
-
-    const startOfMonth = new Date(year, month, 1);
-    const endOfMonth = new Date(year, month + 1, 0, 23, 59, 59, 999);
-
-    const q = query(
-      partidosRef,
-      where("teamId", "==", teamId),
-      where("active", "==", true),
-      where("fecha", ">=", startOfMonth),
-      where("fecha", "<=", endOfMonth),
-      orderBy("fecha", "asc")
-    );
-
-    const snapshot = await getDocs(q);
-    const partidos = [];
-
-    snapshot.forEach((doc) => {
-      const data = doc.data();
-      partidos.push({
-        id: doc.id,
-        ...data,
-        fecha: data.fecha?.toDate ? data.fecha.toDate() : new Date(data.fecha),
-      });
-    });
-
-    console.log(
-      `✅ Partidos de ${month + 1}/${year} obtenidos:`,
-      partidos.length
-    );
-    return partidos;
-  } catch (error) {
-    console.error("❌ Error en getPartidosPorMes:", error);
     return [];
   }
 };
@@ -530,16 +405,6 @@ export const createReportePartido = async (partidoId, reporteData) => {
         message: "No tienes permisos para crear este reporte",
       };
     }
-
-    // En partidosService.js, dentro de createReportePartido, añade estos logs:
-    console.log("Fecha del partido:", partidoData.fecha);
-    console.log("Tipo de fecha:", typeof partidoData.fecha);
-    console.log("Es Date?:", partidoData.fecha instanceof Date);
-    console.log("Fecha actual:", new Date());
-    console.log(
-      "Resultado isPartidoJugado:",
-      isPartidoJugado(partidoData.fecha)
-    );
 
     // Verificar que el partido ya se jugó
     if (!isPartidoJugado(partidoData.fecha)) {

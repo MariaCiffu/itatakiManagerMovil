@@ -504,7 +504,8 @@ export const getEstadisticasJugadorDesdeReportes = async (jugadorId) => {
     const q = query(
       partidosRef,
       where("teamId", "==", teamId),
-      where("reportePartido.completado", "==", true)
+      where("reportePartido.completado", "==", true),
+      where("tipoPartido", "==", "liga")
     );
     console.log("✅ Query creada");
 
