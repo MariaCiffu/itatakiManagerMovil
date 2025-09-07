@@ -195,7 +195,44 @@ export default function VerReporteScreen() {
 
             {reporte.jugadores
               .filter((j) => j.minutosJugados > 0)
-              .sort((a, b) => b.minutosJugados - a.minutosJugados)
+              .sort((a, b) => {
+                const aTitular = partido.alineacion?.titulares?.some(
+                  (titular) => titular.id === a.playerId
+                );
+                const bTitular = partido.alineacion?.titulares?.some(
+                  (titular) => titular.id === b.playerId
+                );
+
+                // Si uno es titular y otro no, el titular va primero
+                if (aTitular && !bTitular) return -1;
+                if (!aTitular && bTitular) return 1;
+
+                // Si ambos son titulares, mantener el orden de la alineación
+                if (aTitular && bTitular) {
+                  const indexA = partido.alineacion.titulares.findIndex(
+                    (titular) => titular.id === a.playerId
+                  );
+                  const indexB = partido.alineacion.titulares.findIndex(
+                    (titular) => titular.id === b.playerId
+                  );
+                  return indexA - indexB;
+                }
+
+                // Si ambos son suplentes, mantener el orden de la alineación
+                if (!aTitular && !bTitular) {
+                  const indexA =
+                    partido.alineacion?.suplentes?.findIndex(
+                      (suplente) => suplente.id === a.playerId
+                    ) || 999;
+                  const indexB =
+                    partido.alineacion?.suplentes?.findIndex(
+                      (suplente) => suplente.id === b.playerId
+                    ) || 999;
+                  return indexA - indexB;
+                }
+
+                return 0;
+              })
               .map((jugador, index) => (
                 <View key={index} style={styles.jugadorRow}>
                   <View style={styles.jugadorInfo}>
@@ -204,9 +241,9 @@ export default function VerReporteScreen() {
                     </Text>
                     <Text style={styles.jugadorMinutos}>
                       {jugador.minutosJugados}'
-                      {jugador.titular && (
-                        <Text style={styles.titularTag}> • Titular</Text>
-                      )}
+                      {partido.alineacion?.titulares?.some(
+                        (titular) => titular.id === jugador.playerId
+                      ) && <Text style={styles.titularTag}> • Titular</Text>}
                     </Text>
                   </View>
 
