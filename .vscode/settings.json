@@ -1,2 +1,5 @@
 {
+  "path-intellisense.extensionOnImport": true,
+  "path-intellisense.autoSlashAfterDirectory": true,
+  "path-intellisense.showError": true
 }

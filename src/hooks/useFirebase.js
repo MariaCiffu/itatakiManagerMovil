@@ -123,7 +123,7 @@ export const usePlayersRealTime = (teamId) => {
     const loadPlayersService = async () => {
       try {
         const { getAllPlayersRealTime } = await import(
-          "../services/playersFirebaseService"
+          "../services/playersService"
         );
 
         const unsubscribe = getAllPlayersRealTime(teamId, (playersData) => {
@@ -188,7 +188,7 @@ export const usePlayerRealTime = (playerId) => {
     const loadPlayerService = async () => {
       try {
         const { getPlayerByIdRealTime } = await import(
-          "../services/playersFirebaseService"
+          "../services/playersService"
         );
 
         const unsubscribe = getPlayerByIdRealTime(playerId, (playerData) => {
@@ -247,7 +247,7 @@ export const usePlayerMultasRealTime = (playerId) => {
     const loadMultasService = async () => {
       try {
         const { getPlayerMultasRealTime } = await import(
-          "../services/multasFirebaseService"
+          "../services/playersService"
         );
 
         const unsubscribe = getPlayerMultasRealTime(playerId, (multasData) => {
@@ -317,9 +317,7 @@ export const useTeamData = (teamId) => {
 
     const loadTeamData = async () => {
       try {
-        const { getTeamStats } = await import(
-          "../services/playersFirebaseService"
-        );
+        const { getTeamStats } = await import("../services/playersService");
         const stats = await getTeamStats(teamId);
 
         setTeamData(stats);

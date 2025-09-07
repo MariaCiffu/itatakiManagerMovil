@@ -10,9 +10,7 @@ import {
   query,
   where,
   orderBy,
-  onSnapshot,
   serverTimestamp,
-  writeBatch,
 } from "firebase/firestore";
 import { auth, db, COLLECTIONS } from "../config/firebase";
 

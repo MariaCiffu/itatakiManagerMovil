@@ -254,7 +254,7 @@ export const hasPermission = (userRole, requiredRole) => {
   return roleHierarchy[userRole] >= roleHierarchy[requiredRole];
 };
 
-export const canEditPlayer = (userRole, userId, playerId) => {
+export const canEditPlayer = (userRole) => {
   if (userRole === USER_ROLES.ADMIN || userRole === USER_ROLES.COACH) {
     return true;
   }

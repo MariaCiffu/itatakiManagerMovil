@@ -1,13 +1,5 @@
 // src/components/PlayerContextMenu.js
-import React from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Dimensions,
-} from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { StyleSheet, Dimensions } from "react-native";
 import { MODERN_COLORS } from "../constants/modernColors";
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");

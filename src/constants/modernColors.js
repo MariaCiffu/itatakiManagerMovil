@@ -1,5 +1,3 @@
-import { StyleSheet } from "react-native";
-
 // 🏆 PALETA PROFESIONAL PARA GESTIÓN DEPORTIVA
 export const MODERN_COLORS = {
   primary: "#2563eb", // Azul vibrante pero profesional
