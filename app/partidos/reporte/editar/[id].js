@@ -419,8 +419,8 @@ export default function EditarReporteScreen() {
                               styles.tarjetaActive,
                           ]}
                           onPress={() => {
-                            const nuevas =
-                              (jugador.tarjetasAmarillas || 0) > 0 ? 0 : 1;
+                            let nuevas = (jugador.tarjetasAmarillas || 0) + 1;
+                            if (nuevas > 2) nuevas = 0; // reset después de 2
                             updateJugador(index, "tarjetasAmarillas", nuevas);
                           }}
                         >
@@ -430,6 +430,7 @@ export default function EditarReporteScreen() {
                             </Text>
                           )}
                         </TouchableOpacity>
+
                         <TouchableOpacity
                           style={[
                             styles.tarjetaButton,
