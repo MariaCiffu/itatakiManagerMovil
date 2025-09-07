@@ -13,6 +13,7 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { auth, db, COLLECTIONS } from "../config/firebase";
+import { POSICIONES } from "../../src/constants/positions";
 
 // 🔥 FUNCIÓN HELPER PARA OBTENER TEAMID
 const getCurrentTeamId = async () => {
@@ -60,8 +61,21 @@ export const getAllJugadores = async () => {
       });
     });
 
-    // Ordenar localmente
-    players.sort((a, b) => (a.number || 0) - (b.number || 0));
+    // Ordenar por posiciones y luego por dorsal
+    players.sort((a, b) => {
+      const posicionA = POSICIONES.indexOf(a.position);
+      const posicionB = POSICIONES.indexOf(b.position);
+
+      if (posicionA !== posicionB) {
+        const indexA = posicionA === -1 ? 999 : posicionA;
+        const indexB = posicionB === -1 ? 999 : posicionB;
+        return indexA - indexB;
+      }
+
+      const numeroA = Number(a.number) || 999;
+      const numeroB = Number(b.number) || 999;
+      return numeroA - numeroB;
+    });
 
     console.log("✅ Jugadores obtenidos:", players.length);
     return players;

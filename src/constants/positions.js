@@ -1,14 +1,14 @@
 export const POSICIONES = [
   "Portero",
-  "Lateral izq.",
   "Lateral dcho.",
+  "Lateral izq.",
   "Defensa central",
   "Carrilero izq.",
   "Carrilero dcho.",
   "Mediocentro",
   "Interior",
   "Mediapunta",
-  "Extremo izq.",
   "Extremo dcho.",
+  "Extremo izq.",
   "Delantero",
 ];
