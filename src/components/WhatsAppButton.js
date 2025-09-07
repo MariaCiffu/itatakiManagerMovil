@@ -10,13 +10,14 @@ const WhatsAppButton = ({ phone, size = 24, color = "#25D366" }) => {
         phoneNumber = `+34${phoneNumber}`; // Añadir prefijo de España por defecto
       }
 
-      const url = `whatsapp://send?phone=${phoneNumber}`;
+      // Usar API oficial de WhatsApp
+      const url = `https://wa.me/${phoneNumber}`;
       const supported = await Linking.canOpenURL(url);
 
       if (supported) {
         await Linking.openURL(url);
       } else {
-        Alert.alert("Error", "WhatsApp no está instalado en este dispositivo.");
+        Alert.alert("Error", "No se pudo abrir WhatsApp.");
       }
     } catch (error) {
       Alert.alert("Error", "No se pudo abrir WhatsApp.");
