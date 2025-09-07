@@ -297,14 +297,9 @@ export default function EditarReporteScreen() {
               </Text>
               <TextInput
                 style={styles.golesInput}
-                value={String(
-                  partido.lugar === "Casa"
-                    ? reporteData.resultado.golesLocal
-                    : reporteData.resultado.golesVisitante
-                )}
+                value={String(reporteData.resultado.golesLocal)}
                 onChangeText={(text) => {
-                  const campo =
-                    partido.lugar === "Casa" ? "golesLocal" : "golesVisitante";
+                  const campo = "golesLocal";
                   updateResultado(campo, text);
                 }}
                 keyboardType="numeric"
@@ -323,14 +318,9 @@ export default function EditarReporteScreen() {
               </Text>
               <TextInput
                 style={styles.golesInput}
-                value={String(
-                  partido.lugar === "Casa"
-                    ? reporteData.resultado.golesVisitante
-                    : reporteData.resultado.golesLocal
-                )}
+                value={String(reporteData.resultado.golesVisitante)}
                 onChangeText={(text) => {
-                  const campo =
-                    partido.lugar === "Casa" ? "golesVisitante" : "golesLocal";
+                  const campo = "golesVisitante";
                   updateResultado(campo, text);
                 }}
                 keyboardType="numeric"

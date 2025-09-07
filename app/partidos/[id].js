@@ -227,14 +227,16 @@ export default function DetallePartidoScreen() {
       (role) => role !== null
     );
 
+  // Resultado clásico: Local - Visitante
   const getResultadoTexto = () => {
     if (!partido?.reportePartido?.resultado) return "N/A";
 
     const { golesLocal, golesVisitante } = partido.reportePartido.resultado;
 
-    return `${golesLocal} - ${golesVisitante}`; // LOCAL - VISITANTE
+    return `${golesLocal} - ${golesVisitante}`;
   };
 
+  // Color según si gané, empaté o perdí
   const getResultadoColor = () => {
     if (!partido?.reportePartido?.resultado) return MODERN_COLORS.textGray;
 
@@ -244,9 +246,9 @@ export default function DetallePartidoScreen() {
     const misGoles = esLocal ? golesLocal : golesVisitante;
     const golesRival = esLocal ? golesVisitante : golesLocal;
 
-    if (misGoles > golesRival) return MODERN_COLORS.success;
-    if (misGoles === golesRival) return MODERN_COLORS.accent;
-    return MODERN_COLORS.danger;
+    if (misGoles > golesRival) return MODERN_COLORS.success; // Gané
+    if (misGoles === golesRival) return MODERN_COLORS.accent; // Empaté
+    return MODERN_COLORS.danger; // Perdí
   };
 
   return (
