@@ -4,22 +4,36 @@ import { WhatsAppIcon } from "./Icons";
 const WhatsAppButton = ({ phone, size = 24, color = "#25D366" }) => {
   const openWhatsApp = async () => {
     try {
-      // Formatear número de teléfono (eliminar espacios y añadir prefijo si es necesario)
+      // Formatear número de teléfono
       let phoneNumber = phone.replace(/\s+/g, "");
       if (!phoneNumber.startsWith("+")) {
-        phoneNumber = `+34${phoneNumber}`; // Añadir prefijo de España por defecto
+        phoneNumber = `+34${phoneNumber}`;
       }
+      // Eliminar el + para el esquema nativo
+      phoneNumber = phoneNumber.replace("+", "");
 
-      // Usar API oficial de WhatsApp
-      const url = `https://wa.me/${phoneNumber}`;
-      const supported = await Linking.canOpenURL(url);
+      // Intentar primero con el esquema nativo
+      const whatsappUrl = `whatsapp://send?phone=${phoneNumber}`;
+      const canOpenWhatsApp = await Linking.canOpenURL(whatsappUrl);
 
-      if (supported) {
-        await Linking.openURL(url);
+      if (canOpenWhatsApp) {
+        await Linking.openURL(whatsappUrl);
       } else {
-        Alert.alert("Error", "No se pudo abrir WhatsApp.");
+        // Fallback para dispositivos sin WhatsApp
+        const webUrl = `https://wa.me/${phoneNumber}`;
+        const canOpenWeb = await Linking.canOpenURL(webUrl);
+
+        if (canOpenWeb) {
+          await Linking.openURL(webUrl);
+        } else {
+          Alert.alert(
+            "Error",
+            "WhatsApp no está instalado en este dispositivo."
+          );
+        }
       }
     } catch (error) {
+      console.error("Error al abrir WhatsApp:", error);
       Alert.alert("Error", "No se pudo abrir WhatsApp.");
     }
   };
