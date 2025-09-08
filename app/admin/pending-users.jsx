@@ -93,6 +93,38 @@ export default function PendingUsersScreen() {
     );
   };
 
+  const rejectUser = async (userId, userName) => {
+    Alert.alert(
+      "Rechazar Usuario",
+      `¿Estás seguro de que quieres rechazar a ${userName}?`,
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Rechazar",
+          onPress: async () => {
+            try {
+              const userRef = doc(db, "users", userId);
+              await updateDoc(userRef, {
+                rejected: true,
+                approved: false, // asegurarnos de que no quede aprobado
+                rejectedAt: new Date(),
+              });
+
+              Alert.alert(
+                "Usuario Rechazado",
+                `${userName} ha sido rechazado correctamente`
+              );
+              loadPendingUsers(); // Recargar lista
+            } catch (error) {
+              console.error("Error rechazando usuario:", error);
+              Alert.alert("Error", "No se pudo rechazar el usuario");
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const onRefresh = () => {
     setRefreshing(true);
     loadPendingUsers();
