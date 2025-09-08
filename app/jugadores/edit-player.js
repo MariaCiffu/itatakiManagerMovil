@@ -26,6 +26,7 @@ import {
 import { MODERN_COLORS } from "../../src/constants/modernColors";
 import { POSICIONES } from "../../src/constants/positions";
 import { updateJugador } from "../../src/services/playersService";
+import { uploadImage } from "../../src/components/cloudinary";
 
 export default function EditPlayer() {
   const router = useRouter();
@@ -191,7 +192,20 @@ export default function EditPlayer() {
     }
 
     try {
-      console.log("📄 Actualizando jugador:", player.id);
+      let imageUrl = player.image;
+
+      // 🔹 Subir a Cloudinary si la imagen es local
+      if (player.image && player.image.startsWith("file://")) {
+        console.log("☁️ Subiendo nueva imagen a Cloudinary...");
+        const uploadedUrl = await uploadImage(player.image, "players");
+        if (uploadedUrl) {
+          imageUrl = uploadedUrl;
+          console.log("✅ Imagen subida:", imageUrl);
+        } else {
+          Alert.alert("Error", "No se pudo subir la imagen");
+          return;
+        }
+      }
 
       const result = await updateJugador(player.id, {
         name: player.name,
@@ -200,24 +214,17 @@ export default function EditPlayer() {
         birthdate: player.birthdate,
         foot: player.foot,
         phone: player.phone,
-        image: player.image,
+        image: imageUrl, // ← usar la URL subida
         email: player.email,
         emergencyContact: player.emergencyContact,
         emergencyPhone: player.emergencyPhone,
       });
 
-      console.log("📱 Resultado actualización:", result);
-
       if (result.success) {
         Alert.alert(
           "Jugador actualizado",
           "Los datos del jugador han sido actualizados correctamente",
-          [
-            {
-              text: "OK",
-              onPress: () => router.back(),
-            },
-          ]
+          [{ text: "OK", onPress: () => router.back() }]
         );
       } else {
         Alert.alert(

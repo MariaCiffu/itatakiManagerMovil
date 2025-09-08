@@ -19,6 +19,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { MODERN_COLORS } from "../../src/constants/modernColors";
 import { POSICIONES } from "../../src/constants/positions";
 import { addJugador } from "../../src/services/playersService";
+import { uploadImage } from "../../src/components/cloudinary";
 
 export default function AddPlayer() {
   const router = useRouter();
@@ -109,11 +110,19 @@ export default function AddPlayer() {
 
     setIsLoading(true);
     try {
+      let imageURL = player.image;
+
+      // Subir la foto si es una URI local
+      if (player.image?.startsWith("file://")) {
+        const uploadedURL = await uploadImage(player.image, `players`);
+        if (uploadedURL) imageURL = uploadedURL;
+      }
+
       const playerData = {
         ...player,
         number: parseInt(player.number, 10),
         multas: [],
-        image: player.image,
+        image: imageURL, // <-- usamos la URL subida
       };
 
       const result = await addJugador(playerData);

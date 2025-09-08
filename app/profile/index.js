@@ -18,6 +18,7 @@ import * as ImagePicker from "expo-image-picker";
 import { useAuth } from "../../src/hooks/useFirebase";
 import { updateUserProfile } from "../../src/services/authService";
 import { MODERN_COLORS } from "../../src/constants/modernColors";
+import { uploadImage } from "../../src/components/cloudinary";
 
 const categories = [
   "Prebenjamín",
@@ -29,9 +30,6 @@ const categories = [
   "Senior",
   "Veteranos",
 ];
-
-const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dn7deiyof/upload";
-const UPLOAD_PRESET = "unsigned_profile_upload";
 
 export default function Profile() {
   const router = useRouter();
@@ -86,33 +84,6 @@ export default function Profile() {
     }));
     if (!initialLoad) {
       setHasChanges(true);
-    }
-  };
-
-  const uploadImageAsync = async (uri) => {
-    if (!uri) return null;
-    try {
-      const formDataCloud = new FormData();
-      formDataCloud.append("file", {
-        uri,
-        type: "image/jpeg",
-        name: "profile.jpg",
-      });
-      formDataCloud.append("upload_preset", UPLOAD_PRESET);
-      formDataCloud.append("folder", `users/${user.uid}`); // carpeta por usuario
-
-      const response = await fetch(CLOUDINARY_URL, {
-        method: "POST",
-        body: formDataCloud,
-      });
-
-      const data = await response.json();
-      if (data.secure_url) return data.secure_url;
-      throw new Error("No se pudo obtener la URL de Cloudinary");
-    } catch (error) {
-      console.error("Error subiendo imagen:", error);
-      Alert.alert("Error", "No se pudo subir la imagen. Intenta de nuevo.");
-      return null;
     }
   };
 
@@ -230,7 +201,10 @@ export default function Profile() {
 
       // Subir la foto si es una URI local
       if (formData.profilePhoto?.startsWith("file://")) {
-        const uploadedURL = await uploadImageAsync(formData.profilePhoto);
+        const uploadedURL = await uploadImage(
+          formData.profilePhoto,
+          `users/${user.uid}`
+        );
         if (uploadedURL) profilePhotoURL = uploadedURL;
       }
 
