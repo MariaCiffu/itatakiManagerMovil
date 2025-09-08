@@ -6,6 +6,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   SafeAreaView,
+  ScrollView,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { getPartidoById } from "../../../src/services/partidosService";
@@ -83,26 +84,34 @@ export default function PartidoAlineacionScreen() {
     );
   }
 
-  // Usar valores directos en lugar de funciones para evitar actualizaciones de estado durante el renderizado
+  // Envolver LineupScreen en ScrollView
   return (
-    <LineupScreen
-      matchday={
-        partido.tipoPartido === "amistoso"
-          ? "Amistoso"
-          : partido.tipoPartido === "torneo"
-            ? partido.jornada
-            : parseInt(partido.jornada) || 0
-      }
-      matchTitle={
-        partido.tipoPartido === "amistoso"
-          ? "Amistoso"
-          : partido.tipoPartido === "torneo"
-            ? `Torneo ${partido.jornada || ""}`
-            : `Jornada ${partido.jornada || ""}`
-      }
-      initialData={partido.alineacion}
-      readOnly={true}
-    />
+    <SafeAreaView style={styles.container}>
+      <ScrollView
+        style={styles.scrollContainer}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        <LineupScreen
+          matchday={
+            partido.tipoPartido === "amistoso"
+              ? "Amistoso"
+              : partido.tipoPartido === "torneo"
+                ? partido.jornada
+                : parseInt(partido.jornada) || 0
+          }
+          matchTitle={
+            partido.tipoPartido === "amistoso"
+              ? "Amistoso"
+              : partido.tipoPartido === "torneo"
+                ? `Torneo ${partido.jornada || ""}`
+                : `Jornada ${partido.jornada || ""}`
+          }
+          initialData={partido.alineacion}
+          readOnly={true}
+        />
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -110,6 +119,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: MODERN_COLORS.background,
+  },
+  scrollContainer: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
   loadingContainer: {
     flex: 1,
