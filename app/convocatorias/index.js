@@ -473,17 +473,17 @@ export default function Convocatorias() {
   };
 
   const enviarPorWhatsApp = useCallback(async () => {
-    // Validación específica para multas
+    // Validaciones
     if (plantillaSeleccionada.id === "multas") {
       if (!datos.fecha) {
         Alert.alert("Datos incompletos", "Por favor selecciona una fecha.");
         return;
       }
     } else {
-      // Validación para otras plantillas
       if (
         !datos.fecha ||
         !datos.hora ||
+        !datos.citacion ||
         !datos.lugar ||
         (datos.tipoPartido !== "torneo" && !datos.rival) ||
         (datos.tipoPartido === "liga" && !datos.jornada) ||
@@ -501,18 +501,20 @@ export default function Convocatorias() {
     }
 
     try {
-      console.log("Mensaje antes de enviar:", mensajeFinal);
       const mensaje = encodeURIComponent(mensajeFinal);
 
-      const url = `whatsapp://send?text=${mensaje}`;
-      const supported = await Linking.canOpenURL(url);
+      // Intentar abrir WhatsApp nativo
+      const whatsappUrl = `whatsapp://send?text=${mensaje}`;
+      const canOpen = await Linking.canOpenURL(whatsappUrl);
 
-      if (supported) {
-        await Linking.openURL(url);
+      if (canOpen) {
+        await Linking.openURL(whatsappUrl);
       } else {
-        Alert.alert("Error", "WhatsApp no está instalado en este dispositivo.");
+        // Fallback a web
+        await Linking.openURL(`https://api.whatsapp.com/send?text=${mensaje}`);
       }
     } catch (error) {
+      console.error(error);
       Alert.alert("Error", "No se pudo abrir WhatsApp.");
     }
   }, [datos, jugadoresSeleccionados, mensajeFinal, plantillaSeleccionada]);
