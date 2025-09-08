@@ -22,7 +22,11 @@
         "foregroundImage": "./src/assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "intentFilters": [],
+      "queries": {
+        "scheme": ["whatsapp", "https"]
+      }
     },
     "web": {
       "favicon": "./src/assets/favicon.png"
