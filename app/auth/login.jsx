@@ -81,7 +81,13 @@ const InputField = ({
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { user, isAuthenticated, loading: authLoading } = useAuth();
+  const {
+    user,
+    isAuthenticated,
+    loading: authLoading,
+    userRole,
+    approved,
+  } = useAuth();
 
   // 🔥 ESTADO DEL FORMULARIO
   const [formData, setFormData] = useState({
@@ -100,14 +106,6 @@ export default function LoginScreen() {
 
   // 🔥 ESTADO DE CARGA LOCAL
   const [isLoading, setIsLoading] = useState(false);
-
-  // 🔥 REDIRECCIONAR SI YA ESTÁ AUTENTICADO
-  useEffect(() => {
-    if (!authLoading && isAuthenticated && user) {
-      console.log("✅ Usuario ya autenticado, redirigiendo...", user.name);
-      router.replace("/");
-    }
-  }, [authLoading, isAuthenticated, user, router]);
 
   // 🔥 VALIDAR CAMPO INDIVIDUAL
   const validateField = (field, value) => {

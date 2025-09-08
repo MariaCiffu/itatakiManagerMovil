@@ -23,7 +23,13 @@ export const useAuth = () => {
             "✅ Usuario establecido:",
             userData.name || userData.email
           );
+
+          // Verificar si está aprobado
+          if (userData.approved === false) {
+            console.log("⏳ Usuario pendiente de aprobación");
+          }
           setUser(userData);
+
           setError(null);
         } else {
           console.log("❌ No hay usuario autenticado");
@@ -71,6 +77,7 @@ export const useAuth = () => {
   const isAuthenticated = !!user;
   const userRole = user?.role;
   const teamId = user?.teamId || "acd-fatima"; // Fallback a tu equipo fijo
+  const approved = user?.approved;
 
   // Debug info (solo en desarrollo)
   useEffect(() => {
@@ -85,9 +92,19 @@ export const useAuth = () => {
         teamId,
         initialized,
         error,
+        approved,
       });
     }
-  }, [user, loading, isAuthenticated, userRole, teamId, initialized, error]);
+  }, [
+    user,
+    loading,
+    isAuthenticated,
+    userRole,
+    teamId,
+    initialized,
+    error,
+    approved,
+  ]);
 
   return {
     user,
@@ -97,245 +114,7 @@ export const useAuth = () => {
     userRole,
     teamId,
     error,
+    approved,
     logout,
-  };
-};
-
-// 👥 HOOK DE JUGADORES EN TIEMPO REAL
-export const usePlayersRealTime = (teamId) => {
-  const [players, setPlayers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    if (!teamId) {
-      console.log("⚠️ No hay teamId para cargar jugadores");
-      setPlayers([]);
-      setLoading(false);
-      return;
-    }
-
-    console.log("📄 Cargando jugadores para equipo:", teamId);
-    setLoading(true);
-    setError(null);
-
-    // Importación dinámica para evitar errores
-    const loadPlayersService = async () => {
-      try {
-        const { getAllPlayersRealTime } = await import(
-          "../services/playersService"
-        );
-
-        const unsubscribe = getAllPlayersRealTime(teamId, (playersData) => {
-          console.log("📡 Jugadores actualizados:", playersData?.length || 0);
-          setPlayers(playersData || []);
-          setLoading(false);
-          setError(null);
-        });
-
-        return unsubscribe;
-      } catch (err) {
-        console.error("❌ Error cargando servicio de jugadores:", err);
-        setError(err.message);
-        setLoading(false);
-        return () => {};
-      }
-    };
-
-    const unsubscribePromise = loadPlayersService();
-
-    return () => {
-      unsubscribePromise.then((unsubscribe) => {
-        if (unsubscribe) {
-          console.log("🧹 Limpiando listener de jugadores");
-          unsubscribe();
-        }
-      });
-    };
-  }, [teamId]);
-
-  const refreshPlayers = useCallback(() => {
-    console.log("📄 Refrescando jugadores...");
-    setLoading(true);
-  }, []);
-
-  return {
-    players,
-    loading,
-    error,
-    refreshPlayers,
-  };
-};
-
-// 🎯 HOOK DE JUGADOR INDIVIDUAL EN TIEMPO REAL
-export const usePlayerRealTime = (playerId) => {
-  const [player, setPlayer] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    if (!playerId) {
-      console.log("⚠️ No hay playerId");
-      setPlayer(null);
-      setLoading(false);
-      return;
-    }
-
-    console.log("📄 Cargando jugador:", playerId);
-    setLoading(true);
-    setError(null);
-
-    const loadPlayerService = async () => {
-      try {
-        const { getPlayerByIdRealTime } = await import(
-          "../services/playersService"
-        );
-
-        const unsubscribe = getPlayerByIdRealTime(playerId, (playerData) => {
-          console.log("📡 Jugador actualizado:", playerData?.name || playerId);
-          setPlayer(playerData);
-          setLoading(false);
-          setError(null);
-        });
-
-        return unsubscribe;
-      } catch (err) {
-        console.error("❌ Error cargando servicio de jugador:", err);
-        setError(err.message);
-        setLoading(false);
-        return () => {};
-      }
-    };
-
-    const unsubscribePromise = loadPlayerService();
-
-    return () => {
-      unsubscribePromise.then((unsubscribe) => {
-        if (unsubscribe) {
-          console.log("🧹 Limpiando listener de jugador");
-          unsubscribe();
-        }
-      });
-    };
-  }, [playerId]);
-
-  return {
-    player,
-    loading,
-    error,
-  };
-};
-
-// 💰 HOOK DE MULTAS DE JUGADOR EN TIEMPO REAL
-export const usePlayerMultasRealTime = (playerId) => {
-  const [multas, setMultas] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    if (!playerId) {
-      console.log("⚠️ No hay playerId para multas");
-      setMultas([]);
-      setLoading(false);
-      return;
-    }
-
-    console.log("📄 Cargando multas para jugador:", playerId);
-    setLoading(true);
-    setError(null);
-
-    const loadMultasService = async () => {
-      try {
-        const { getPlayerMultasRealTime } = await import(
-          "../services/playersService"
-        );
-
-        const unsubscribe = getPlayerMultasRealTime(playerId, (multasData) => {
-          console.log("📡 Multas actualizadas:", multasData?.length || 0);
-          setMultas(multasData || []);
-          setLoading(false);
-          setError(null);
-        });
-
-        return unsubscribe;
-      } catch (err) {
-        console.error("❌ Error cargando servicio de multas:", err);
-        setError(err.message);
-        setLoading(false);
-        return () => {};
-      }
-    };
-
-    const unsubscribePromise = loadMultasService();
-
-    return () => {
-      unsubscribePromise.then((unsubscribe) => {
-        if (unsubscribe) {
-          console.log("🧹 Limpiando listener de multas");
-          unsubscribe();
-        }
-      });
-    };
-  }, [playerId]);
-
-  // Estadísticas calculadas
-  const stats = {
-    total: multas.length,
-    pendientes: multas.filter((m) => !m.paid).length,
-    totalDeuda: multas
-      .filter((m) => !m.paid)
-      .reduce((sum, m) => sum + (m.amount || 0), 0),
-    totalPagado: multas
-      .filter((m) => m.paid)
-      .reduce((sum, m) => sum + (m.amount || 0), 0),
-  };
-
-  return {
-    multas,
-    loading,
-    error,
-    stats,
-  };
-};
-
-// 🏠 HOOK DE DATOS DEL EQUIPO
-export const useTeamData = (teamId) => {
-  const [teamData, setTeamData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    if (!teamId) {
-      setTeamData(null);
-      setLoading(false);
-      return;
-    }
-
-    console.log("📄 Cargando datos del equipo:", teamId);
-    setLoading(true);
-    setError(null);
-
-    const loadTeamData = async () => {
-      try {
-        const { getTeamStats } = await import("../services/playersService");
-        const stats = await getTeamStats(teamId);
-
-        setTeamData(stats);
-        setLoading(false);
-        setError(null);
-      } catch (err) {
-        console.error("❌ Error cargando datos del equipo:", err);
-        setError(err.message);
-        setLoading(false);
-      }
-    };
-
-    loadTeamData();
-  }, [teamId]);
-
-  return {
-    teamData,
-    loading,
-    error,
   };
 };

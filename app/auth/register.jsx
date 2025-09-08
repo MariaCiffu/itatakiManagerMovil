@@ -310,14 +310,6 @@ export default function RegisterScreen() {
   // 🔥 ESTADO DE CARGA
   const [isLoading, setIsLoading] = useState(false);
 
-  // 🔥 REDIRIGIR SI YA ESTÁ AUTENTICADO
-  useEffect(() => {
-    if (!authLoading && isAuthenticated) {
-      console.log("✅ Usuario ya autenticado, redirigiendo...");
-      router.replace("/");
-    }
-  }, [authLoading, isAuthenticated, router]);
-
   // 🔥 VALIDAR CAMPO INDIVIDUAL
   const validateField = (field, value, allData = formData) => {
     switch (field) {
@@ -446,9 +438,9 @@ export default function RegisterScreen() {
         });
 
         Alert.alert(
-          "¡Registro exitoso!",
-          "Tu cuenta de entrenador ha sido creada correctamente",
-          [{ text: "OK", onPress: () => router.replace("/") }]
+          "Registro exitoso",
+          "Tu cuenta ha sido creada. Está pendiente de aprobación por un administrador.",
+          [{ text: "OK" }] // ← Solo cerrar el alert, el useEffect se encarga de redirigir
         );
       } else {
         Alert.alert("Error", userResult.message);

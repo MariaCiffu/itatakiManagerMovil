@@ -9,19 +9,11 @@ import { COLORS } from "../src/constants/colors";
 
 // 🔥 COMPONENTE QUE MANEJA LA NAVEGACIÓN SEGÚN AUTENTICACIÓN
 function AuthNavigator() {
-  // 🔥 CORREGIDO: Usar el hook directamente
-  const { isAuthenticated, loading, user } = useAuth();
+  const { isAuthenticated, loading, user, userRole, approved } = useAuth();
   const router = useRouter();
   const segments = useSegments();
 
   useEffect(() => {
-    console.log("🔵 AuthNavigator - Estado:", {
-      loading,
-      isAuthenticated,
-      hasUser: !!user,
-      currentSegments: segments,
-    });
-
     // No hacer nada mientras está cargando
     if (loading) return;
 
@@ -48,11 +40,16 @@ function AuthNavigator() {
     } else {
       // Usuario SÍ autenticado
       if (inAuthGroup) {
-        console.log("🔵 Usuario autenticado en auth, redirigiendo a home...");
-        router.replace("/");
+        if (userRole === "admin") {
+          router.replace("/admin/pending-users");
+        } else if (!approved) {
+          router.replace("/auth/pending-approval");
+        } else {
+          router.replace("/");
+        }
       }
     }
-  }, [isAuthenticated, loading, segments, router, user]);
+  }, [isAuthenticated, loading, user, userRole, approved, segments, router]);
 
   // 🔥 PANTALLA DE CARGA
   if (loading) {

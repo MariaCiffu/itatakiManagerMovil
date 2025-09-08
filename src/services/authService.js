@@ -57,6 +57,7 @@ export const registerUser = async (userData) => {
       homeField: userData.homeField,
       category: userData.category,
       profilePhoto: userData.profilePhoto || null,
+      approved: false, //Le pongo de primeras como usuario no aprobado
       active: true,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
@@ -140,24 +141,7 @@ export const getUserData = async (uid) => {
         "⚠️ No se encontró documento de usuario, creando uno básico..."
       );
 
-      // Crear documento básico si no existe
-      const basicUserDoc = {
-        uid: uid,
-        email: auth.currentUser?.email || "",
-        name: auth.currentUser?.displayName || "Usuario",
-        role: USER_ROLES.COACH,
-        teamId: "acd-fatima",
-        teamName: "A.C.D Fátima",
-        homeField: "Campo Local",
-        category: "Senior",
-        active: true,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      };
-
-      await setDoc(userRef, basicUserDoc);
-      console.log("✅ Documento básico de usuario creado");
-      return basicUserDoc;
+      return null;
     }
   } catch (error) {
     console.error("❌ Error obteniendo datos de usuario:", error);
