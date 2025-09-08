@@ -17,17 +17,26 @@
       "supportsTablet": true
     },
     "android": {
-      "package": "com.mariaciffu.itatakimanager",
-      "adaptiveIcon": {
-        "foregroundImage": "./src/assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+  "package": "com.mariaciffu.itatakimanager",
+  "adaptiveIcon": {
+    "foregroundImage": "./src/assets/adaptive-icon.png",
+    "backgroundColor": "#ffffff"
+  },
+  "edgeToEdgeEnabled": true,
+  "intentFilters": [],
+  "queries": {
+    "intent": [
+      {
+        "action": "VIEW",
+        "data": { "scheme": "whatsapp" }
       },
-      "edgeToEdgeEnabled": true,
-      "intentFilters": [],
-      "queries": {
-        "scheme": ["whatsapp", "https"]
+      {
+        "action": "VIEW",
+        "data": { "scheme": "https" }
       }
-    },
+    ]
+  }
+},
     "web": {
       "favicon": "./src/assets/favicon.png"
     },
