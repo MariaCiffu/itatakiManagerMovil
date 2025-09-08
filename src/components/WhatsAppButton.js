@@ -9,32 +9,25 @@ const WhatsAppButton = ({ phone, size = 24, color = "#25D366" }) => {
       if (!phoneNumber.startsWith("+")) {
         phoneNumber = `+34${phoneNumber}`;
       }
-      // Eliminar el + para el esquema nativo
       phoneNumber = phoneNumber.replace("+", "");
 
-      // Intentar primero con el esquema nativo
-      const whatsappUrl = `whatsapp://send?phone=${phoneNumber}`;
-      const canOpenWhatsApp = await Linking.canOpenURL(whatsappUrl);
-
-      if (canOpenWhatsApp) {
-        await Linking.openURL(whatsappUrl);
-      } else {
-        // Fallback para dispositivos sin WhatsApp
-        const webUrl = `https://wa.me/${phoneNumber}`;
-        const canOpenWeb = await Linking.canOpenURL(webUrl);
-
-        if (canOpenWeb) {
-          await Linking.openURL(webUrl);
-        } else {
-          Alert.alert(
-            "Error",
-            "WhatsApp no está instalado en este dispositivo."
-          );
-        }
-      }
+      // Intentar abrir directamente la app de WhatsApp
+      await Linking.openURL(`whatsapp://send?phone=${phoneNumber}`);
     } catch (error) {
-      console.error("Error al abrir WhatsApp:", error);
-      Alert.alert("Error", "No se pudo abrir WhatsApp.");
+      console.warn(
+        "No se pudo abrir WhatsApp nativo, intentando web...",
+        error
+      );
+
+      try {
+        // Fallback al enlace web oficial de WhatsApp
+        await Linking.openURL(
+          `https://api.whatsapp.com/send?phone=${phoneNumber}`
+        );
+      } catch (err) {
+        console.error("Error al abrir WhatsApp:", err);
+        Alert.alert("Error", "No se pudo abrir WhatsApp.");
+      }
     }
   };
 
