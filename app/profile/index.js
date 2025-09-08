@@ -30,6 +30,9 @@ const categories = [
   "Veteranos",
 ];
 
+const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dn7deiyof/upload";
+const UPLOAD_PRESET = "unsigned_profile_upload";
+
 export default function Profile() {
   const router = useRouter();
   const { user } = useAuth();
@@ -86,7 +89,33 @@ export default function Profile() {
     }
   };
 
-  // 🔧 FUNCIÓN CORREGIDA PARA SELECCIONAR FOTO (igual que add-player)
+  const uploadImageAsync = async (uri) => {
+    if (!uri) return null;
+    try {
+      const formDataCloud = new FormData();
+      formDataCloud.append("file", {
+        uri,
+        type: "image/jpeg",
+        name: "profile.jpg",
+      });
+      formDataCloud.append("upload_preset", UPLOAD_PRESET);
+      formDataCloud.append("folder", `users/${user.uid}`); // carpeta por usuario
+
+      const response = await fetch(CLOUDINARY_URL, {
+        method: "POST",
+        body: formDataCloud,
+      });
+
+      const data = await response.json();
+      if (data.secure_url) return data.secure_url;
+      throw new Error("No se pudo obtener la URL de Cloudinary");
+    } catch (error) {
+      console.error("Error subiendo imagen:", error);
+      Alert.alert("Error", "No se pudo subir la imagen. Intenta de nuevo.");
+      return null;
+    }
+  };
+
   const selectPhoto = async () => {
     Alert.alert("Seleccionar imagen", "¿Cómo quieres subir la imagen?", [
       { text: "Cancelar", style: "cancel" },
@@ -193,18 +222,24 @@ export default function Profile() {
       return;
     }
 
-    if (!validatePassword()) {
-      return;
-    }
+    if (!validatePassword()) return;
 
     setIsLoading(true);
     try {
+      let profilePhotoURL = formData.profilePhoto;
+
+      // Subir la foto si es una URI local
+      if (formData.profilePhoto?.startsWith("file://")) {
+        const uploadedURL = await uploadImageAsync(formData.profilePhoto);
+        if (uploadedURL) profilePhotoURL = uploadedURL;
+      }
+
       const updateData = {
         name: formData.name,
         teamName: formData.teamName,
         category: formData.category,
         homeField: formData.homeField,
-        profilePhoto: formData.profilePhoto,
+        profilePhoto: profilePhotoURL,
       };
 
       const result = await updateUserProfile(user.uid, updateData);
@@ -218,15 +253,13 @@ export default function Profile() {
           currentPassword: "",
           newPassword: "",
           confirmNewPassword: "",
+          profilePhoto: profilePhotoURL,
         }));
 
         Alert.alert("¡Éxito!", "Perfil actualizado correctamente", [
           {
             text: "OK",
-            onPress: () => {
-              // 🎯 SOLUCIÓN: usar replace en lugar de back
-              router.replace("/");
-            },
+            onPress: () => router.replace("/"),
           },
         ]);
       } else {
@@ -457,7 +490,7 @@ export default function Profile() {
           </View>
         </View>
 
-        {/* SEGURIDAD - CAMBIO DE CONTRASEÑA */}
+        {/* SEGURIDAD */}
         <View style={styles.formSection}>
           <Text style={styles.sectionTitle}>Seguridad</Text>
 
@@ -588,13 +621,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: MODERN_COLORS.border,
   },
-
   headerTop: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
-
   backButton: {
     width: 40,
     height: 40,
@@ -603,43 +634,36 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-
   headerTitle: {
     fontSize: 18,
     fontWeight: "700",
     color: MODERN_COLORS.textDark,
     letterSpacing: -0.3,
   },
-
   saveButton: {
     backgroundColor: MODERN_COLORS.primary,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 12,
   },
-
   saveButtonText: {
     color: MODERN_COLORS.textWhite,
     fontSize: 14,
     fontWeight: "600",
   },
-
   content: {
     flex: 1,
   },
-
   avatarSection: {
     alignItems: "center",
     paddingVertical: 32,
     backgroundColor: MODERN_COLORS.surface,
     marginBottom: 8,
   },
-
   avatarContainer: {
     position: "relative",
     marginBottom: 12,
   },
-
   avatar: {
     width: 80,
     height: 80,
@@ -649,19 +673,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     overflow: "hidden",
   },
-
   avatarImage: {
     width: "100%",
     height: "100%",
     borderRadius: 40,
   },
-
   avatarText: {
     fontSize: 32,
     fontWeight: "700",
     color: MODERN_COLORS.textWhite,
   },
-
   avatarEditButton: {
     position: "absolute",
     bottom: 0,
@@ -675,19 +696,16 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: MODERN_COLORS.surface,
   },
-
   avatarLabel: {
     fontSize: 14,
     color: MODERN_COLORS.textGray,
     fontWeight: "500",
   },
-
   formSection: {
     backgroundColor: MODERN_COLORS.surface,
     padding: 20,
     marginBottom: 8,
   },
-
   sectionTitle: {
     fontSize: 18,
     fontWeight: "700",
@@ -695,18 +713,15 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     letterSpacing: -0.2,
   },
-
   inputGroup: {
     marginBottom: 20,
   },
-
   inputLabel: {
     fontSize: 14,
     fontWeight: "600",
     color: MODERN_COLORS.textDark,
     marginBottom: 8,
   },
-
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -717,25 +732,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     height: 52,
   },
-
   inputIcon: {
     marginRight: 12,
   },
-
   textInput: {
     flex: 1,
     fontSize: 16,
     color: MODERN_COLORS.textDark,
     fontWeight: "500",
   },
-
   helperText: {
     fontSize: 12,
     color: MODERN_COLORS.textGray,
     marginTop: 4,
     fontStyle: "italic",
   },
-
   pickerContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -747,25 +758,21 @@ const styles = StyleSheet.create({
     height: 52,
     overflow: "hidden",
   },
-
   picker: {
     flex: 1,
     height: 50,
     color: MODERN_COLORS.textDark,
   },
-
   sectionSubtitle: {
     fontSize: 14,
     color: MODERN_COLORS.textGray,
     marginBottom: 16,
     fontStyle: "italic",
   },
-
   eyeIcon: {
     padding: 8,
     marginLeft: 8,
   },
-
   bottomSpacer: {
     height: 32,
   },
