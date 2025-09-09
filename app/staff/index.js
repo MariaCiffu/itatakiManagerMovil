@@ -5,7 +5,6 @@ import {
   Text,
   StyleSheet,
   FlatList,
-  Image,
   TouchableOpacity,
   TextInput,
   Alert,
@@ -17,7 +16,6 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-import * as ImagePicker from "expo-image-picker";
 import {
   Swipeable,
   GestureHandlerRootView,
@@ -202,44 +200,6 @@ export default function StaffList() {
     }
   };
 
-  const selectImage = async (memberId) => {
-    Alert.alert("Seleccionar imagen", "¿Cómo quieres subir la imagen?", [
-      { text: "Cancelar", style: "cancel" },
-      {
-        text: "Galería",
-        onPress: async () => {
-          const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: true,
-            aspect: [1, 1],
-            quality: 0.5,
-          });
-          if (!result.canceled) {
-            handleChange("image", result.assets[0].uri);
-          }
-        },
-      },
-      {
-        text: "Cámara",
-        onPress: async () => {
-          const permission = await ImagePicker.requestCameraPermissionsAsync();
-          if (permission.granted === false) {
-            Alert.alert("Permiso denegado", "No se puede acceder a la cámara");
-            return;
-          }
-          const result = await ImagePicker.launchCameraAsync({
-            allowsEditing: true,
-            aspect: [1, 1],
-            quality: 0.5,
-          });
-          if (!result.canceled) {
-            handleChange("image", result.assets[0].uri);
-          }
-        },
-      },
-    ]);
-  };
-
   // Función para eliminar un miembro del staff
   const handleDeleteMember = (memberId) => {
     Alert.alert(
@@ -338,25 +298,6 @@ export default function StaffList() {
                   size={20}
                   color={MODERN_COLORS.textGray}
                 />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.editAvatarContainer}>
-              <TouchableOpacity
-                onPress={() => selectImage(item.id)}
-                activeOpacity={0.8}
-              >
-                <Image
-                  source={{
-                    uri:
-                      editedData.image ||
-                      "https://via.placeholder.com/100x100/6B7280/FFFFFF?text=👤",
-                  }}
-                  style={styles.editAvatar}
-                />
-                <View style={styles.editAvatarBadge}>
-                  <Ionicons name="camera" size={16} color="#fff" />
-                </View>
               </TouchableOpacity>
             </View>
 
@@ -512,15 +453,12 @@ export default function StaffList() {
         >
           <View style={styles.memberCard}>
             <View style={styles.memberContent}>
-              {/* Imagen del miembro */}
-              <Image
-                source={{
-                  uri:
-                    item.image ||
-                    "https://via.placeholder.com/70x70/6B7280/FFFFFF?text=👤",
-                }}
-                style={styles.memberImage}
-              />
+              {/* Avatar con inicial */}
+              <View style={styles.memberAvatar}>
+                <Text style={styles.memberAvatarText}>
+                  {item.name.charAt(0).toUpperCase()}
+                </Text>
+              </View>
 
               {/* Información del miembro */}
               <View style={styles.memberInfo}>
@@ -882,14 +820,23 @@ const styles = StyleSheet.create({
     padding: 16,
     position: "relative", // Para posicionar el botón de editar
   },
-  memberImage: {
+
+  // AVATAR CON INICIAL (como PlayerCard)
+  memberAvatar: {
     width: 60,
     height: 60,
     borderRadius: 30,
+    backgroundColor: MODERN_COLORS.primary,
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: 12,
-    borderWidth: 2,
-    borderColor: MODERN_COLORS.primary,
   },
+  memberAvatarText: {
+    color: MODERN_COLORS.textWhite,
+    fontSize: 24,
+    fontWeight: "700",
+  },
+
   memberInfo: {
     flex: 1,
     justifyContent: "center",
@@ -1010,30 +957,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  editAvatarContainer: {
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  editAvatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    borderWidth: 2,
-    borderColor: MODERN_COLORS.primary,
-  },
-  editAvatarBadge: {
-    position: "absolute",
-    bottom: 0,
-    right: 0,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: MODERN_COLORS.primary,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 3,
-    borderColor: MODERN_COLORS.surface,
-  },
   editForm: {
     gap: 16,
   },
@@ -1063,7 +986,6 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 12,
     color: MODERN_COLORS.danger,
-
     marginLeft: 4,
     fontWeight: "500",
   },

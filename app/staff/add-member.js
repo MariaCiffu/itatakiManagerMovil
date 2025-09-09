@@ -6,7 +6,6 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  Image,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -14,7 +13,6 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { MODERN_COLORS } from "../../src/constants/modernColors";
 import { addStaffMember } from "../../src/services/staffService";
@@ -26,7 +24,6 @@ export default function AddMember() {
     position: "",
     phone: "",
     email: "",
-    image: "",
   });
 
   const [formErrors, setFormErrors] = useState({});
@@ -89,62 +86,6 @@ export default function AddMember() {
     }
   };
 
-  const selectImage = async () => {
-    Alert.alert("Seleccionar imagen", "¿Cómo quieres subir la imagen?", [
-      { text: "Cancelar", style: "cancel" },
-      {
-        text: "Galería",
-        onPress: async () => {
-          const { status } =
-            await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-          if (status !== "granted") {
-            Alert.alert(
-              "Permisos requeridos",
-              "Necesitamos acceso a tu galería."
-            );
-            return;
-          }
-
-          const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: true,
-            aspect: [1, 1],
-            quality: 0.8,
-          });
-
-          if (!result.canceled) {
-            handleChange("image", result.assets[0].uri);
-          }
-        },
-      },
-      {
-        text: "Cámara",
-        onPress: async () => {
-          const { status } = await ImagePicker.requestCameraPermissionsAsync();
-
-          if (status !== "granted") {
-            Alert.alert(
-              "Permisos requeridos",
-              "Necesitamos acceso a tu cámara."
-            );
-            return;
-          }
-
-          const result = await ImagePicker.launchCameraAsync({
-            allowsEditing: true,
-            aspect: [1, 1],
-            quality: 0.8,
-          });
-
-          if (!result.canceled) {
-            handleChange("image", result.assets[0].uri);
-          }
-        },
-      },
-    ]);
-  };
-
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -171,31 +112,6 @@ export default function AddMember() {
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* AVATAR SECTION */}
-        <View style={styles.avatarSection}>
-          <TouchableOpacity
-            style={styles.avatarContainer}
-            onPress={selectImage}
-            activeOpacity={0.8}
-          >
-            {member.image ? (
-              <Image source={{ uri: member.image }} style={styles.avatar} />
-            ) : (
-              <View style={styles.avatarPlaceholder}>
-                <Ionicons
-                  name="camera"
-                  size={40}
-                  color={MODERN_COLORS.primary}
-                />
-              </View>
-            )}
-            <View style={styles.editBadge}>
-              <Ionicons name="add" size={16} color={MODERN_COLORS.textWhite} />
-            </View>
-          </TouchableOpacity>
-          <Text style={styles.avatarLabel}>Toca para añadir foto</Text>
-        </View>
-
         {/* INFORMACIÓN BÁSICA */}
         <View style={styles.formSection}>
           <Text style={styles.sectionTitle}>Información básica</Text>
@@ -398,57 +314,6 @@ const styles = StyleSheet.create({
   // CONTENT
   content: {
     flex: 1,
-  },
-
-  // AVATAR
-  avatarSection: {
-    alignItems: "center",
-    paddingVertical: 32,
-    backgroundColor: MODERN_COLORS.surface,
-    marginBottom: 8,
-  },
-
-  avatarContainer: {
-    position: "relative",
-    marginBottom: 12,
-  },
-
-  avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-  },
-
-  avatarPlaceholder: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: MODERN_COLORS.surfaceGray,
-    borderWidth: 2,
-    borderColor: MODERN_COLORS.border,
-    borderStyle: "dashed",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  editBadge: {
-    position: "absolute",
-    bottom: 0,
-    right: 0,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: MODERN_COLORS.primary,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 3,
-    borderColor: MODERN_COLORS.surface,
-  },
-
-  avatarLabel: {
-    fontSize: 14,
-    color: MODERN_COLORS.textGray,
-    fontWeight: "500",
   },
 
   // FORM
