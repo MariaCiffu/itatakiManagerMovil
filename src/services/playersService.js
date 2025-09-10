@@ -15,25 +15,32 @@ import {
 import { auth, db, COLLECTIONS } from "../config/firebase";
 import { POSICIONES } from "../../src/constants/positions";
 
-// 🔥 FUNCIÓN HELPER PARA OBTENER TEAMID
+// FUNCIÓN HELPER PARA OBTENER TEAMID
 const getCurrentTeamId = async () => {
   try {
     const currentUser = auth.currentUser;
     if (!currentUser) {
       console.error("❌ No hay usuario autenticado");
-      return "acd-fatima";
+      throw new Error("Usuario no autenticado");
     }
 
     const userDoc = await getDoc(doc(db, "users", currentUser.uid));
     if (userDoc.exists()) {
       const userData = userDoc.data();
-      return userData.teamId || "acd-fatima";
+
+      if (!userData.teamId) {
+        console.error("❌ Usuario sin teamId asignado");
+        throw new Error("Usuario sin equipo asignado");
+      }
+
+      return userData.teamId;
     } else {
-      return "acd-fatima";
+      console.error("❌ Documento de usuario no encontrado");
+      throw new Error("Documento de usuario no encontrado");
     }
   } catch (error) {
     console.error("❌ Error obteniendo teamId:", error);
-    return "acd-fatima";
+    throw error; // Re-lanzar el error
   }
 };
 
@@ -462,47 +469,6 @@ export const deleteMultaFromJugador = async (multaId) => {
 };
 
 // 📊 ESTADÍSTICAS
-
-export const getEstadisticasEquipo = async () => {
-  try {
-    const teamId = await getCurrentTeamId();
-    const players = await getAllJugadores();
-
-    // Obtener multas del equipo
-    const multasRef = collection(db, COLLECTIONS.MULTAS);
-    const multasQuery = query(multasRef, where("teamId", "==", teamId));
-    const multasSnapshot = await getDocs(multasQuery);
-
-    let totalMultas = 0;
-    let multasPendientes = 0;
-    let totalDeuda = 0;
-
-    multasSnapshot.forEach((doc) => {
-      const multa = doc.data();
-      totalMultas++;
-      if (!multa.paid) {
-        multasPendientes++;
-        totalDeuda += multa.amount;
-      }
-    });
-
-    return {
-      totalPlayers: players.length,
-      totalMultas,
-      multasPendientes,
-      totalDeuda: totalDeuda || 0,
-    };
-  } catch (error) {
-    console.error("❌ Error en getEstadisticasEquipo:", error);
-    return {
-      totalPlayers: 0,
-      totalMultas: 0,
-      multasPendientes: 0,
-      totalDeuda: 0,
-    };
-  }
-};
-
 export const getEstadisticasJugadorDesdeReportes = async (jugadorId) => {
   try {
     console.log("🔄 INICIO - Obteniendo estadísticas para jugador:", jugadorId);
