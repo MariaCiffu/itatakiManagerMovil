@@ -12,25 +12,32 @@ import {
 } from "firebase/firestore";
 import { auth, db, COLLECTIONS } from "../config/firebase";
 
-// 🔥 FUNCIÓN HELPER PARA OBTENER TEAMID
+// FUNCIÓN HELPER PARA OBTENER TEAMID
 const getCurrentTeamId = async () => {
   try {
     const currentUser = auth.currentUser;
     if (!currentUser) {
       console.error("❌ No hay usuario autenticado");
-      return "acd-fatima";
+      throw new Error("Usuario no autenticado");
     }
 
     const userDoc = await getDoc(doc(db, "users", currentUser.uid));
     if (userDoc.exists()) {
       const userData = userDoc.data();
-      return userData.teamId || "acd-fatima";
+
+      if (!userData.teamId) {
+        console.error("❌ Usuario sin teamId asignado");
+        throw new Error("Usuario sin equipo asignado");
+      }
+
+      return userData.teamId;
     } else {
-      return "acd-fatima";
+      console.error("❌ Documento de usuario no encontrado");
+      throw new Error("Documento de usuario no encontrado");
     }
   } catch (error) {
     console.error("❌ Error obteniendo teamId:", error);
-    return "acd-fatima";
+    throw error; // Re-lanzar el error
   }
 };
 
