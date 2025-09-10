@@ -22,6 +22,8 @@ import { db } from "../../src/config/firebase";
 import { COLORS } from "../../src/constants/colors";
 // 🔥 CORREGIDO: Usar el hook correcto
 import { useAuth } from "../../src/hooks/useFirebase";
+// 🆕 IMPORTAR CLOUDINARY
+import { uploadImage } from "../../src/components/cloudinary";
 
 const categories = [
   "Prebenjamín",
@@ -37,41 +39,25 @@ const categories = [
 // 🔥 FUNCIÓN PARA CREAR/ACTUALIZAR EQUIPO
 const createOrUpdateTeam = async (teamData) => {
   try {
-    const teamId = "acd-fatima"; // ID fijo de tu equipo
+    const teamId = "acd-fatima";
     const teamRef = doc(db, "teams", teamId);
 
-    // Verificar si el equipo ya existe
-    const teamSnap = await getDoc(teamRef);
-
-    if (!teamSnap.exists()) {
-      // Crear nuevo equipo
-      await setDoc(teamRef, {
+    // Directamente actualizar/crear sin verificar primero
+    await setDoc(
+      teamRef,
+      {
         id: teamId,
         name: teamData.name,
         category: teamData.category,
         homeField: teamData.homeField,
         createdBy: teamData.createdBy,
-        createdAt: new Date(),
         updatedAt: new Date(),
         active: true,
-      });
-      console.log("Equipo creado exitosamente");
-    } else {
-      // Actualizar datos del equipo si es necesario
-      await setDoc(
-        teamRef,
-        {
-          ...teamSnap.data(),
-          name: teamData.name,
-          category: teamData.category,
-          homeField: teamData.homeField,
-          updatedAt: new Date(),
-        },
-        { merge: true }
-      );
-      console.log("Datos del equipo actualizados");
-    }
+      },
+      { merge: true }
+    ); // merge: true actualiza si existe, crea si no existe
 
+    console.log("Equipo actualizado exitosamente");
     return { success: true };
   } catch (error) {
     console.error("Error con el equipo:", error);
@@ -180,7 +166,7 @@ const InputField = ({
   </View>
 );
 
-// 🔥 COMPONENTE SELECTOR DE FOTO
+// 🔥 COMPONENTE SELECTOR DE FOTO ACTUALIZADO CON CLOUDINARY
 const PhotoSelector = ({ profilePhoto, onSelectPhoto }) => {
   const selectPhoto = async () => {
     try {
@@ -390,7 +376,7 @@ export default function RegisterScreen() {
     setCurrentStep((prev) => Math.max(1, prev - 1));
   };
 
-  // 🔥 REGISTRO FINAL CON FIREBASE
+  // 🔥 REGISTRO FINAL CON FIREBASE Y CLOUDINARY
   const handleRegister = async () => {
     // Marcar todos los campos como tocados
     const allFields = [
@@ -415,7 +401,27 @@ export default function RegisterScreen() {
     setIsLoading(true);
 
     try {
-      // 1. 🔥 CREAR USUARIO EN FIREBASE (COMO COACH)
+      // 🆕 1. SUBIR FOTO A CLOUDINARY SI EXISTE
+      let profilePhotoURL = null;
+      if (formData.profilePhoto) {
+        try {
+          const tempUserId = `temp_${Date.now()}`; // ID temporal para la subida
+          profilePhotoURL = await uploadImage(
+            formData.profilePhoto,
+            `users/${tempUserId}`
+          );
+          console.log("✅ Foto subida a Cloudinary:", profilePhotoURL);
+        } catch (uploadError) {
+          console.error("❌ Error subiendo foto:", uploadError);
+          // No detener el registro por error de foto, solo advertir
+          Alert.alert(
+            "Advertencia",
+            "No se pudo subir la foto de perfil, pero continuaremos con el registro."
+          );
+        }
+      }
+
+      // 2. 🔥 CREAR USUARIO EN FIREBASE (COMO COACH)
       const userResult = await registerUser({
         email: formData.email.toLowerCase().trim(),
         password: formData.password,
@@ -425,18 +431,10 @@ export default function RegisterScreen() {
         teamName: formData.teamName.trim(),
         homeField: formData.homeField.trim(),
         category: formData.category,
-        profilePhoto: formData.profilePhoto,
+        profilePhoto: profilePhotoURL, // ← URL de Cloudinary o null
       });
 
       if (userResult.success) {
-        // 2. 🔥 CREAR/ACTUALIZAR DATOS DEL EQUIPO
-        await createOrUpdateTeam({
-          name: formData.teamName.trim(),
-          category: formData.category,
-          homeField: formData.homeField.trim(),
-          createdBy: userResult.user.uid,
-        });
-
         Alert.alert(
           "Registro exitoso",
           "Tu cuenta ha sido creada. Está pendiente de aprobación por un administrador.",

@@ -228,42 +228,6 @@ const getAuthErrorMessage = (errorCode) => {
   return errorMessages[errorCode] || "Ha ocurrido un error. Intenta nuevamente";
 };
 
-// 👥 GESTIÓN DE ROLES Y PERMISOS
-export const hasPermission = (userRole, requiredRole) => {
-  const roleHierarchy = {
-    [USER_ROLES.ADMIN]: 5,
-    [USER_ROLES.COACH]: 4,
-  };
-
-  return roleHierarchy[userRole] >= roleHierarchy[requiredRole];
-};
-
-export const canEditPlayer = (userRole) => {
-  if (userRole === USER_ROLES.ADMIN || userRole === USER_ROLES.COACH) {
-    return true;
-  }
-  return false;
-};
-
-export const canManageMultas = (userRole) => {
-  return hasPermission(userRole, USER_ROLES.COACH);
-};
-
-export const canViewAllData = (userRole) => {
-  return hasPermission(userRole, USER_ROLES.COACH);
-};
-
-// Validar email
-export const isValidEmail = (email) => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
-};
-
-// Validar contraseña
-export const isValidPassword = (password) => {
-  return password && password.length >= 6;
-};
-
 // Cambiar contraseña
 export const changePassword = async (currentPassword, newPassword) => {
   const user = auth.currentUser;
