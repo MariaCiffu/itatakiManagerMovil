@@ -76,7 +76,7 @@ export const useAuth = () => {
   // Valores derivados
   const isAuthenticated = !!user;
   const userRole = user?.role;
-  const teamId = user?.teamId || "acd-fatima"; // Fallback a tu equipo fijo
+  const teamId = user?.teamId;
   const approved = user?.approved;
 
   // Debug info (solo en desarrollo)
