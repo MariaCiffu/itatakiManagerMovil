@@ -145,13 +145,25 @@ export const getAllJugadoresWithMultas = async () => {
 
 export const getJugadorById = async (id) => {
   try {
-    const playerRef = doc(db, COLLECTIONS.PLAYERS, id);
-    const playerSnap = await getDoc(playerRef);
+    const teamId = await getCurrentTeamId();
 
-    if (playerSnap.exists()) {
+    // Usar query en lugar de getDoc directo
+    const playersRef = collection(db, COLLECTIONS.PLAYERS);
+    const q = query(
+      playersRef,
+      where("teamId", "==", teamId), // Filtrar por tu equipo primero
+      where("active", "==", true)
+    );
+
+    const snapshot = await getDocs(q);
+
+    // Buscar el jugador específico en los resultados
+    const playerDoc = snapshot.docs.find((doc) => doc.id === id);
+
+    if (playerDoc) {
       return {
-        id: playerSnap.id,
-        ...playerSnap.data(),
+        id: playerDoc.id,
+        ...playerDoc.data(),
       };
     } else {
       return null;
