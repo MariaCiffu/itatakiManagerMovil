@@ -8,7 +8,8 @@ import {
   Image,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useState, useCallback } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import {
   PersonIcon,
@@ -17,7 +18,7 @@ import {
   EnvelopeIcon,
 } from "../src/components/Icons";
 import { useAuth } from "../src/hooks/useFirebase";
-import { PARTIDOS } from "../src/data/partidosData";
+import { getProximosPartidos } from "../src/services/partidosService";
 import { MODERN_COLORS } from "../src/constants/modernColors";
 
 export default function Home() {
@@ -27,50 +28,55 @@ export default function Home() {
   const [nextMatch, setNextMatch] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const loadNextMatch = () => {
-      try {
-        const now = new Date();
-        const futureMatches = PARTIDOS.filter(
-          (partido) => new Date(partido.fecha) > now
-        ).sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+  useFocusEffect(
+    useCallback(() => {
+      const loadNextMatch = async () => {
+        try {
+          setIsLoading(true);
 
-        if (futureMatches.length > 0) {
-          const proximoPartido = futureMatches[0];
-          const fechaPartido = new Date(proximoPartido.fecha);
+          const proximosPartidos = await getProximosPartidos(1);
 
-          setNextMatch({
-            id: proximoPartido.id,
-            opponent: proximoPartido.rival,
-            date: fechaPartido.toLocaleDateString("es-ES", {
-              day: "numeric",
-              month: "short",
-            }),
-            time: fechaPartido.toLocaleTimeString("es-ES", {
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
-            location:
-              proximoPartido.lugar === "Casa"
-                ? user?.homeField || "Campo Local"
-                : `Campo del ${proximoPartido.rival}`,
-            isHome: proximoPartido.lugar === "Casa",
-            tipo: proximoPartido.tipoPartido,
-            jornada: proximoPartido.jornada,
-          });
-        } else {
+          if (proximosPartidos.length > 0) {
+            const proximoPartido = proximosPartidos[0];
+            const fechaPartido = new Date(proximoPartido.fecha);
+
+            setNextMatch({
+              id: proximoPartido.id,
+              opponent: proximoPartido.rival,
+              date: fechaPartido.toLocaleDateString("es-ES", {
+                day: "numeric",
+                month: "short",
+              }),
+              time: fechaPartido.toLocaleTimeString("es-ES", {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+              location:
+                proximoPartido.lugar === "Casa"
+                  ? user?.homeField || "Campo Local"
+                  : `Campo del ${proximoPartido.rival}`,
+              isHome: proximoPartido.lugar === "Casa",
+              tipo: proximoPartido.tipoPartido,
+              jornada: proximoPartido.jornada,
+            });
+          } else {
+            setNextMatch(null);
+          }
+        } catch (error) {
+          console.error("Error cargando próximo partido:", error);
           setNextMatch(null);
+        } finally {
+          setIsLoading(false);
         }
-      } catch (error) {
-        console.error("Error cargando próximo partido:", error);
-        setNextMatch(null);
-      } finally {
+      };
+
+      if (isAuthenticated && user) {
+        loadNextMatch();
+      } else {
         setIsLoading(false);
       }
-    };
-
-    loadNextMatch();
-  }, [user?.homeField]);
+    }, [isAuthenticated, user?.homeField])
+  );
 
   if (loading || isLoading) {
     return (
@@ -157,7 +163,7 @@ export default function Home() {
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* PRÓXIMO PARTIDO */}
-        {nextMatch && (
+        {nextMatch ? (
           <View style={styles.nextMatchSection}>
             <TouchableOpacity
               style={styles.nextMatchCard}
@@ -197,6 +203,25 @@ export default function Home() {
               </View>
               <View style={styles.matchDecoration} />
             </TouchableOpacity>
+          </View>
+        ) : (
+          // Mostrar mensaje cuando no hay próximos partidos
+          <View style={styles.nextMatchSection}>
+            <View style={styles.noMatchCard}>
+              <Ionicons
+                name="calendar-outline"
+                size={48}
+                color={MODERN_COLORS.textLight}
+                style={styles.noMatchIcon}
+              />
+              <Text style={styles.noMatchTitle}>No hay próximos partidos</Text>
+              <TouchableOpacity
+                style={styles.addMatchButton}
+                onPress={() => router.push("/partidos/add-partido")}
+              >
+                <Text style={styles.addMatchButtonText}>Agregar</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         )}
 
@@ -515,6 +540,41 @@ const styles = StyleSheet.create({
     backgroundColor: MODERN_COLORS.primary,
   },
 
+  // Estilos para cuando no hay próximos partidos
+  noMatchCard: {
+    backgroundColor: MODERN_COLORS.surface,
+    borderRadius: 20,
+    padding: 32,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: MODERN_COLORS.border,
+  },
+
+  noMatchIcon: {
+    marginBottom: 16,
+  },
+
+  noMatchTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: MODERN_COLORS.textDark,
+    marginBottom: 8,
+    textAlign: "center",
+  },
+
+  addMatchButton: {
+    backgroundColor: MODERN_COLORS.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+
+  addMatchButtonText: {
+    color: MODERN_COLORS.textWhite,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+
   mainSection: {
     padding: 20,
     paddingTop: 0,
@@ -578,6 +638,10 @@ const styles = StyleSheet.create({
 
   callupIcon: {
     backgroundColor: "rgba(239, 68, 68, 0.1)",
+  },
+
+  exerciseIcon: {
+    backgroundColor: "rgba(124, 58, 237, 0.1)",
   },
 
   cardTitle: {

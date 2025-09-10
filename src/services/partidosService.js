@@ -478,3 +478,42 @@ export const updateReportePartido = async (partidoId, reporteData) => {
     };
   }
 };
+
+// Indica datos siguiente partido
+export const getProximosPartidos = async (limite = 5) => {
+  try {
+    const teamId = await getCurrentTeamId();
+    const partidosRef = collection(db, COLLECTIONS.PARTIDOS);
+
+    const now = new Date();
+    const q = query(
+      partidosRef,
+      where("teamId", "==", teamId),
+      where("active", "==", true),
+      where("fecha", ">=", now),
+      orderBy("fecha", "asc")
+    );
+
+    const snapshot = await getDocs(q);
+    const proximosPartidos = [];
+
+    snapshot.forEach((doc) => {
+      if (proximosPartidos.length < limite) {
+        const data = doc.data();
+        proximosPartidos.push({
+          id: doc.id,
+          ...data,
+          fecha: data.fecha?.toDate
+            ? data.fecha.toDate()
+            : new Date(data.fecha),
+        });
+      }
+    });
+
+    console.log("Próximos partidos obtenidos:", proximosPartidos.length);
+    return proximosPartidos;
+  } catch (error) {
+    console.error("Error en getProximosPartidos:", error);
+    return [];
+  }
+};
