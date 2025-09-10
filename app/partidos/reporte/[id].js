@@ -33,13 +33,13 @@ export default function CrearReporteScreen() {
   const [partido, setPartido] = useState(null);
   const [jugadores, setJugadores] = useState([]);
 
-  // Estado del reporte - versión simplificada
+  // Estado del reporte - versión simplificada SIN campo titular
   const [reporteData, setReporteData] = useState({
     resultado: {
       golesLocal: 0,
       golesVisitante: 0,
     },
-    jugadores: [], // Se inicializará con la alineación
+    jugadores: [], // Se inicializará con la alineación (sin campo titular)
   });
 
   useEffect(() => {
@@ -90,7 +90,6 @@ export default function CrearReporteScreen() {
                 asistencias: 0,
                 tarjetasAmarillas: 0,
                 tarjetasRojas: 0,
-                titular: true,
               });
             }
           });
@@ -112,7 +111,6 @@ export default function CrearReporteScreen() {
                 asistencias: 0,
                 tarjetasAmarillas: 0,
                 tarjetasRojas: 0,
-                titular: false,
               });
             }
           });
@@ -130,6 +128,15 @@ export default function CrearReporteScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Función para verificar si un jugador es titular consultando la alineación en tiempo real
+  const isJugadorTitular = (playerId) => {
+    if (!partido?.alineacion?.titulares) return false;
+
+    return partido.alineacion.titulares.some(
+      (titular) => titular?.id === playerId
+    );
   };
 
   const getPlayerName = (playerId) => {
@@ -401,7 +408,8 @@ export default function CrearReporteScreen() {
                       {getPlayerName(jugador.playerId)}
                     </Text>
                     <View style={styles.jugadorTags}>
-                      {jugador.titular && (
+                      {/* Consultar en tiempo real si es titular */}
+                      {isJugadorTitular(jugador.playerId) && (
                         <View style={styles.titularTag}>
                           <Text style={styles.titularText}>T</Text>
                         </View>

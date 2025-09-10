@@ -87,6 +87,15 @@ export default function EditarReporteScreen() {
     }
   };
 
+  // Función para verificar si un jugador es titular consultando la alineación en tiempo real
+  const isJugadorTitular = (playerId) => {
+    if (!partido?.alineacion?.titulares) return false;
+
+    return partido.alineacion.titulares.some(
+      (titular) => titular?.id === playerId
+    );
+  };
+
   const getPlayerName = (playerId) => {
     // Primero buscar en jugadores regulares
     const player = jugadores.find((j) => j.id === playerId);
@@ -346,7 +355,8 @@ export default function EditarReporteScreen() {
                       {getPlayerName(jugador.playerId)}
                     </Text>
                     <View style={styles.jugadorTags}>
-                      {jugador.titular && (
+                      {/* Consultar en tiempo real si es titular */}
+                      {isJugadorTitular(jugador.playerId) && (
                         <View style={styles.titularTag}>
                           <Text style={styles.titularText}>T</Text>
                         </View>
