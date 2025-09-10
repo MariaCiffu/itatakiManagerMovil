@@ -261,7 +261,7 @@ export default function PartidosScreen() {
                   {item.tipoPartido === "amistoso"
                     ? "Amistoso"
                     : item.tipoPartido === "torneo"
-                      ? `${item.jornada}`
+                      ? `Torneo ${item.jornada}`
                       : `Jornada ${item.jornada}`}
                 </Text>
                 <View style={styles.fechaHoraContainer}>
