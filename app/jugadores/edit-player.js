@@ -13,7 +13,6 @@ import {
   Platform,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { LinearGradient } from "expo-linear-gradient";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
@@ -30,7 +29,7 @@ import { uploadImage } from "../../src/components/cloudinary";
 
 export default function EditPlayer() {
   const router = useRouter();
-  const { playerData } = useLocalSearchParams(); // 🔄 VOLVER A playerData
+  const { playerData } = useLocalSearchParams();
 
   const [player, setPlayer] = useState({
     id: "",
@@ -46,6 +45,8 @@ export default function EditPlayer() {
     emergencyPhone: "",
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [hasChanges, setHasChanges] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showPositionModal, setShowPositionModal] = useState(false);
@@ -128,6 +129,9 @@ export default function EditPlayer() {
       setPlayer({ ...player, [field]: value });
     }
 
+    // Marcar que hay cambios
+    setHasChanges(true);
+
     if (formErrors[field]) {
       setFormErrors({ ...formErrors, [field]: null });
     }
@@ -176,6 +180,25 @@ export default function EditPlayer() {
     return Object.keys(errors).length === 0;
   };
 
+  const handleBack = () => {
+    if (hasChanges) {
+      Alert.alert(
+        "¿Descartar cambios?",
+        "Se perderán todos los cambios no guardados",
+        [
+          { text: "Cancelar", style: "cancel" },
+          {
+            text: "Descartar",
+            style: "destructive",
+            onPress: () => router.back(),
+          },
+        ]
+      );
+    } else {
+      router.back();
+    }
+  };
+
   const handleSave = async () => {
     if (!validateForm()) {
       const firstError = Object.values(formErrors)[0];
@@ -191,6 +214,7 @@ export default function EditPlayer() {
       return;
     }
 
+    setIsSaving(true);
     try {
       let imageUrl = player.image;
 
@@ -221,6 +245,7 @@ export default function EditPlayer() {
       });
 
       if (result.success) {
+        setHasChanges(false); // Resetear cambios
         Alert.alert(
           "Jugador actualizado",
           "Los datos del jugador han sido actualizados correctamente",
@@ -235,6 +260,8 @@ export default function EditPlayer() {
     } catch (error) {
       console.error("❌ Error al actualizar jugador:", error);
       Alert.alert("Error", "Ocurrió un error al guardar los cambios");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -287,10 +314,7 @@ export default function EditPlayer() {
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* HEADER */}
         <View style={styles.header}>
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={styles.backButton}
-          >
+          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
             <Ionicons
               name="chevron-back"
               size={24}
@@ -300,7 +324,15 @@ export default function EditPlayer() {
 
           <Text style={styles.title}>Editar jugador</Text>
 
-          <View style={{ width: 40 }} />
+          <TouchableOpacity
+            onPress={handleSave}
+            style={[styles.saveButton, { opacity: hasChanges ? 1 : 0.5 }]}
+            disabled={!hasChanges || isSaving}
+          >
+            <Text style={styles.saveButtonText}>
+              {isSaving ? "Guardando..." : "Guardar"}
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {/* AVATAR SECTION - IGUAL QUE ADD-PLAYER */}
@@ -605,23 +637,6 @@ export default function EditPlayer() {
             </View>
           </View>
         </View>
-
-        {/* BOTÓN GUARDAR */}
-        <View style={styles.saveSection}>
-          <TouchableOpacity
-            style={styles.saveButton}
-            onPress={handleSave}
-            activeOpacity={0.8}
-          >
-            <LinearGradient
-              colors={[MODERN_COLORS.primary, MODERN_COLORS.primaryDark]}
-              style={styles.buttonGradient}
-            >
-              <CheckIcon size={20} color={MODERN_COLORS.textWhite} />
-              <Text style={styles.saveButtonText}>Guardar cambios</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
       </ScrollView>
 
       {/* Modal de posiciones */}
@@ -709,6 +724,19 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
   },
 
+  saveButton: {
+    backgroundColor: MODERN_COLORS.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+
+  saveButtonText: {
+    color: MODERN_COLORS.textWhite,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+
   avatarSection: {
     alignItems: "center",
     paddingVertical: 32,
@@ -757,13 +785,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: MODERN_COLORS.textGray,
     fontWeight: "500",
-  },
-
-  debugText: {
-    fontSize: 10,
-    color: MODERN_COLORS.textLight,
-    marginTop: 4,
-    textAlign: "center",
   },
 
   formSection: {
@@ -884,30 +905,6 @@ const styles = StyleSheet.create({
 
   footTextActive: {
     color: MODERN_COLORS.primary,
-    fontWeight: "600",
-  },
-
-  saveSection: {
-    backgroundColor: MODERN_COLORS.surface,
-    padding: 20,
-  },
-
-  saveButton: {
-    borderRadius: 12,
-    overflow: "hidden",
-  },
-
-  buttonGradient: {
-    paddingVertical: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-  },
-
-  saveButtonText: {
-    color: MODERN_COLORS.textWhite,
-    fontSize: 16,
     fontWeight: "600",
   },
 
