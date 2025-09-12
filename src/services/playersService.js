@@ -347,8 +347,6 @@ export const searchJugadores = async (searchTerm) => {
 
 export const getMultasJugador = async (playerId) => {
   try {
-    console.log("📄 Obteniendo multas para jugador:", playerId);
-
     const multasRef = collection(db, COLLECTIONS.MULTAS);
     const q = query(
       multasRef,
@@ -365,8 +363,6 @@ export const getMultasJugador = async (playerId) => {
         ...doc.data(),
       });
     });
-
-    console.log("✅ Multas obtenidas:", multas.length);
     return multas;
   } catch (error) {
     console.error("❌ Error obteniendo multas del jugador:", error);
