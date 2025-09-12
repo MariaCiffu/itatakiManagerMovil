@@ -53,8 +53,8 @@ export default function Home() {
               }),
               location:
                 proximoPartido.lugar === "Casa"
-                  ? user?.homeField || "Campo Local"
-                  : `Campo del ${proximoPartido.rival}`,
+                  ? user?.homeField
+                  : proximoPartido.lugarEspecifico,
               isHome: proximoPartido.lugar === "Casa",
               tipo: proximoPartido.tipoPartido,
               jornada: proximoPartido.jornada,
