@@ -18,6 +18,7 @@ import {
 } from "../../../src/components/Icons";
 import { MODERN_COLORS } from "../../../src/constants/modernColors";
 import { getEstadisticasJugadorDesdeReportes } from "../../../src/services/playersService";
+import { CircularProgress } from "react-native-circular-progress";
 
 export default function Estadisticas() {
   const { id: jugadorId } = useGlobalSearchParams();
@@ -166,7 +167,6 @@ export default function Estadisticas() {
                 <Text style={styles.tarjetaValue}>
                   {estadisticas?.tarjetasAmarillas || 0}
                 </Text>
-                <Text style={styles.tarjetaLabel}>Amarillas</Text>
               </View>
               <View style={styles.tarjetaDivider} />
               <View style={styles.tarjetaItem}>
@@ -179,7 +179,6 @@ export default function Estadisticas() {
                 <Text style={styles.tarjetaValue}>
                   {estadisticas?.tarjetasRojas || 0}
                 </Text>
-                <Text style={styles.tarjetaLabel}>Rojas</Text>
               </View>
             </View>
           </LinearGradient>
@@ -221,34 +220,27 @@ export default function Estadisticas() {
       </View>
 
       {/* Porcentaje de participación como titular */}
-      <View style={styles.fullWidthCard}>
-        <LinearGradient
-          colors={[MODERN_COLORS.surface, MODERN_COLORS.surfaceGray]}
-          style={styles.cardGradient}
+      <View style={styles.presenciaContainer}>
+        <CircularProgress
+          size={80}
+          width={8}
+          fill={
+            estadisticas?.partidosJugados > 0
+              ? Math.round(
+                  (estadisticas.partidosTitular /
+                    estadisticas.partidosJugados) *
+                    100
+                )
+              : 0
+          }
+          tintColor={MODERN_COLORS.success}
+          backgroundColor={MODERN_COLORS.border}
         >
-          <View style={styles.presenciaContainer}>
-            <View style={styles.presenciaCircleContainer}>
-              <View style={styles.presenciaCircleBackground} />
-              <View
-                style={[
-                  styles.presenciaCircleForeground,
-                  { borderColor: MODERN_COLORS.success },
-                ]}
-              />
-              <Text style={styles.presenciaValue}>
-                {estadisticas?.partidosJugados > 0
-                  ? Math.round(
-                      (estadisticas.partidosTitular /
-                        estadisticas.partidosJugados) *
-                        100
-                    )
-                  : 0}
-                %
-              </Text>
-            </View>
-            <Text style={styles.presenciaLabel}>Porcentaje como titular</Text>
-          </View>
-        </LinearGradient>
+          {(fill) => (
+            <Text style={styles.presenciaValue}>{Math.round(fill)}%</Text>
+          )}
+        </CircularProgress>
+        <Text style={styles.presenciaLabel}>Porcentaje como titular</Text>
       </View>
     </ScrollView>
   );
@@ -480,6 +472,7 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 15,
     borderBottomRightRadius: 15,
     padding: 16,
+    marginBottom: 40,
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-around",
